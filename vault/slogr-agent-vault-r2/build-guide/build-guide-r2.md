@@ -29,8 +29,17 @@ R1 is complete (Phases 0-8, 388+ tests passing). R2 builds on top of R1. All R1 
 | `engine/twamp/TwampControlHandler.kt` | Negotiate mode=4 in ServerGreeting/SetupResponse. |
 | `engine/twamp/TwampSessionSender.kt` | Encrypt outbound packets when mode=4. |
 | `engine/pathchange/PathChangeDetector.kt` | Add heartbeat cycle counter, forced refresh timer. Verify baselines keyed by `(session_id, direction)`. |
-| `native/src/twampUdp.c` | Return `SO_TIMESTAMPING` kernel timestamp alongside packet data from `recvmsg()`. |
+| `native/src/twampUdp.c` | Return `SO_TIMESTAMPING` kernel timestamp alongside packet data from `recvmsg()`. Fallback to `clock_gettime` when CMSG_DATA empty. Add `timestamp_source` flag. |
+| `native/src/slogr_native.h` | Add `timestamp_source` field to JNI return struct. |
 | `platform/health/HealthReporter.kt` | Add `active_responder_sessions`, `pool_size`, `pool_active_threads` to health signal. |
+| `platform/credential/MachineIdentity.kt` | Delegate fingerprint to `PersistentFingerprint.get()` instead of dynamic computation. |
+| `platform/buffer/WriteAheadLog.kt` | Add size+age eviction logic. 500MB cap, 72h age limit. |
+| `contracts/src/.../ProbeResult.kt` | Add `probeMode` enum field (ICMP_AND_TCP, TCP_ONLY, ICMP_ONLY, BOTH_FAILED). |
+| `engine/probe/IcmpPingProbe.kt` | Compute probe mode based on ICMP + TCP results. |
+| `platform/output/TextResultFormatter.kt` | Display "ICMP filtered (TCP healthy)" instead of "100% loss" when probe_mode=TCP_ONLY. |
+| `platform/output/JsonResultFormatter.kt` | Include `probe_mode` in JSON output. |
+| `platform/commands/CommandDispatcher.kt` | Register `halt_measurement` as 6th command type. |
+| `platform/cli/SlogrCli.kt` | Register `doctor` subcommand. |
 
 ### R1 Files Deleted in R2
 
@@ -53,6 +62,10 @@ R1 is complete (Phases 0-8, 388+ tests passing). R2 builds on top of R1. All R1 
 | `engine/clock/VirtualClockEstimator.kt` | Per-responder clock offset estimation |
 | `engine/clock/ClockSyncDetector.kt` | SYNCED/ESTIMATED/UNSYNCABLE classification |
 | `engine/twamp/TwampCrypto.kt` | AES-CBC encrypt/decrypt, HMAC-SHA1, KDF for mode=4 |
+| `platform/identity/PersistentFingerprint.kt` | File-backed machine fingerprint. Survives clones/container restarts. |
+| `platform/health/PrometheusExporter.kt` | Embedded HTTP server on 127.0.0.1:9090/metrics. No key required. |
+| `platform/cli/DoctorCommand.kt` | Diagnostic command: verifies JNI, CAP_NET_RAW, TLS connectivity |
+| `platform/commands/HaltMeasurementHandler.kt` | Kill switch: purges in-memory schedules on remote command |
 
 ---
 

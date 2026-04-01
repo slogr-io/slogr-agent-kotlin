@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.TwampModeTest" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.023">
+<testsuite name="io.slogr.agent.engine.twamp.TwampModeTest" tests="17" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:38" hostname="DESKTOP-09GV4AV" time="0.049">
   <properties/>
   <testcase name="authenticated is control-encrypted()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
   <testcase name="getTestSessionMode inherits parent mode flags()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
@@ -7,17 +7,17 @@
   <testcase name="unauthenticated is not test-authenticated()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
   <testcase name="unauthenticated is not control-encrypted()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
   <testcase name="ALL_TWAMP_MODES covers exactly bits 0-3()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
-  <testcase name="isValidTwampMode true for single-bit modes()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.005"/>
+  <testcase name="isValidTwampMode true for single-bit modes()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.004"/>
   <testcase name="unauthenticated is not test-encrypted()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
   <testcase name="getTestSessionMode IVs are all-zero for unauthenticated()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.0"/>
-  <testcase name="mixed-mode is not test-encrypted (test side is unauth)()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.0"/>
+  <testcase name="mixed-mode is not test-encrypted (test side is unauth)()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
   <testcase name="mixed-mode is control-encrypted()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
-  <testcase name="setIndividualSessionControl toggles bit()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.0"/>
-  <testcase name="BUG-D - getTestSessionMode uses separate sendIv and receiveIv arrays()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
-  <testcase name="isModeSupported checks overlap with server modes()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.0"/>
-  <testcase name="authenticated is test-authenticated()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.0"/>
-  <testcase name="isValidTwampMode false for multi-bit modes()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
-  <testcase name="pktTruncLength returns UNAUTH for unauthenticated()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.0"/>
+  <testcase name="setIndividualSessionControl toggles bit()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
+  <testcase name="BUG-D - getTestSessionMode uses separate sendIv and receiveIv arrays()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.002"/>
+  <testcase name="isModeSupported checks overlap with server modes()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
+  <testcase name="authenticated is test-authenticated()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
+  <testcase name="isValidTwampMode false for multi-bit modes()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.003"/>
+  <testcase name="pktTruncLength returns UNAUTH for unauthenticated()" classname="io.slogr.agent.engine.twamp.TwampModeTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

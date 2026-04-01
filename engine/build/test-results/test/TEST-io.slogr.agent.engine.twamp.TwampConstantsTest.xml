@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.TwampConstantsTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.013">
+<testsuite name="io.slogr.agent.engine.twamp.TwampConstantsTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:38" hostname="DESKTOP-09GV4AV" time="0.016">
   <properties/>
-  <testcase name="Slogr magic is ASCII SLOGR()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.002"/>
+  <testcase name="Slogr magic is ASCII SLOGR()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.004"/>
   <testcase name="PKT_TRUNC_UNAUTH is 27()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.001"/>
-  <testcase name="PKT_TRUNC_AUTH_ENC is 64()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.001"/>
-  <testcase name="FIX-1 - no DEFAULT_MAX_COUNT constant exists()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.001"/>
-  <testcase name="MIN_COUNT is at least 1()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.002"/>
+  <testcase name="PKT_TRUNC_AUTH_ENC is 64()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.0"/>
+  <testcase name="FIX-1 - no DEFAULT_MAX_COUNT constant exists()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.002"/>
+  <testcase name="MIN_COUNT is at least 1()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.001"/>
   <testcase name="DEFAULT_COUNT meets MIN_COUNT()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.001"/>
-  <testcase name="default port is 862()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.001"/>
+  <testcase name="default port is 862()" classname="io.slogr.agent.engine.twamp.TwampConstantsTest" time="0.002"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

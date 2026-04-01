@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.sla.ProfileRegistryTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.109">
+<testsuite name="io.slogr.agent.engine.sla.ProfileRegistryTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:38" hostname="DESKTOP-09GV4AV" time="0.149">
   <properties/>
-  <testcase name="all profiles have positive packet counts and intervals()" classname="io.slogr.agent.engine.sla.ProfileRegistryTest" time="0.097"/>
-  <testcase name="update replaces profile set atomically()" classname="io.slogr.agent.engine.sla.ProfileRegistryTest" time="0.0"/>
+  <testcase name="all profiles have positive packet counts and intervals()" classname="io.slogr.agent.engine.sla.ProfileRegistryTest" time="0.137"/>
+  <testcase name="update replaces profile set atomically()" classname="io.slogr.agent.engine.sla.ProfileRegistryTest" time="0.001"/>
   <testcase name="all 24 profiles are loaded from bundled profiles json()" classname="io.slogr.agent.engine.sla.ProfileRegistryTest" time="0.001"/>
-  <testcase name="unknown profile name returns null()" classname="io.slogr.agent.engine.sla.ProfileRegistryTest" time="0.002"/>
+  <testcase name="unknown profile name returns null()" classname="io.slogr.agent.engine.sla.ProfileRegistryTest" time="0.0"/>
   <testcase name="gaming profile has correct values()" classname="io.slogr.agent.engine.sla.ProfileRegistryTest" time="0.002"/>
   <testcase name="voip profile has correct values()" classname="io.slogr.agent.engine.sla.ProfileRegistryTest" time="0.001"/>
-  <system-out><![CDATA[21:14:19.492 [Test worker] INFO io.slogr.agent.engine.sla.ProfileRegistry -- Loaded 24 SLA profiles from profiles.json
+  <system-out><![CDATA[09:36:38.475 [Test worker] INFO io.slogr.agent.engine.sla.ProfileRegistry -- Loaded 24 SLA profiles from profiles.json
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

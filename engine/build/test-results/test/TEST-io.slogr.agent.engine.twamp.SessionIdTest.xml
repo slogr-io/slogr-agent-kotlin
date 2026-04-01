@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.SessionIdTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.011">
+<testsuite name="io.slogr.agent.engine.twamp.SessionIdTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:38" hostname="DESKTOP-09GV4AV" time="0.014">
   <properties/>
-  <testcase name="toString has expected format()" classname="io.slogr.agent.engine.twamp.SessionIdTest" time="0.001"/>
+  <testcase name="toString has expected format()" classname="io.slogr.agent.engine.twamp.SessionIdTest" time="0.002"/>
   <testcase name="toByteArray produces 16 bytes()" classname="io.slogr.agent.engine.twamp.SessionIdTest" time="0.001"/>
   <testcase name="round-trip fromByteArray restores original()" classname="io.slogr.agent.engine.twamp.SessionIdTest" time="0.001"/>
   <testcase name="wire layout is big-endian IPv4 then timestamp then random()" classname="io.slogr.agent.engine.twamp.SessionIdTest" time="0.0"/>
-  <testcase name="fromByteArray rejects buffer shorter than 16 bytes()" classname="io.slogr.agent.engine.twamp.SessionIdTest" time="0.005"/>
+  <testcase name="fromByteArray rejects buffer shorter than 16 bytes()" classname="io.slogr.agent.engine.twamp.SessionIdTest" time="0.007"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

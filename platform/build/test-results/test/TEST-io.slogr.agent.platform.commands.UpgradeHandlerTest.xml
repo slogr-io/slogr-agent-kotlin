@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.platform.commands.UpgradeHandlerTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:13:31" hostname="DESKTOP-09GV4AV" time="0.51">
+<testsuite name="io.slogr.agent.platform.commands.UpgradeHandlerTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:46:06" hostname="DESKTOP-09GV4AV" time="0.918">
   <properties/>
-  <testcase name="rejects checksum without sha256 prefix()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.456"/>
-  <testcase name="rejects checksum without sha256 prefix (non-sha256 format)()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.01"/>
-  <testcase name="registered under upgrade key in dispatcher()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.016"/>
-  <testcase name="rejects URL not on releases slogr io()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.01"/>
-  <testcase name="rejects missing download_url()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.01"/>
-  <system-out><![CDATA[21:13:31.672 [Test worker @coroutine#307] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: checksum must start with 'sha256:'
-21:13:31.690 [Test worker @coroutine#308] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: checksum must start with 'sha256:'
-21:13:31.709 [Test worker @coroutine#309] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade rejected: URL not on releases.slogr.io — http://evil.com/x
-21:13:31.709 [Test worker @coroutine#309] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must be on releases.slogr.io
-21:13:31.720 [Test worker @coroutine#310] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade rejected: URL not on releases.slogr.io — http://evil.example.com/malware.jar
-21:13:31.720 [Test worker @coroutine#310] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must be on releases.slogr.io
-21:13:31.732 [Test worker @coroutine#311] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: missing download_url
+  <testcase name="rejects checksum without sha256 prefix()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.733"/>
+  <testcase name="rejects checksum without sha256 prefix (non-sha256 format)()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.017"/>
+  <testcase name="registered under upgrade key in dispatcher()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.126"/>
+  <testcase name="rejects URL not on releases slogr io()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.013"/>
+  <testcase name="rejects missing download_url()" classname="io.slogr.agent.platform.commands.UpgradeHandlerTest" time="0.012"/>
+  <system-out><![CDATA[09:46:07.474 [Test worker @coroutine#1] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: checksum must start with 'sha256:'
+09:46:07.545 [Test worker @coroutine#2] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: checksum must start with 'sha256:'
+09:46:07.677 [Test worker @coroutine#3] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must use https scheme
+09:46:07.695 [Test worker @coroutine#4] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must use https scheme
+09:46:07.709 [Test worker @coroutine#5] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: missing download_url
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.platform.security.MalformedCommandTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:46:27" hostname="DESKTOP-09GV4AV" time="0.076">
+  <properties/>
+  <testcase name="wrong tenant_id returns failed response()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.006"/>
+  <testcase name="extra unknown fields in payload do not cause crash()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.017"/>
+  <testcase name="empty JSON object returns failed response()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.006"/>
+  <testcase name="completely invalid JSON returns failed response()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.004"/>
+  <testcase name="wrong agent_id is silently ignored()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.005"/>
+  <testcase name="unknown command type with valid envelope returns failed response()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.004"/>
+  <testcase name="truncated JSON does not throw()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.004"/>
+  <testcase name="extremely long command type string does not cause crash()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.005"/>
+  <testcase name="missing command_type returns failed response()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.003"/>
+  <testcase name="missing command_id still returns a response()" classname="io.slogr.agent.platform.security.MalformedCommandTest" time="0.003"/>
+  <system-out><![CDATA[09:46:27.908 [Test worker @coroutine#475] DEBUG io.slogr.agent.platform.pubsub.CommandDispatcher -- Dropping command for wrong agent: 5578da2d-60ba-47c5-ab9e-f95bd6e1546f (ours: 9f9a4d01-e3be-4546-9e45-f061b93368f3)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

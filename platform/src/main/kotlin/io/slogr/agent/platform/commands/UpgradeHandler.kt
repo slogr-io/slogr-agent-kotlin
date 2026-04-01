@@ -52,10 +52,13 @@ class UpgradeHandler(
         val checksum    = obj["checksum"]?.jsonPrimitive?.content
             ?: return fail(commandId, "missing checksum")
 
-        // Security: validate URL is on releases.slogr.io
+        // Security: validate URL scheme and host
         val uri = runCatching { URI.create(downloadUrl) }.getOrNull()
             ?: return fail(commandId, "invalid download_url")
-        if (!uri.host.endsWith("releases.slogr.io")) {
+        if (uri.scheme != "https") {
+            return fail(commandId, "download_url must use https scheme")
+        }
+        if (uri.host == null || !uri.host.endsWith("releases.slogr.io")) {
             log.warn("Upgrade rejected: URL not on releases.slogr.io — $downloadUrl")
             return fail(commandId, "download_url must be on releases.slogr.io")
         }
@@ -63,6 +66,9 @@ class UpgradeHandler(
             return fail(commandId, "checksum must start with 'sha256:'")
         }
         val expectedHash = checksum.removePrefix("sha256:")
+        if (expectedHash.length != 64 || !expectedHash.all { it.isDigit() || it in 'a'..'f' }) {
+            return fail(commandId, "checksum must be sha256:<64 lowercase hex chars>")
+        }
 
         // Download to temp file
         val tempFile = withContext(Dispatchers.IO) {

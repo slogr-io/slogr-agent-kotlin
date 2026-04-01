@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.078">
+<testsuite name="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:38" hostname="DESKTOP-09GV4AV" time="0.111">
   <properties/>
-  <testcase name="encryptAesEcb 32-byte input produces 32 bytes()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.033"/>
-  <testcase name="AES-ECB round-trip with random-like data()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.002"/>
+  <testcase name="encryptAesEcb 32-byte input produces 32 bytes()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.046"/>
+  <testcase name="AES-ECB round-trip with random-like data()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.003"/>
   <testcase name="hmacSha1Truncated RFC 2202 test-case-1()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.004"/>
-  <testcase name="decryptAesEcb reverses encryptAesEcb()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.001"/>
-  <testcase name="encryptAesCbc NIST SP800-38A block-1 vector()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.002"/>
-  <testcase name="pbkdf2 RFC 6070 vector password-salt-c1()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.006"/>
-  <testcase name="encryptAesCbc updateIv mutates iv to last ciphertext block()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.002"/>
+  <testcase name="decryptAesEcb reverses encryptAesEcb()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.002"/>
+  <testcase name="encryptAesCbc NIST SP800-38A block-1 vector()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.004"/>
+  <testcase name="pbkdf2 RFC 6070 vector password-salt-c1()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.011"/>
+  <testcase name="encryptAesCbc updateIv mutates iv to last ciphertext block()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.001"/>
   <testcase name="hmacSha1Truncated different keys produce different results()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.002"/>
-  <testcase name="pbkdf2 returns 16 bytes()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.013"/>
+  <testcase name="pbkdf2 returns 16 bytes()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.022"/>
   <testcase name="encryptAesEcb NIST FIPS-197 vector()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.001"/>
-  <testcase name="hmacSha1Truncated always returns 16 bytes()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.002"/>
+  <testcase name="hmacSha1Truncated always returns 16 bytes()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.001"/>
   <testcase name="decryptAesCbc reverses encryptAesCbc()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.001"/>
   <testcase name="decryptAesCbc updateIv mutates iv to last ciphertext block()" classname="io.slogr.agent.engine.twamp.auth.TwampCryptoTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>

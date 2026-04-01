@@ -41,7 +41,7 @@
 </td>
 <td>
 <div class="infoBox" id="duration">
-<div class="counter">6.212s</div>
+<div class="counter">6.145s</div>
 <p>duration</p>
 </div>
 </td>
@@ -82,32 +82,32 @@
 </thead>
 <tr>
 <td class="success">TWAMP exception causes fallback()</td>
-<td class="success">0.181s</td>
+<td class="success">0.210s</td>
 <td class="success">passed</td>
 </tr>
 <tr>
 <td class="success">TWAMP returns 0 packets - fallback probe runs()</td>
-<td class="success">0.120s</td>
+<td class="success">0.096s</td>
 <td class="success">passed</td>
 </tr>
 <tr>
 <td class="success">TWAMP succeeds - output contains TWAMP()</td>
-<td class="success">0.076s</td>
+<td class="success">0.097s</td>
 <td class="success">passed</td>
 </tr>
 <tr>
 <td class="success">TWAMP succeeds with json format - output is valid JSON()</td>
-<td class="success">0.244s</td>
+<td class="success">0.227s</td>
 <td class="success">passed</td>
 </tr>
 <tr>
 <td class="success">all probes fail - exits with code 3()</td>
-<td class="success">5.480s</td>
+<td class="success">5.400s</td>
 <td class="success">passed</td>
 </tr>
 <tr>
 <td class="success">unresolvable target exits with code 3()</td>
-<td class="success">0.111s</td>
+<td class="success">0.115s</td>
 <td class="success">passed</td>
 </tr>
 </table>
@@ -115,103 +115,103 @@
 <div id="tab1" class="tab">
 <h2>Standard output</h2>
 <span class="code">
-<pre>21:13:25.615 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#1
-21:13:28.607 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #1#2
-21:13:28.630 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#3
-21:13:28.797 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #3#4
-21:13:28.799 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#5
-21:13:28.966 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #5#6
-21:13:28.970 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#7
-21:13:29.253 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #7#8
-21:13:29.256 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#9
-21:13:29.477 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #9#10
-21:13:29.485 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#11
-21:13:29.538 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#12
-21:13:30.015 [Test worker @coroutine#51] INFO io.slogr.agent.engine.sla.ProfileRegistry -- Loaded 24 SLA profiles from profiles.json
-21:13:30.057 [Test worker @coroutine#51] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering MeasurementBundle(twamp=MeasurementResult(sessionId=661e6045-914b-4272-8275-11047767905c, pathId=4482589e-df11-42d8-a031-8d9878ff4a19, sourceAgentId=20864f16-b4c1-4374-86ce-7951b90e2838, destAgentId=2afbf56d-2c18-4952-946f-71343e22e7a6, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-03-31T16:13:24.723541200Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=0.0, fwdAvgRttMs=0.0, fwdMaxRttMs=0.0, fwdJitterMs=0.0, fwdLossPct=100.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=0, packetsRecv=0, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=RED) on MeasurementEngine(#1).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
-21:13:30.062 [Test worker @coroutine#51] DEBUG io.slogr.agent.platform.cli.CheckCommand -- No TWAMP response from /127.0.0.1:862 — using fallback probes
-21:13:30.072 [Test worker @coroutine#51] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering PingStats(resolvedIp=127.0.0.1, sent=5, received=0, minRttMs=null, avgRttMs=null, maxRttMs=null, lossPct=100.0) on IcmpPingProbe(#3).ping(/127.0.0.1, 5, 2000, continuation {})
-21:13:30.088 [Test worker @coroutine#51] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering TcpConnectResult(connectMs=null, port=null, skipped=true) on TcpConnectProbe(#5).probe(/127.0.0.1, [443, 80], 3000, continuation {})
-21:13:30.101 [Test worker @coroutine#51] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering TracerouteResult(sessionId=653ec2b4-c6cd-4b32-ad51-a6426818a173, pathId=3f50c186-c564-4c00-8f43-8a41807a684b, sourceType=agent, direction=UPLINK, capturedAt=2026-03-31T16:13:29.254811Z, isHeartbeat=false, isForcedRefresh=false, hops=[], prevSnapshotId=null, changedHops=[], primaryAsnChange=null, schemaVersion=1) on TracerouteOrchestrator(#7).run(/127.0.0.1, fbf19b87-40cb-4bf4-8ad9-930b2b5a5cbf, a50f5c18-0072-4702-9d52-3050feb2912d, UPLINK, 30, 2, 2000, null, continuation {})
-21:13:30.158 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#13
-21:13:30.211 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #13#14
-21:13:30.216 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#15
-21:13:30.220 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #15#16
-21:13:30.222 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#17
-21:13:30.225 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #17#18
-21:13:30.226 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#19
-21:13:30.235 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #19#20
-21:13:30.237 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#21
-21:13:30.238 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #21#22
-21:13:30.240 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#23
-21:13:30.242 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#24
-21:13:30.252 [Test worker @coroutine#102] DEBUG io.mockk.impl.recording.states.AnsweringState -- Throwing java.lang.RuntimeException: connection refused on MeasurementEngine(#13).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
-21:13:30.252 [Test worker @coroutine#102] DEBUG io.slogr.agent.platform.cli.CheckCommand -- TWAMP attempt threw exception: connection refused
-21:13:30.253 [Test worker @coroutine#102] DEBUG io.slogr.agent.platform.cli.CheckCommand -- No TWAMP response from /127.0.0.1:862 — using fallback probes
-21:13:30.255 [Test worker @coroutine#102] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering PingStats(resolvedIp=127.0.0.1, sent=5, received=3, minRttMs=18.0, avgRttMs=20.0, maxRttMs=22.0, lossPct=0.0) on IcmpPingProbe(#15).ping(/127.0.0.1, 5, 2000, continuation {})
-21:13:30.256 [Test worker @coroutine#102] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering TcpConnectResult(connectMs=18.0, port=80, skipped=false) on TcpConnectProbe(#17).probe(/127.0.0.1, [443, 80], 3000, continuation {})
-21:13:30.333 [Test worker @coroutine#102] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#24).record(FallbackBundle(target=127.0.0.1/127.0.0.1, ping=PingStats(resolvedIp=127.0.0.1, sent=5, received=3, minRttMs=18.0, avgRttMs=20.0, maxRttMs=22.0, lossPct=0.0), tcp=TcpConnectResult(connectMs=18.0, port=80, skipped=false), traceroute=null, grade=GREEN, profile=SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0)))
-21:13:30.334 [Test worker @coroutine#102] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#24).flush()
-21:13:30.340 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#25
-21:13:30.400 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #25#26
-21:13:30.402 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#27
-21:13:30.407 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #27#28
-21:13:30.408 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#29
-21:13:30.417 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #29#30
-21:13:30.419 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#31
-21:13:30.424 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #31#32
-21:13:30.426 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#33
-21:13:30.427 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #33#34
-21:13:30.430 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#35
-21:13:30.434 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#36
-21:13:30.450 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#37
-21:13:30.491 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #37#38
-21:13:30.493 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#39
-21:13:30.497 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #39#40
-21:13:30.500 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#41
-21:13:30.505 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #41#42
-21:13:30.507 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#43
-21:13:30.534 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #43#44
-21:13:30.539 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#45
-21:13:30.540 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #45#46
-21:13:30.540 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#47
-21:13:30.543 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#48
-21:13:30.555 [Test worker @coroutine#204] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering MeasurementBundle(twamp=MeasurementResult(sessionId=39f14a53-aeb2-4b09-ae9b-112b646ab318, pathId=600c37c9-652d-40d3-b9e5-7f869ce306fd, sourceAgentId=df960fd2-af77-4a77-8474-191b8c6e8f3e, destAgentId=d3b5ae59-6101-4ba7-99cb-9a692f9d81e7, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-03-31T16:13:30.450462600Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=0.0, fwdAvgRttMs=0.0, fwdMaxRttMs=0.0, fwdJitterMs=0.0, fwdLossPct=100.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=0, packetsRecv=0, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=RED) on MeasurementEngine(#37).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
-21:13:30.555 [Test worker @coroutine#204] DEBUG io.slogr.agent.platform.cli.CheckCommand -- No TWAMP response from /127.0.0.1:862 — using fallback probes
-21:13:30.557 [Test worker @coroutine#204] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering PingStats(resolvedIp=127.0.0.1, sent=5, received=5, minRttMs=13.0, avgRttMs=15.0, maxRttMs=17.0, lossPct=0.0) on IcmpPingProbe(#39).ping(/127.0.0.1, 5, 2000, continuation {})
-21:13:30.558 [Test worker @coroutine#204] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering TcpConnectResult(connectMs=12.0, port=443, skipped=false) on TcpConnectProbe(#41).probe(/127.0.0.1, [443, 80], 3000, continuation {})
-21:13:30.566 [Test worker @coroutine#204] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#48).record(FallbackBundle(target=127.0.0.1/127.0.0.1, ping=PingStats(resolvedIp=127.0.0.1, sent=5, received=5, minRttMs=13.0, avgRttMs=15.0, maxRttMs=17.0, lossPct=0.0), tcp=TcpConnectResult(connectMs=12.0, port=443, skipped=false), traceroute=null, grade=GREEN, profile=SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0)))
-21:13:30.568 [Test worker @coroutine#204] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#48).flush()
-21:13:30.572 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#49
-21:13:30.615 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #49#50
-21:13:30.616 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#51
-21:13:30.619 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #51#52
-21:13:30.621 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#53
-21:13:30.624 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #53#54
-21:13:30.625 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#55
-21:13:30.629 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #55#56
-21:13:30.631 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#57
-21:13:30.632 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #57#58
-21:13:30.634 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#59
-21:13:30.635 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#60
-21:13:30.639 [Test worker @coroutine#255] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering MeasurementBundle(twamp=MeasurementResult(sessionId=e9a9ca95-0e9d-4969-93d3-41c725a0a607, pathId=c2cd9ce1-2474-48b6-8efe-7a1e0e1cd4eb, sourceAgentId=d021308c-6179-4ae9-b49a-d38c57d3c527, destAgentId=d1fef770-7fec-429a-a175-54e2b963d5e2, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-03-31T16:13:30.572708100Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=5.0, fwdAvgRttMs=12.0, fwdMaxRttMs=20.0, fwdJitterMs=2.0, fwdLossPct=0.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=10, packetsRecv=10, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=GREEN) on MeasurementEngine(#49).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
-21:13:30.644 [Test worker @coroutine#255] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#60).record(MeasurementBundle(twamp=MeasurementResult(sessionId=e9a9ca95-0e9d-4969-93d3-41c725a0a607, pathId=c2cd9ce1-2474-48b6-8efe-7a1e0e1cd4eb, sourceAgentId=d021308c-6179-4ae9-b49a-d38c57d3c527, destAgentId=d1fef770-7fec-429a-a175-54e2b963d5e2, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-03-31T16:13:30.572708100Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=5.0, fwdAvgRttMs=12.0, fwdMaxRttMs=20.0, fwdJitterMs=2.0, fwdLossPct=0.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=10, packetsRecv=10, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=GREEN), internet)
-21:13:30.644 [Test worker @coroutine#255] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#60).flush()
-21:13:30.650 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#61
-21:13:30.686 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #61#62
-21:13:30.688 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#63
-21:13:30.689 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #63#64
-21:13:30.692 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#65
-21:13:30.694 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #65#66
-21:13:30.695 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#67
-21:13:30.699 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #67#68
-21:13:30.702 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#69
-21:13:30.704 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #69#70
-21:13:30.705 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#71
-21:13:30.705 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#72
-21:13:30.714 [Test worker @coroutine#306] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering MeasurementBundle(twamp=MeasurementResult(sessionId=7aed7af7-47ca-401f-85d5-25e1a8d7c806, pathId=5c939d60-d307-44ed-bbae-511959aa862d, sourceAgentId=1c4ac0a5-035b-48b6-9289-d4f74221d3cc, destAgentId=a290f95d-efb1-4a97-83d1-de758fe028b0, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-03-31T16:13:30.650688400Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=5.0, fwdAvgRttMs=12.0, fwdMaxRttMs=20.0, fwdJitterMs=2.0, fwdLossPct=0.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=10, packetsRecv=10, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=GREEN) on MeasurementEngine(#61).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
-21:13:30.889 [Test worker @coroutine#306] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#72).record(MeasurementBundle(twamp=MeasurementResult(sessionId=7aed7af7-47ca-401f-85d5-25e1a8d7c806, pathId=5c939d60-d307-44ed-bbae-511959aa862d, sourceAgentId=1c4ac0a5-035b-48b6-9289-d4f74221d3cc, destAgentId=a290f95d-efb1-4a97-83d1-de758fe028b0, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-03-31T16:13:30.650688400Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=5.0, fwdAvgRttMs=12.0, fwdMaxRttMs=20.0, fwdJitterMs=2.0, fwdLossPct=0.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=10, packetsRecv=10, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=GREEN), internet)
-21:13:30.890 [Test worker @coroutine#306] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#72).flush()
+<pre>09:46:09.425 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#1
+09:46:12.036 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #1#2
+09:46:12.053 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#3
+09:46:12.240 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #3#4
+09:46:12.243 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#5
+09:46:12.407 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #5#6
+09:46:12.411 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#7
+09:46:12.691 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #7#8
+09:46:12.694 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#9
+09:46:12.860 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #9#10
+09:46:12.864 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#11
+09:46:12.914 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#12
+09:46:13.429 [Test worker @coroutine#67] INFO io.slogr.agent.engine.sla.ProfileRegistry -- Loaded 24 SLA profiles from profiles.json
+09:46:13.477 [Test worker @coroutine#67] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering MeasurementBundle(twamp=MeasurementResult(tenantId=00000000-0000-0000-0000-000000000000, sessionId=b2eaab2d-245e-4223-a990-36170fd9cbcd, pathId=bda9dfa9-dc17-4ac5-a51a-99c8fdce2809, sourceAgentId=e6c36404-8e1b-4f7b-b637-d4fe337e7ae6, destAgentId=fe2b97b5-338d-4efe-a107-59c3627235c1, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-04-01T04:46:08.202644400Z, receivedAt=2026-04-01T04:46:08.202644400Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=0.0, fwdAvgRttMs=0.0, fwdMaxRttMs=0.0, fwdJitterMs=0.0, fwdLossPct=100.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=0, packetsRecv=0, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=RED) on MeasurementEngine(#1).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
+09:46:13.481 [Test worker @coroutine#67] DEBUG io.slogr.agent.platform.cli.CheckCommand -- No TWAMP response from /127.0.0.1:862 — using fallback probes
+09:46:13.492 [Test worker @coroutine#67] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering PingStats(resolvedIp=127.0.0.1, sent=5, received=0, minRttMs=null, avgRttMs=null, maxRttMs=null, lossPct=100.0) on IcmpPingProbe(#3).ping(/127.0.0.1, 5, 2000, continuation {})
+09:46:13.498 [Test worker @coroutine#67] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering TcpConnectResult(connectMs=null, port=null, skipped=true) on TcpConnectProbe(#5).probe(/127.0.0.1, [443, 80], 3000, continuation {})
+09:46:13.509 [Test worker @coroutine#67] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering TracerouteResult(tenantId=00000000-0000-0000-0000-000000000000, sessionId=479ecd11-2541-4272-8d70-eb4763ac60f3, pathId=9a0ca3e5-0b65-4d57-ac07-6344cfaca48b, sourceType=agent, direction=UPLINK, capturedAt=2026-04-01T04:46:12.694156300Z, receivedAt=2026-04-01T04:46:12.694156300Z, isHeartbeat=false, isForcedRefresh=false, hops=[], prevSnapshotId=null, changedHops=[], primaryAsnChange=null, schemaVersion=1) on TracerouteOrchestrator(#7).run(/127.0.0.1, c59fdda8-08ae-4c4a-acb1-4852630f9b8d, 267a482a-e5b8-415a-befa-f7a4a297c42c, UPLINK, 30, 2, 2000, null, continuation {})
+09:46:13.578 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#13
+09:46:13.653 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #13#14
+09:46:13.656 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#15
+09:46:13.661 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #15#16
+09:46:13.663 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#17
+09:46:13.670 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #17#18
+09:46:13.674 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#19
+09:46:13.680 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #19#20
+09:46:13.682 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#21
+09:46:13.690 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #21#22
+09:46:13.693 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#23
+09:46:13.694 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#24
+09:46:13.709 [Test worker @coroutine#118] DEBUG io.mockk.impl.recording.states.AnsweringState -- Throwing java.lang.RuntimeException: connection refused on MeasurementEngine(#13).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
+09:46:13.709 [Test worker @coroutine#118] DEBUG io.slogr.agent.platform.cli.CheckCommand -- TWAMP attempt threw exception: connection refused
+09:46:13.709 [Test worker @coroutine#118] DEBUG io.slogr.agent.platform.cli.CheckCommand -- No TWAMP response from /127.0.0.1:862 — using fallback probes
+09:46:13.712 [Test worker @coroutine#118] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering PingStats(resolvedIp=127.0.0.1, sent=5, received=3, minRttMs=18.0, avgRttMs=20.0, maxRttMs=22.0, lossPct=0.0) on IcmpPingProbe(#15).ping(/127.0.0.1, 5, 2000, continuation {})
+09:46:13.712 [Test worker @coroutine#118] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering TcpConnectResult(connectMs=18.0, port=80, skipped=false) on TcpConnectProbe(#17).probe(/127.0.0.1, [443, 80], 3000, continuation {})
+09:46:13.781 [Test worker @coroutine#118] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#24).record(FallbackBundle(target=127.0.0.1/127.0.0.1, ping=PingStats(resolvedIp=127.0.0.1, sent=5, received=3, minRttMs=18.0, avgRttMs=20.0, maxRttMs=22.0, lossPct=0.0), tcp=TcpConnectResult(connectMs=18.0, port=80, skipped=false), traceroute=null, grade=GREEN, profile=SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0)))
+09:46:13.782 [Test worker @coroutine#118] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#24).flush()
+09:46:13.790 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#25
+09:46:13.858 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #25#26
+09:46:13.860 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#27
+09:46:13.865 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #27#28
+09:46:13.869 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#29
+09:46:13.875 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #29#30
+09:46:13.878 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#31
+09:46:13.881 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #31#32
+09:46:13.883 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#33
+09:46:13.886 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #33#34
+09:46:13.888 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#35
+09:46:13.888 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#36
+09:46:13.907 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#37
+09:46:13.945 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #37#38
+09:46:13.947 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#39
+09:46:13.953 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #39#40
+09:46:13.955 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#41
+09:46:13.959 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #41#42
+09:46:13.961 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#43
+09:46:13.964 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #43#44
+09:46:13.967 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#45
+09:46:13.969 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #45#46
+09:46:13.970 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#47
+09:46:13.972 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#48
+09:46:13.988 [Test worker @coroutine#220] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering MeasurementBundle(twamp=MeasurementResult(tenantId=00000000-0000-0000-0000-000000000000, sessionId=b7a87930-c050-433a-be88-b59d4abf36d2, pathId=f1abbd94-9982-4570-8b46-97430ca996a3, sourceAgentId=ffcf7ab2-c8d3-4c4b-bdbb-9df90720fac8, destAgentId=e5986e27-fedc-4a18-97bd-a72942700628, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-04-01T04:46:13.906926500Z, receivedAt=2026-04-01T04:46:13.906926500Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=0.0, fwdAvgRttMs=0.0, fwdMaxRttMs=0.0, fwdJitterMs=0.0, fwdLossPct=100.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=0, packetsRecv=0, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=RED) on MeasurementEngine(#37).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
+09:46:13.988 [Test worker @coroutine#220] DEBUG io.slogr.agent.platform.cli.CheckCommand -- No TWAMP response from /127.0.0.1:862 — using fallback probes
+09:46:13.990 [Test worker @coroutine#220] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering PingStats(resolvedIp=127.0.0.1, sent=5, received=5, minRttMs=13.0, avgRttMs=15.0, maxRttMs=17.0, lossPct=0.0) on IcmpPingProbe(#39).ping(/127.0.0.1, 5, 2000, continuation {})
+09:46:13.992 [Test worker @coroutine#220] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering TcpConnectResult(connectMs=12.0, port=443, skipped=false) on TcpConnectProbe(#41).probe(/127.0.0.1, [443, 80], 3000, continuation {})
+09:46:13.997 [Test worker @coroutine#220] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#48).record(FallbackBundle(target=127.0.0.1/127.0.0.1, ping=PingStats(resolvedIp=127.0.0.1, sent=5, received=5, minRttMs=13.0, avgRttMs=15.0, maxRttMs=17.0, lossPct=0.0), tcp=TcpConnectResult(connectMs=12.0, port=443, skipped=false), traceroute=null, grade=GREEN, profile=SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0)))
+09:46:13.999 [Test worker @coroutine#220] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#48).flush()
+09:46:14.006 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#49
+09:46:14.046 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #49#50
+09:46:14.048 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#51
+09:46:14.055 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #51#52
+09:46:14.056 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#53
+09:46:14.060 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #53#54
+09:46:14.062 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#55
+09:46:14.069 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #55#56
+09:46:14.073 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#57
+09:46:14.074 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #57#58
+09:46:14.076 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#59
+09:46:14.077 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#60
+09:46:14.087 [Test worker @coroutine#271] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering MeasurementBundle(twamp=MeasurementResult(tenantId=00000000-0000-0000-0000-000000000000, sessionId=b0a895a1-7dbb-4a20-bafc-6bd4652d43b5, pathId=af1bcbdb-c9aa-4295-8e19-b94450b5398e, sourceAgentId=9b835141-0e8c-4178-a974-c1adacbbbfdc, destAgentId=e8372d37-876c-48b7-bd9e-7a3dfbd7ea91, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-04-01T04:46:14.006Z, receivedAt=2026-04-01T04:46:14.006Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=5.0, fwdAvgRttMs=12.0, fwdMaxRttMs=20.0, fwdJitterMs=2.0, fwdLossPct=0.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=10, packetsRecv=10, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=GREEN) on MeasurementEngine(#49).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
+09:46:14.098 [Test worker @coroutine#271] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#60).record(MeasurementBundle(twamp=MeasurementResult(tenantId=00000000-0000-0000-0000-000000000000, sessionId=b0a895a1-7dbb-4a20-bafc-6bd4652d43b5, pathId=af1bcbdb-c9aa-4295-8e19-b94450b5398e, sourceAgentId=9b835141-0e8c-4178-a974-c1adacbbbfdc, destAgentId=e8372d37-876c-48b7-bd9e-7a3dfbd7ea91, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-04-01T04:46:14.006Z, receivedAt=2026-04-01T04:46:14.006Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=5.0, fwdAvgRttMs=12.0, fwdMaxRttMs=20.0, fwdJitterMs=2.0, fwdLossPct=0.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=10, packetsRecv=10, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=GREEN), internet)
+09:46:14.099 [Test worker @coroutine#271] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#60).flush()
+09:46:14.108 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementEngine name=#61
+09:46:14.181 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for MeasurementBundle name=child of #61#62
+09:46:14.183 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for IcmpPingProbe name=#63
+09:46:14.193 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for PingStats name=child of #63#64
+09:46:14.198 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectProbe name=#65
+09:46:14.209 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TcpConnectResult name=child of #65#66
+09:46:14.210 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteOrchestrator name=#67
+09:46:14.215 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for TracerouteResult name=child of #67#68
+09:46:14.222 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#69
+09:46:14.227 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for AgentCredential name=child of #69#70
+09:46:14.228 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ScheduleStore name=#71
+09:46:14.228 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for OtlpExporter name=#72
+09:46:14.244 [Test worker @coroutine#322] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering MeasurementBundle(twamp=MeasurementResult(tenantId=00000000-0000-0000-0000-000000000000, sessionId=f009930d-1c78-474b-b70c-60a09fd38d06, pathId=76691a2b-0109-40cd-bfd5-27df27aaa4bb, sourceAgentId=c69670fc-4623-4140-a53f-456beeecfe78, destAgentId=cb1d86d2-1f85-4049-aa0f-6c718cbfbfbf, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-04-01T04:46:14.108144100Z, receivedAt=2026-04-01T04:46:14.108144100Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=5.0, fwdAvgRttMs=12.0, fwdMaxRttMs=20.0, fwdJitterMs=2.0, fwdLossPct=0.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=10, packetsRecv=10, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=GREEN) on MeasurementEngine(#61).measure(/127.0.0.1, 862, SlaProfile(name=internet, nPackets=10, intervalMs=50, waitTimeMs=2000, dscp=8, packetSize=1500, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=150.0, rttRedMs=300.0, jitterGreenMs=30.0, jitterRedMs=50.0, lossGreenPct=1.0, lossRedPct=5.0), false, UNAUTHENTICATED, null, continuation {})
+09:46:14.327 [Test worker @coroutine#322] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#72).record(MeasurementBundle(twamp=MeasurementResult(tenantId=00000000-0000-0000-0000-000000000000, sessionId=f009930d-1c78-474b-b70c-60a09fd38d06, pathId=76691a2b-0109-40cd-bfd5-27df27aaa4bb, sourceAgentId=c69670fc-4623-4140-a53f-456beeecfe78, destAgentId=cb1d86d2-1f85-4049-aa0f-6c718cbfbfbf, sourceType=agent, srcCloud=aws, srcRegion=us-east-1, dstCloud=gcp, dstRegion=us-central1, windowTs=2026-04-01T04:46:14.108144100Z, receivedAt=2026-04-01T04:46:14.108144100Z, profile=SlaProfile(name=internet, nPackets=10, intervalMs=100, waitTimeMs=500, dscp=0, packetSize=64, timingMode=FIXED, poissonLambda=null, poissonMaxInterval=null, rttGreenMs=50.0, rttRedMs=150.0, jitterGreenMs=10.0, jitterRedMs=30.0, lossGreenPct=1.0, lossRedPct=5.0), fwdMinRttMs=5.0, fwdAvgRttMs=12.0, fwdMaxRttMs=20.0, fwdJitterMs=2.0, fwdLossPct=0.0, revMinRttMs=null, revAvgRttMs=null, revMaxRttMs=null, revJitterMs=null, revLossPct=null, packetsSent=10, packetsRecv=10, packets=null, grade=null, schemaVersion=1), traceroute=null, pathChange=null, grade=GREEN), internet)
+09:46:14.329 [Test worker @coroutine#322] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on OtlpExporter(#72).flush()
 </pre>
 </span>
 </div>
@@ -233,7 +233,7 @@ WARNING: Dynamic loading of agents will be disallowed by default in a future rel
 <input id="line-wrapping-toggle" type="checkbox" autocomplete="off"/>
 </label>
 </div>Generated by 
-<a href="http://www.gradle.org">Gradle 8.12</a> at Mar 31, 2026, 9:13:45 PM</p>
+<a href="http://www.gradle.org">Gradle 8.12</a> at Apr 1, 2026, 9:46:28 AM</p>
 </div>
 </div>
 </body>

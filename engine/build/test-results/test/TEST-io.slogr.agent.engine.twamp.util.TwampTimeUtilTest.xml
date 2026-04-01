@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:29" hostname="DESKTOP-09GV4AV" time="0.042">
+<testsuite name="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:48" hostname="DESKTOP-09GV4AV" time="0.031">
   <properties/>
-  <testcase name="no cap when maxIntervalMs is zero()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.004"/>
+  <testcase name="no cap when maxIntervalMs is zero()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.005"/>
   <testcase name="zero mean returns zero()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
   <testcase name="negative mean returns zero()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
-  <testcase name="ntpTimeoutToMillis converts half second()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.003"/>
+  <testcase name="ntpTimeoutToMillis converts half second()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.002"/>
   <testcase name="ntpTimeoutToMillis converts 5 seconds()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
   <testcase name="large mean does not overflow or produce negative results()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
-  <testcase name="currentNtpTimestamp is close to System currentTimeMillis()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.011"/>
-  <testcase name="result is non-negative()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.002"/>
+  <testcase name="currentNtpTimestamp is close to System currentTimeMillis()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
+  <testcase name="result is non-negative()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
   <testcase name="era 0 timestamps (pre-2036) have MSB set in seconds()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
   <testcase name="ntpTimeoutToMillis converts 1 second()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
-  <testcase name="maxIntervalMs cap is respected()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
+  <testcase name="maxIntervalMs cap is respected()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.003"/>
   <testcase name="known timestamp round-trips correctly()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.0"/>
   <testcase name="currentNtpTimestamp returns non-zero()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.0"/>
-  <testcase name="Unix epoch round-trips correctly()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.001"/>
-  <testcase name="fractional second round-trip within 1ms tolerance()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.007"/>
+  <testcase name="Unix epoch round-trips correctly()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.0"/>
+  <testcase name="fractional second round-trip within 1ms tolerance()" classname="io.slogr.agent.engine.twamp.util.TwampTimeUtilTest" time="0.0"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

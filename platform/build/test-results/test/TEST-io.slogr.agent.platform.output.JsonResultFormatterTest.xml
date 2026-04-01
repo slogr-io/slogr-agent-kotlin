@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.platform.output.JsonResultFormatterTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:13:32" hostname="DESKTOP-09GV4AV" time="0.018">
+<testsuite name="io.slogr.agent.platform.output.JsonResultFormatterTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:46:14" hostname="DESKTOP-09GV4AV" time="0.021">
   <properties/>
-  <testcase name="format TWAMP result twamp object contains expected fields()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.003"/>
-  <testcase name="formatFallback tcp section absent when skipped()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.002"/>
-  <testcase name="format TWAMP result is valid JSON with measurement_method twamp()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.004"/>
-  <testcase name="formatFallback tcp section present when connected()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.002"/>
-  <testcase name="formatFallback is valid JSON with measurement_method icmp()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.003"/>
+  <testcase name="format TWAMP result twamp object contains expected fields()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.004"/>
+  <testcase name="formatFallback tcp section absent when skipped()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.003"/>
+  <testcase name="format TWAMP result is valid JSON with measurement_method twamp()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.002"/>
+  <testcase name="formatFallback tcp section present when connected()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.003"/>
+  <testcase name="formatFallback is valid JSON with measurement_method icmp()" classname="io.slogr.agent.platform.output.JsonResultFormatterTest" time="0.004"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

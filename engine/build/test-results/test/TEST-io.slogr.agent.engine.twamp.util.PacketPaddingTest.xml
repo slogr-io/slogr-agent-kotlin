@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.util.PacketPaddingTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:29" hostname="DESKTOP-09GV4AV" time="0.017">
+<testsuite name="io.slogr.agent.engine.twamp.util.PacketPaddingTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:48" hostname="DESKTOP-09GV4AV" time="0.02">
   <properties/>
-  <testcase name="reflector with null sender payload produces zero-length padding()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.0"/>
-  <testcase name="sender random padding correct length()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.002"/>
-  <testcase name="reflector truncates by pktTruncLength (unauthenticated)()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.0"/>
-  <testcase name="writeTo and readFrom round-trip with symmetricalSize MBZ()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.0"/>
-  <testcase name="reflector payload too small to truncate produces zero-length padding()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.0"/>
+  <testcase name="reflector with null sender payload produces zero-length padding()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
+  <testcase name="sender random padding correct length()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
+  <testcase name="reflector truncates by pktTruncLength (unauthenticated)()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
+  <testcase name="writeTo and readFrom round-trip with symmetricalSize MBZ()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
+  <testcase name="reflector payload too small to truncate produces zero-length padding()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
   <testcase name="sender serverOctet not written when length is zero()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
   <testcase name="reflector symmetricalSize echoes sender payload unchanged()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
   <testcase name="writeTo and readFrom round-trip preserves bytes()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
-  <testcase name="sender symmetrical-size adds MBZ prefix (unauthenticated)()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
+  <testcase name="sender symmetrical-size adds MBZ prefix (unauthenticated)()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.0"/>
   <testcase name="sender writes serverOctet into first two bytes of padding()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
   <testcase name="sender zero-length padding has length zero()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
-  <testcase name="sender zero padding correct length()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.0"/>
+  <testcase name="sender zero padding correct length()" classname="io.slogr.agent.engine.twamp.util.PacketPaddingTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

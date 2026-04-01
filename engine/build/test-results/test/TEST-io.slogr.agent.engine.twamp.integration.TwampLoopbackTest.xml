@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.integration.TwampLoopbackTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="9.013">
+<testsuite name="io.slogr.agent.engine.twamp.integration.TwampLoopbackTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:39" hostname="DESKTOP-09GV4AV" time="9.101">
   <properties/>
-  <testcase name="sequential sessions on same controller - both complete without error()" classname="io.slogr.agent.engine.twamp.integration.TwampLoopbackTest" time="4.236"/>
-  <testcase name="unauthenticated loopback - 100 packets - packetsRecv == 100 and fwdLossPct == 0()" classname="io.slogr.agent.engine.twamp.integration.TwampLoopbackTest" time="2.534"/>
-  <testcase name="unauthenticated loopback - 20 packets - zero loss()" classname="io.slogr.agent.engine.twamp.integration.TwampLoopbackTest" time="2.241"/>
-  <system-out><![CDATA[21:14:19.922 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector listening on /127.0.0.1:55010
-21:14:19.934 [twamp-reflector] DEBUG io.slogr.agent.engine.twamp.responder.TwampReflector -- Accepted TWAMP control connection from /127.0.0.1
-21:14:22.038 [twamp-reflector] DEBUG io.slogr.agent.engine.twamp.responder.TwampReflector -- Accepted TWAMP control connection from /127.0.0.1
-21:14:24.152 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector stopped
-21:14:24.157 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector listening on /127.0.0.1:55148
-21:14:24.170 [twamp-reflector] DEBUG io.slogr.agent.engine.twamp.responder.TwampReflector -- Accepted TWAMP control connection from /127.0.0.1
-21:14:26.683 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector stopped
-21:14:26.697 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector listening on /127.0.0.1:55150
-21:14:26.713 [twamp-reflector] DEBUG io.slogr.agent.engine.twamp.responder.TwampReflector -- Accepted TWAMP control connection from /127.0.0.1
-21:14:28.928 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector stopped
+  <testcase name="sequential sessions on same controller - both complete without error()" classname="io.slogr.agent.engine.twamp.integration.TwampLoopbackTest" time="4.268"/>
+  <testcase name="unauthenticated loopback - 100 packets - packetsRecv == 100 and fwdLossPct == 0()" classname="io.slogr.agent.engine.twamp.integration.TwampLoopbackTest" time="2.558"/>
+  <testcase name="unauthenticated loopback - 20 packets - zero loss()" classname="io.slogr.agent.engine.twamp.integration.TwampLoopbackTest" time="2.273"/>
+  <system-out><![CDATA[09:36:39.048 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector listening on /127.0.0.1:49698
+09:36:39.073 [twamp-reflector] DEBUG io.slogr.agent.engine.twamp.responder.TwampReflector -- Accepted TWAMP control connection from /127.0.0.1
+09:36:41.184 [twamp-reflector] DEBUG io.slogr.agent.engine.twamp.responder.TwampReflector -- Accepted TWAMP control connection from /127.0.0.1
+09:36:43.306 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector stopped
+09:36:43.318 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector listening on /127.0.0.1:49702
+09:36:43.347 [twamp-reflector] DEBUG io.slogr.agent.engine.twamp.responder.TwampReflector -- Accepted TWAMP control connection from /127.0.0.1
+09:36:45.866 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector stopped
+09:36:45.883 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector listening on /127.0.0.1:49704
+09:36:45.909 [twamp-reflector] DEBUG io.slogr.agent.engine.twamp.responder.TwampReflector -- Accepted TWAMP control connection from /127.0.0.1
+09:36:48.134 [twamp-reflector] INFO io.slogr.agent.engine.twamp.responder.TwampReflector -- TWAMP reflector stopped
 ]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>

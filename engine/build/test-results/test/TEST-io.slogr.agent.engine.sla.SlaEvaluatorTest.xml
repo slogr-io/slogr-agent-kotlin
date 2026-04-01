@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.sla.SlaEvaluatorTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.019">
+<testsuite name="io.slogr.agent.engine.sla.SlaEvaluatorTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:38" hostname="DESKTOP-09GV4AV" time="0.021">
   <properties/>
   <testcase name="loss above red threshold returns RED()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.001"/>
   <testcase name="all metrics under green thresholds returns GREEN()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.001"/>
   <testcase name="RTT between green and red returns YELLOW()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.001"/>
   <testcase name="jitter between green and red returns YELLOW()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.001"/>
-  <testcase name="jitter above red threshold returns RED()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.004"/>
-  <testcase name="RED takes priority over YELLOW when both exceeded()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.002"/>
+  <testcase name="jitter above red threshold returns RED()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.001"/>
+  <testcase name="RED takes priority over YELLOW when both exceeded()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.003"/>
   <testcase name="metrics exactly at green threshold returns GREEN()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.001"/>
-  <testcase name="loss between green and red returns YELLOW()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.001"/>
+  <testcase name="loss between green and red returns YELLOW()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.003"/>
   <testcase name="RTT above red threshold returns RED()" classname="io.slogr.agent.engine.sla.SlaEvaluatorTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>

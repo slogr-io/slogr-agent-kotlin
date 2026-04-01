@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.controller.SenderConfigTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.004">
+<testsuite name="io.slogr.agent.engine.twamp.controller.SenderConfigTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:38" hostname="DESKTOP-09GV4AV" time="0.008">
   <properties/>
   <testcase name="SenderResult with no packets has correct defaults()" classname="io.slogr.agent.engine.twamp.controller.SenderConfigTest" time="0.001"/>
   <testcase name="PacketRecord stores fields correctly()" classname="io.slogr.agent.engine.twamp.controller.SenderConfigTest" time="0.001"/>

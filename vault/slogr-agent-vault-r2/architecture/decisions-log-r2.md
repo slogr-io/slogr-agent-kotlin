@@ -87,3 +87,52 @@ Extends R1 `architecture/decisions-log.md`. ADRs 001-020 remain locked. R2 adds 
 **Context:** 200+ agents × 200+ paths × every 5 minutes = 40,000+ traceroute snapshots per window. Most are unchanged. ~11.5 GB/day of redundant data.
 **Decision:** Three-tier publish: (1) change-only by default — only publish when ASN path differs from previous. (2) Heartbeat every N unchanged cycles (default 6 = every 30 min). (3) Forced refresh every N hours (default 6). Layer 2 uses heartbeat absence (>35 min) to detect broken agent vs stable path.
 **Consequence:** ~80% egress reduction. ~$750/month savings at 200+ agents. Configurable via `push_config`.
+
+## ADR-033: JNI SO_TIMESTAMPING Fallback
+
+**Status:** Locked
+**Context:** Not all cloud hypervisors support kernel timestamps via `recvmsg()`. Azure VMs, older AWS Nitro, VMware guests may return empty `CMSG_DATA`.
+**Decision:** If kernel timestamp unavailable, fallback to `clock_gettime(CLOCK_REALTIME)`. Add `timestamp_source` flag (KERNEL=1, USERSPACE=2) to JNI return struct. Propagate to Kotlin. `ClockSyncDetector` never reports SYNCED when source is USERSPACE.
+**Consequence:** T2 precision degrades from microseconds to milliseconds on affected platforms. Virtual clock estimator widens tolerance accordingly.
+
+## ADR-034: File-Backed Persistent Fingerprint
+
+**Status:** Locked
+**Context:** `SHA256(mac + hostname)` computed dynamically fails in K8s DaemonSets, VMware clones, VDI pools, and Docker containers.
+**Decision:** Generate fingerprint once on first boot, include a UUID for clone divergence, write to `/var/lib/slogr/.agent_fingerprint`. Read from file on all subsequent boots. Only regenerate if file doesn't exist.
+**Consequence:** Cloned VMs get unique identities after first independent boot. Docker containers need the fingerprint file on a mounted volume for persistence.
+
+## ADR-035: Bounded WAL Eviction
+
+**Status:** Locked
+**Context:** WAL without a size limit can fill the host's disk during extended network outages.
+**Decision:** Hard cap: 500MB size OR 72 hours age (whichever is hit first). Oldest entries silently evicted. Configurable via `push_config` (`wal_max_size_mb`, `wal_max_age_hours`).
+**Consequence:** During multi-day outages, oldest telemetry is lost. Acceptable trade-off vs killing the host.
+
+## ADR-036: Probe Mode Classification
+
+**Status:** Locked
+**Context:** ICMP blocked + TCP working = path is healthy but ICMP-filtered. Reporting "100% loss" is misleading.
+**Decision:** Add `probe_mode` enum: ICMP_AND_TCP, TCP_ONLY, ICMP_ONLY, BOTH_FAILED. Display "ICMP filtered (TCP healthy)" instead of "100% loss" when `probe_mode = TCP_ONLY`.
+**Consequence:** Layer 2 Detection Worker and Layer 3 Explanation Engine must check `probe_mode` before triggering loss alerts.
+
+## ADR-037: Local Prometheus Exporter
+
+**Status:** Locked
+**Context:** SREs want immediate local Prometheus scraping before configuring OTLP pipelines.
+**Decision:** Embedded HTTP server on `127.0.0.1:9090/metrics`. Prometheus exposition format. Always available in daemon mode. NOT gated behind `sk_free_*` key. Binds to localhost only.
+**Consequence:** SREs can `curl localhost:9090/metrics` immediately after install. Zero config. Zero keys.
+
+## ADR-038: Doctor Command
+
+**Status:** Locked
+**Context:** "It doesn't work" is the most common support ticket.
+**Decision:** `slogr-agent doctor` command that verifies: JNI loading, CAP_NET_RAW, CAP_NET_BIND_SERVICE, ICMP functionality, DNS resolution, TLS connectivity, API key validity, RabbitMQ reachability, Pub/Sub status, disk space, WAL status. Each failed check includes specific remediation instructions.
+**Consequence:** First support response: "Please run `slogr-agent doctor` and share the output."
+
+## ADR-039: Kill Switch (HaltMeasurement)
+
+**Status:** Locked
+**Context:** Misconfigured schedule could accidentally flood a target. Need instant remote stop.
+**Decision:** New command type `halt_measurement`. Immediately stops all sessions, purges in-memory schedule, agent stays connected and responsive. 30-second timeout. Resume via new `set_schedule`.
+**Consequence:** 6th command type added to Layer 2.5 command payloads. Admin Console gets "Emergency Stop" button.

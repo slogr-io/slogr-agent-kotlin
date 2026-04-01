@@ -46,6 +46,7 @@ slogr-agent-vault-r2/
 │   └── r2-test-matrix.md                  ← R2-specific test scenarios
 ├── build-guide/
 │   └── build-guide-r2.md                  ← R2 build phases (6 phases)
-└── operations/
-    └── egress-optimization.md             ← traceroute heartbeat/change-only strategy
+├── operations/
+    ├── egress-optimization.md             ← traceroute heartbeat/change-only strategy
+    └── hardening.md                       ← JNI fallback, persistent fingerprint, WAL eviction, probe mode, Prometheus, doctor, kill switch
 ```

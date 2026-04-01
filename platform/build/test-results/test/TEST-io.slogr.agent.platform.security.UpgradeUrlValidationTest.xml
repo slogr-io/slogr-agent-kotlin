@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.platform.security.UpgradeUrlValidationTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:46:07" hostname="DESKTOP-09GV4AV" time="0.183">
+  <properties/>
+  <testcase name="rejects checksum without sha256 prefix()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.013"/>
+  <testcase name="rejects ftp-scheme URL()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.012"/>
+  <testcase name="rejects plain HTTP non-slogr URL()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.012"/>
+  <testcase name="rejects file-scheme URL()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.013"/>
+  <testcase name="rejects wrong checksum value (tampered binary)()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.02"/>
+  <testcase name="rejects missing checksum field()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.015"/>
+  <testcase name="rejects missing download_url field()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.014"/>
+  <testcase name="rejects HTTPS non-slogr URL()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.016"/>
+  <testcase name="rejects URL that looks like slogr domain but is subdomain attack()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.017"/>
+  <testcase name="rejects checksum that is only the prefix()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.015"/>
+  <testcase name="rejects URL where slogr-io appears in path but not host()" classname="io.slogr.agent.platform.security.UpgradeUrlValidationTest" time="0.017"/>
+  <system-out><![CDATA[09:46:07.730 [Test worker @coroutine#6] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: checksum must start with 'sha256:'
+09:46:07.744 [Test worker @coroutine#7] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must use https scheme
+09:46:07.758 [Test worker @coroutine#8] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must use https scheme
+09:46:07.772 [Test worker @coroutine#9] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must use https scheme
+09:46:07.794 [Test worker @coroutine#10] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must use https scheme
+09:46:07.811 [Test worker @coroutine#11] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: missing checksum
+09:46:07.827 [Test worker @coroutine#12] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: missing download_url
+09:46:07.843 [Test worker @coroutine#13] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade rejected: URL not on releases.slogr.io — https://evil.example.com/agent.jar
+09:46:07.845 [Test worker @coroutine#13] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must be on releases.slogr.io
+09:46:07.863 [Test worker @coroutine#14] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade rejected: URL not on releases.slogr.io — https://attacker.com/releases.slogr.io/agent.jar
+09:46:07.863 [Test worker @coroutine#14] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must be on releases.slogr.io
+09:46:07.880 [Test worker @coroutine#15] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: checksum must be sha256:<64 lowercase hex chars>
+09:46:07.898 [Test worker @coroutine#16] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade rejected: URL not on releases.slogr.io — https://evil.com/releases.slogr.io/agent.jar
+09:46:07.898 [Test worker @coroutine#16] WARN io.slogr.agent.platform.commands.UpgradeHandler -- Upgrade failed: download_url must be on releases.slogr.io
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -67,13 +67,13 @@ class ConcurrentSessionsTest {
     @Test
     fun `20 concurrent measure calls all complete`() = runBlocking {
         val engine = mockk<MeasurementEngine>()
-        coEvery { engine.measure(any(), any(), any()) } answers {
+        coEvery { engine.measure(any(), any(), any(), any(), any(), any()) } answers {
             fakeBundle(UUID.randomUUID())
         }
 
         val target = InetAddress.getByName("127.0.0.1")
         val jobs: List<Deferred<MeasurementBundle>> = (1..20).map {
-            async { engine.measure(target, profile, UUID.randomUUID()) }
+            async { engine.measure(target = target, profile = profile) }
         }
 
         val results = jobs.awaitAll()
@@ -84,12 +84,12 @@ class ConcurrentSessionsTest {
     @Test
     fun `heap usage stays below 384 MB after 20 concurrent sessions`() = runBlocking {
         val engine = mockk<MeasurementEngine>()
-        coEvery { engine.measure(any(), any(), any()) } answers {
+        coEvery { engine.measure(any(), any(), any(), any(), any(), any()) } answers {
             fakeBundle(UUID.randomUUID())
         }
 
         val target = InetAddress.getByName("127.0.0.1")
-        val jobs = (1..20).map { async { engine.measure(target, profile, UUID.randomUUID()) } }
+        val jobs = (1..20).map { async { engine.measure(target = target, profile = profile) } }
         jobs.awaitAll()
 
         // Force GC to get a clean heap reading
@@ -104,19 +104,19 @@ class ConcurrentSessionsTest {
     @Test
     fun `100 sequential sessions produce no unbounded growth`() = runBlocking {
         val engine = mockk<MeasurementEngine>()
-        coEvery { engine.measure(any(), any(), any()) } answers {
+        coEvery { engine.measure(any(), any(), any(), any(), any(), any()) } answers {
             fakeBundle(UUID.randomUUID())
         }
 
         val target = InetAddress.getByName("127.0.0.1")
 
         // Warm up — drive any lazy initialization
-        repeat(10) { engine.measure(target, profile, UUID.randomUUID()) }
+        repeat(10) { engine.measure(target = target, profile = profile) }
         System.gc()
         val baselineHeapMb = ManagementFactory.getMemoryMXBean().heapMemoryUsage.used / (1024 * 1024)
 
         // Run 100 sessions
-        repeat(100) { engine.measure(target, profile, UUID.randomUUID()) }
+        repeat(100) { engine.measure(target = target, profile = profile) }
         System.gc()
         Thread.sleep(100)
         System.gc()

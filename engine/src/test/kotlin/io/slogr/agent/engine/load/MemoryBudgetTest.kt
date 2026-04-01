@@ -60,17 +60,17 @@ class MemoryBudgetTest {
     @Test
     fun `heap stays below 384 MB after 300 mock sessions`() = runBlocking {
         val engine = mockk<MeasurementEngine>()
-        coEvery { engine.measure(any(), any(), any()) } answers { fakeBundle() }
+        coEvery { engine.measure(any(), any(), any(), any(), any(), any()) } answers { fakeBundle() }
 
         val target = InetAddress.getByName("127.0.0.1")
 
         // Warm-up pass — drive lazy initialization before taking baseline
-        repeat(10) { engine.measure(target, profile, UUID.randomUUID()) }
+        repeat(10) { engine.measure(target = target, profile = profile) }
         System.gc()
         val baselineMb = ManagementFactory.getMemoryMXBean().heapMemoryUsage.used / (1024 * 1024)
 
         // 300 sessions — no results held; GC should reclaim each bundle
-        repeat(300) { engine.measure(target, profile, UUID.randomUUID()) }
+        repeat(300) { engine.measure(target = target, profile = profile) }
 
         System.gc()
         Thread.sleep(100)

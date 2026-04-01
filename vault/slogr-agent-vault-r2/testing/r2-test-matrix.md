@@ -143,3 +143,64 @@
 | R2-PKG-06 | `curl installer.sh \| sh` | Correct package installed for OS/arch |
 | R2-PKG-07 | Helm install on K8s | DaemonSet running, one pod per node |
 | R2-PKG-08 | Clean uninstall (all formats) | Binary, config, service removed. Credential and WAL optionally preserved. |
+
+### JNI Timestamp Fallback
+
+| Test ID | Scenario | Expected |
+|---------|----------|----------|
+| R2-TS-01 | Kernel SO_TIMESTAMPING available | `timestamp_source = KERNEL`, T2 precision < 100µs |
+| R2-TS-02 | SO_TIMESTAMPING unavailable (CMSG_DATA empty) | Fallback to `clock_gettime`, `timestamp_source = USERSPACE`, no crash |
+| R2-TS-03 | Userspace timestamp with virtual clock estimator | `ClockSyncDetector` never reports SYNCED, only ESTIMATED or UNSYNCABLE |
+
+### Persistent Fingerprint
+
+| Test ID | Scenario | Expected |
+|---------|----------|----------|
+| R2-FP-01 | First boot — no fingerprint file | Generate fingerprint, write to `/var/lib/slogr/.agent_fingerprint` |
+| R2-FP-02 | Second boot — fingerprint file exists | Read from file, same fingerprint as first boot |
+| R2-FP-03 | Two cloned VMs with identical MAC+hostname | Different fingerprints (UUID component ensures divergence) |
+| R2-FP-04 | Docker container restart (new MAC) | Same fingerprint (read from mounted volume) |
+
+### WAL Eviction
+
+| Test ID | Scenario | Expected |
+|---------|----------|----------|
+| R2-WAL-01 | WAL grows past 500MB | Oldest entries evicted, total size ≤ 500MB |
+| R2-WAL-02 | WAL entries older than 72 hours | Expired entries evicted on next append |
+| R2-WAL-03 | WAL eviction under normal operation | No eviction, all entries retained |
+| R2-WAL-04 | Disk with only 100MB free | WAL respects limit, does not fill remaining disk |
+
+### Probe Mode Classification
+
+| Test ID | Scenario | Expected |
+|---------|----------|----------|
+| R2-PROBE-01 | ICMP works + TCP works | `probe_mode = ICMP_AND_TCP` |
+| R2-PROBE-02 | ICMP blocked + TCP works | `probe_mode = TCP_ONLY`, NOT "100% loss" |
+| R2-PROBE-03 | ICMP works + TCP fails | `probe_mode = ICMP_ONLY` |
+| R2-PROBE-04 | Both fail | `probe_mode = BOTH_FAILED` |
+
+### Prometheus Exporter
+
+| Test ID | Scenario | Expected |
+|---------|----------|----------|
+| R2-PROM-01 | Daemon running, curl localhost:9090/metrics | 200 OK, valid Prometheus exposition format |
+| R2-PROM-02 | No SLOGR_API_KEY set (ANONYMOUS mode) | Exporter still works — NOT gated |
+| R2-PROM-03 | Exporter binds to 127.0.0.1 only | Connection from external IP rejected |
+
+### Doctor Command
+
+| Test ID | Scenario | Expected |
+|---------|----------|----------|
+| R2-DOC-01 | All checks pass | "All checks passed." exit code 0 |
+| R2-DOC-02 | CAP_NET_RAW missing | Specific remediation: "Run: sudo setcap..." |
+| R2-DOC-03 | JNI library not found | Specific remediation with library path |
+| R2-DOC-04 | slogr.io unreachable | Reports air-gapped, skips TLS/API checks |
+
+### Kill Switch
+
+| Test ID | Scenario | Expected |
+|---------|----------|----------|
+| R2-HALT-01 | halt_measurement received | All sessions stopped, schedule purged, agent stays connected |
+| R2-HALT-02 | set_schedule after halt | Agent resumes measurements with new schedule |
+| R2-HALT-03 | halt_measurement timeout (30s) | Status → timed_out |
+| R2-HALT-04 | Health signals after halt | Still sending — agent is connected, just idle |

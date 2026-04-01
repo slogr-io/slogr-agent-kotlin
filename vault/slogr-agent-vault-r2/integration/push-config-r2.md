@@ -18,7 +18,9 @@
     "traceroute_forced_refresh_hours": 6,
     "traceroute_fallback_modes": ["ICMP", "TCP", "UDP"],
     "reporting_threshold_ms": 10,
-    "buffer_flush_interval_s": 30
+    "buffer_flush_interval_s": 30,
+    "wal_max_size_mb": 500,
+    "wal_max_age_hours": 72
   }
 }
 ```
@@ -35,6 +37,8 @@
 | `traceroute_fallback_modes` | String[] | ["ICMP","TCP","UDP"] | Traceroute mode fallback order (R2 addition) |
 | `reporting_threshold_ms` | Int | 10 | Minimum RTT delta to report a change |
 | `buffer_flush_interval_s` | Int | 30 | How often to flush WAL buffer to RabbitMQ |
+| `wal_max_size_mb` | Int | 500 | Maximum WAL size on disk in MB. Oldest evicted when exceeded. (R2 addition) |
+| `wal_max_age_hours` | Int | 72 | Maximum WAL entry age in hours. Expired entries evicted. (R2 addition) |
 
 ## Partial Apply Semantics
 

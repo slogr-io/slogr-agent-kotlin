@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.006">
+<testsuite name="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:38" hostname="DESKTOP-09GV4AV" time="0.009">
   <properties/>
-  <testcase name="selects highest-preference mode supported by server()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.0"/>
+  <testcase name="selects highest-preference mode supported by server()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.001"/>
   <testcase name="selects first preference when server supports both()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.0"/>
   <testcase name="empty chain always returns null()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.0"/>
-  <testcase name="returns null when no preferred mode is supported()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.0"/>
-  <testcase name="prefer returns this for fluent chaining()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.001"/>
-  <testcase name="duplicate prefer entries are ignored()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.0"/>
+  <testcase name="returns null when no preferred mode is supported()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.001"/>
+  <testcase name="prefer returns this for fluent chaining()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.002"/>
+  <testcase name="duplicate prefer entries are ignored()" classname="io.slogr.agent.engine.twamp.auth.ModePreferenceChainTest" time="0.001"/>
   <system-out><![CDATA[]]></system-out>
   <system-err><![CDATA[]]></system-err>
 </testsuite>
