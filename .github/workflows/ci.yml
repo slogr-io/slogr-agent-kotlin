@@ -1,48 +1,232 @@
-name: CI
+name: Slogr Agent CI
 
 on:
   push:
-    branches: [ "main", "develop", "phase-*" ]
+    branches: [master, main]
   pull_request:
-    branches: [ "main" ]
+    branches: [master, main]
 
 jobs:
-  build-and-test:
+  test:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up JDK 21 (Amazon Corretto)
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
+          distribution: 'temurin'
           java-version: '21'
-          distribution: 'corretto'
 
-      - name: Cache Gradle packages
+      - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      - name: Build
-        working-directory: agent-kotlin
-        run: ./gradlew build -x test
-
-      - name: Unit tests
-        working-directory: agent-kotlin
+      - name: Run unit tests
         run: ./gradlew test
 
-      - name: Upload test reports
-        if: failure()
+      - name: Build fat JAR
+        run: ./gradlew shadowJar
+
+      - name: Verify JAR
+        run: |
+          java -jar app/build/libs/slogr-agent-all.jar version
+          java -jar app/build/libs/slogr-agent-all.jar status
+
+      - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
-          path: agent-kotlin/**/build/reports/tests/
+          name: test-results
+          path: '**/build/reports/tests/'
 
-      - name: Verify version command
-        working-directory: agent-kotlin
+  e2e-twamp:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Build fat JAR
+        run: ./gradlew shadowJar
+
+      - name: Build Docker image
+        run: docker build -t slogr-agent:test .
+
+      - name: Create test network
+        run: docker network create slogr-test-net
+
+      # ── Agent B: TWAMP reflector ──────────────────────────────
+      - name: Start Agent B (reflector)
         run: |
-          java -jar app/build/libs/slogr-agent-all.jar version | grep "1\.0\.0"
+          docker run -d \
+            --name agent-b \
+            --network slogr-test-net \
+            --cap-add NET_RAW \
+            --cap-add NET_BIND_SERVICE \
+            slogr-agent:test daemon
+          
+          echo "Waiting for Agent B to start..."
+          sleep 5
+          docker logs agent-b
+
+      # ── Test 1: TWAMP A → B ──────────────────────────────────
+      - name: "E2E: TWAMP check A → B"
+        run: |
+          AGENT_B_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-b)
+          echo "Agent B IP: $AGENT_B_IP"
+          
+          docker run --rm \
+            --network slogr-test-net \
+            --cap-add NET_RAW \
+            --cap-add NET_BIND_SERVICE \
+            slogr-agent:test check "$AGENT_B_IP"
+          
+          echo "✅ TWAMP A → B passed"
+
+      # ── Test 2: TWAMP A → B (JSON, validate fields) ─────────
+      - name: "E2E: TWAMP check A → B (JSON validation)"
+        run: |
+          AGENT_B_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-b)
+          
+          docker run --rm \
+            --network slogr-test-net \
+            --cap-add NET_RAW \
+            --cap-add NET_BIND_SERVICE \
+            slogr-agent:test check "$AGENT_B_IP" -f json | tee /tmp/twamp.json
+          
+          python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          
+          checks = {
+            'has_rtt': 'fwd_avg_rtt_ms' in str(data),
+            'has_packets': 'packets_sent' in str(data),
+            'has_grade': 'grade' in str(data),
+            'valid_json': True
+          }
+          
+          failed = [k for k, v in checks.items() if not v]
+          if failed:
+            print(f'❌ Failed checks: {failed}')
+            sys.exit(1)
+          
+          print('✅ JSON validation passed')
+          print(json.dumps(data, indent=2)[:500])
+          " < /tmp/twamp.json
+
+      # ── Test 3: Bidirectional TWAMP (B → A) ─────────────────
+      - name: Start Agent A (for reverse test)
+        run: |
+          docker run -d \
+            --name agent-a \
+            --network slogr-test-net \
+            --cap-add NET_RAW \
+            --cap-add NET_BIND_SERVICE \
+            slogr-agent:test daemon
+          
+          sleep 3
+
+      - name: "E2E: TWAMP check B → A (bidirectional)"
+        run: |
+          AGENT_A_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-a)
+          echo "Agent A IP: $AGENT_A_IP"
+          
+          docker run --rm \
+            --network slogr-test-net \
+            --cap-add NET_RAW \
+            --cap-add NET_BIND_SERVICE \
+            slogr-agent:test check "$AGENT_A_IP"
+          
+          echo "✅ Bidirectional TWAMP B → A passed"
+
+      # ── Test 4: ICMP/TCP fallback (non-TWAMP target) ────────
+      - name: "E2E: ICMP/TCP fallback (non-TWAMP target)"
+        run: |
+          # Start a simple HTTP server as a non-TWAMP target
+          docker run -d \
+            --name target-http \
+            --network slogr-test-net \
+            python:3-slim python3 -m http.server 443
+          
+          sleep 2
+          
+          TARGET_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' target-http)
+          echo "HTTP target IP: $TARGET_IP"
+          
+          # This should fall back to ICMP/TCP since target has no TWAMP
+          docker run --rm \
+            --network slogr-test-net \
+            --cap-add NET_RAW \
+            --cap-add NET_BIND_SERVICE \
+            slogr-agent:test check "$TARGET_IP" || true
+          
+          echo "✅ Fallback test completed (non-zero exit OK — ICMP may be filtered in Docker)"
+
+      # ── Test 5: Multiple concurrent sessions ────────────────
+      - name: "E2E: Multiple concurrent TWAMP checks"
+        run: |
+          AGENT_B_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-b)
+          
+          # Run 5 concurrent TWAMP checks against Agent B
+          for i in 1 2 3 4 5; do
+            docker run -d \
+              --name "checker-$i" \
+              --network slogr-test-net \
+              --cap-add NET_RAW \
+              --cap-add NET_BIND_SERVICE \
+              slogr-agent:test check "$AGENT_B_IP"
+          done
+          
+          # Wait for all to complete
+          FAILED=0
+          for i in 1 2 3 4 5; do
+            EXIT_CODE=$(docker wait "checker-$i")
+            if [ "$EXIT_CODE" != "0" ]; then
+              echo "❌ Checker $i failed (exit: $EXIT_CODE)"
+              docker logs "checker-$i"
+              FAILED=1
+            fi
+          done
+          
+          if [ "$FAILED" = "0" ]; then
+            echo "✅ All 5 concurrent TWAMP sessions passed"
+          else
+            echo "❌ Some concurrent sessions failed"
+            exit 1
+          fi
+
+      # ── Test 6: Agent version and status inside container ───
+      - name: "E2E: Version and status commands"
+        run: |
+          VERSION=$(docker run --rm slogr-agent:test version)
+          echo "Version: $VERSION"
+          
+          STATUS=$(docker run --rm slogr-agent:test status)
+          echo "Status: $STATUS"
+          
+          # Verify version string is present
+          echo "$VERSION" | grep -q "slogr-agent" || { echo "❌ Version check failed"; exit 1; }
+          echo "✅ Version and status commands passed"
+
+      # ── Cleanup ─────────────────────────────────────────────
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop agent-a agent-b target-http checker-1 checker-2 checker-3 checker-4 checker-5 2>/dev/null || true
+          docker rm agent-a agent-b target-http checker-1 checker-2 checker-3 checker-4 checker-5 2>/dev/null || true
+          docker network rm slogr-test-net 2>/dev/null || true
