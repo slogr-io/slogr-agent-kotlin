@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "slogr-agent.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "slogr-agent.labels" . | nindent 4 }}
+data:
+  agent.yaml: |
+    traceroute_max_hops: {{ .Values.slogr.config.traceroute_max_hops | default 30 }}
+    traceroute_heartbeat_interval_cycles: {{ .Values.slogr.config.traceroute_heartbeat_interval_cycles | default 6 }}

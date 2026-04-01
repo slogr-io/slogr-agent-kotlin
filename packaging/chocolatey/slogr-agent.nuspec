@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>slogr-agent</id>
+    <version>1.0.0</version>
+    <title>Slogr Agent</title>
+    <authors>Slogr</authors>
+    <projectUrl>https://slogr.io</projectUrl>
+    <licenseUrl>https://github.com/slogr/agent-kotlin/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Network path quality monitoring agent. Measures RTT, jitter, and packet loss using TWAMP (RFC 5357) for 27+ SLA application profiles including VoIP, gaming, video conferencing, and cloud desktop.</description>
+    <summary>TWAMP-based network SLA monitoring agent</summary>
+    <tags>network monitoring twamp sla rtt jitter latency observability slogr</tags>
+    <dependencies>
+      <dependency id="adoptopenjdk21" version="21.0.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
