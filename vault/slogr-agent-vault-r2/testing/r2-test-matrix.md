@@ -204,3 +204,14 @@
 | R2-HALT-02 | set_schedule after halt | Agent resumes measurements with new schedule |
 | R2-HALT-03 | halt_measurement timeout (30s) | Status → timed_out |
 | R2-HALT-04 | Health signals after halt | Still sending — agent is connected, just idle |
+
+### Multi-Port TCP Probe
+
+| Test ID | Scenario | Expected |
+|---------|----------|----------|
+| R2-MPORT-01 | `tcp_probe_ports: [443, 1433, 6379]` — all reachable | 3 `probe_raw` rows, all `tcp_success: true`, each with correct `tcp_port` |
+| R2-MPORT-02 | `tcp_probe_ports: [443, 6379]` — 443 open, 6379 blocked | 2 rows: 443 success, 6379 `tcp_success: false`, `tcp_connect_ms: null` |
+| R2-MPORT-03 | `tcp_probe_ports` omitted | Default to `[443]`, single probe_raw row |
+| R2-MPORT-04 | `tcp_probe_ports: [443, 80, 8080, 3306, 5432, 6379]` — 6 ports (exceeds max) | Agent rejects with error, uses first 5 only, logs warning |
+| R2-MPORT-05 | TCP connect timeout — blocked port | Connect attempt times out within 2 seconds, does not block subsequent port probes |
+| R2-MPORT-06 | All ports blocked + ICMP blocked | `probe_mode: BOTH_FAILED` for each port, no false "100% loss" on individual ports |

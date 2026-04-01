@@ -4,6 +4,7 @@ import io.slogr.agent.contracts.AgentCredential
 import io.slogr.agent.contracts.HealthSnapshot
 import io.slogr.agent.contracts.PublishStatus
 import io.slogr.agent.contracts.interfaces.ResultPublisher
+import io.slogr.agent.engine.reflector.ReflectorThreadPool
 import io.slogr.agent.platform.buffer.WriteAheadLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -27,7 +28,9 @@ class HealthReporter(
     private val credential: AgentCredential,
     private val publisher: ResultPublisher,
     private val wal: WriteAheadLog,
-    private val intervalMs: Long = 60_000
+    private val intervalMs: Long = 60_000,
+    /** Optional pool reference; provides R2 reflector health metrics when present. */
+    private val reflectorPool: ReflectorThreadPool? = null
 ) {
     private val log = LoggerFactory.getLogger(HealthReporter::class.java)
 
@@ -73,8 +76,12 @@ class HealthReporter(
         twampFailureCount        = twampFailureCount.get(),
         tracerouteFailureCount   = tracerouteFailureCount.get(),
         publishFailureCount      = publishFailureCount.get(),
-        workerRestartCount       = workerRestartCount.get(),
-        agentRestartCount        = agentRestartCount
+        workerRestartCount           = workerRestartCount.get(),
+        agentRestartCount            = agentRestartCount,
+        activeResponderSessions      = reflectorPool?.activeSessionCount ?: 0,
+        poolSize                     = reflectorPool?.poolSize            ?: 0,
+        poolActiveThreads            = reflectorPool?.activeThreadCount   ?: 0,
+        poolQueueDepth               = reflectorPool?.queueDepth          ?: 0
     )
 
     // ── Internal ───────────────────────────────────────────────────────────────

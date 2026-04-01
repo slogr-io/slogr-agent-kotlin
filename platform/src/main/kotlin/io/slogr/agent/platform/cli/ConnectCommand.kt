@@ -4,24 +4,23 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.parameters.options.option
-import io.slogr.agent.platform.registration.BootstrapRegistrar
-import io.slogr.agent.platform.registration.InteractiveRegistrar
+import io.slogr.agent.platform.registration.ApiKeyRegistrar
 import kotlinx.coroutines.runBlocking
 
 /**
- * Registers this agent with the Slogr backend.
+ * Registers this agent with the Slogr backend using an API key.
  *
- * Two paths:
- * - Bootstrap token (`--bootstrap-token` or `SLOGR_BOOTSTRAP_TOKEN` env var): automated
- * - API key (`--api-key` or `SLOGR_API_KEY` env var, or interactive prompt): interactive
+ * Accepts `sk_live_*` keys only. For mass deployment, set `SLOGR_API_KEY` env var
+ * and use `slogr-agent daemon` instead — it auto-registers on startup.
  */
 class ConnectCommand(private val ctx: CliContext) : CliktCommand(name = "connect") {
     override fun help(context: Context) = "Register this agent with the Slogr backend"
 
-    private val apiKey: String?         by option("--api-key",         help = "API key for interactive registration",
-                                                   envvar = "SLOGR_API_KEY")
-    private val bootstrapToken: String? by option("--bootstrap-token", help = "Bootstrap token for automated registration",
-                                                   envvar = "SLOGR_BOOTSTRAP_TOKEN")
+    private val apiKey: String? by option(
+        "--api-key",
+        help  = "Live API key (sk_live_*) for registration",
+        envvar = "SLOGR_API_KEY"
+    )
 
     override fun run() {
         if (ctx.credentialStore.isConnected()) {
@@ -31,32 +30,25 @@ class ConnectCommand(private val ctx: CliContext) : CliktCommand(name = "connect
             return
         }
 
-        val token = bootstrapToken
-        val key   = apiKey
+        val key = apiKey ?: run {
+            echo("Enter your Slogr API key (sk_live_*), or set SLOGR_API_KEY:")
+            val entered = readLine()?.trim()
+            if (entered.isNullOrBlank()) {
+                echo("No API key provided.", err = true)
+                throw ProgramResult(1)
+            }
+            entered
+        }
+
+        if (!key.startsWith("sk_live_")) {
+            echo("Invalid key format. 'connect' requires a sk_live_* key.", err = true)
+            echo("For sk_free_* keys, set SLOGR_API_KEY and run 'slogr-agent daemon'.")
+            throw ProgramResult(4)
+        }
 
         runCatching {
             val cred = runBlocking {
-                when {
-                    token != null -> {
-                        echo("Registering agent with bootstrap token...")
-                        BootstrapRegistrar(ctx.credentialStore).register(token)
-                    }
-                    key != null -> {
-                        echo("Registering agent with API key...")
-                        InteractiveRegistrar(ctx.credentialStore).register(key)
-                    }
-                    else -> {
-                        // Interactive prompt
-                        echo("Enter your Slogr API key (or set SLOGR_API_KEY):")
-                        val entered = readLine()?.trim()
-                        if (entered.isNullOrBlank()) {
-                            echo("No API key provided.", err = true)
-                            throw ProgramResult(1)
-                        }
-                        echo("Registering agent...")
-                        InteractiveRegistrar(ctx.credentialStore).register(entered)
-                    }
-                }
+                ApiKeyRegistrar(ctx.credentialStore).register(key)
             }
             echo("Connected as ${cred.displayName}")
             echo("Agent ID: ${cred.agentId}")

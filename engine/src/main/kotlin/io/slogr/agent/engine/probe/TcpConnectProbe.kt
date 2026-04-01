@@ -32,6 +32,35 @@ class TcpConnectProbe {
     }
 
     /**
+     * One result per probed port (ADR-040).
+     * Each port is attempted regardless of whether previous ports succeeded or failed.
+     */
+    data class PortResult(
+        val port: Int,
+        /** Connect latency in ms; null if the port was refused, timed out, or otherwise unreachable. */
+        val connectMs: Float?,
+        val success: Boolean
+    )
+
+    /**
+     * Probe every port in [ports] sequentially and return one [PortResult] per port.
+     *
+     * - Timeout per port: [timeoutMs] (default 2 000 ms — blocked ports fail fast).
+     * - Sequential, not parallel — avoids burst traffic that could trigger IDS.
+     * - Use this for `tcp_probe_ports` schedule measurements (ADR-040).
+     */
+    suspend fun probeAll(
+        target: InetAddress,
+        ports: List<Int>,
+        timeoutMs: Int = 2000
+    ): List<PortResult> = withContext(Dispatchers.IO) {
+        ports.map { port ->
+            val ms = tryConnect(target, port, timeoutMs)
+            PortResult(port = port, connectMs = ms, success = ms != null)
+        }
+    }
+
+    /**
      * Attempt a TCP connect to [target] on each port in [ports] (default: 443 then 80).
      * Returns the timing for the first port that accepts the connection.
      */

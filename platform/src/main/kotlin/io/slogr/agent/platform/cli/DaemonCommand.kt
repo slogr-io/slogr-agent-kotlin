@@ -4,11 +4,20 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
+import io.slogr.agent.platform.config.AgentState
+import io.slogr.agent.platform.registration.ApiKeyRegistrar
 import io.slogr.agent.platform.scheduler.TestScheduler
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 
 /**
  * Runs the agent as a background daemon.
+ *
+ * State-aware startup:
+ * - ANONYMOUS:        stdout only; logs nudge toward getting an API key
+ * - REGISTERED:       OTLP export enabled; no RabbitMQ/Pub/Sub
+ * - CONNECTED + no cred: auto-registers with api.slogr.io (mass deployment path)
+ * - CONNECTED + cred:  connects directly using stored credential
  */
 class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon") {
     override fun help(context: Context) = "Run the agent as a background daemon"
@@ -21,6 +30,39 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
     ).default("")
 
     override fun run() {
+        val state = ctx.config.agentState
+        val apiKey = ctx.config.apiKey
+
+        // ── Startup log — mandatory per vault spec ────────────────────────────
+        when {
+            state == AgentState.CONNECTED && !ctx.credentialStore.isConnected() -> {
+                log.info("Auto-registering with api.slogr.io...")
+                runCatching {
+                    val cred = runBlocking {
+                        ApiKeyRegistrar(ctx.credentialStore).register(apiKey!!)
+                    }
+                    log.info("Connected as ${cred.displayName} (agent_id: ${cred.agentId})")
+                    log.info("Starting daemon in CONNECTED mode (RabbitMQ + OTLP + stdout)")
+                }.onFailure { e ->
+                    log.error("Auto-registration failed: ${e.message}. Starting in ANONYMOUS mode.")
+                    log.info("Starting daemon in ANONYMOUS mode (stdout only)")
+                    log.info("→ For OTLP export, set SLOGR_API_KEY. Get a free key at https://slogr.io/keys")
+                }
+            }
+            state == AgentState.CONNECTED -> {
+                val cred = ctx.credentialStore.load()
+                log.info("Connected as ${cred?.displayName ?: "unknown"} (agent_id: ${cred?.agentId ?: "?"})")
+                log.info("Starting daemon in CONNECTED mode (RabbitMQ + OTLP + stdout)")
+            }
+            state == AgentState.REGISTERED -> {
+                log.info("Starting daemon in REGISTERED mode (OTLP + stdout)")
+            }
+            else -> {
+                log.info("Starting daemon in ANONYMOUS mode (stdout only)")
+                log.info("→ For OTLP export, set SLOGR_API_KEY. Get a free key at https://slogr.io/keys")
+            }
+        }
+
         val schedule = ctx.scheduleStore.load()
         if (schedule == null) {
             log.info("No persisted schedule found — running in responder-only mode")

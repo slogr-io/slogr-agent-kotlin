@@ -3,12 +3,19 @@ package io.slogr.agent.platform.output
 import io.slogr.agent.contracts.MeasurementBundle
 import io.slogr.agent.contracts.SlaGrade
 import io.slogr.agent.contracts.TracerouteResult
+import io.slogr.agent.platform.config.AirGapDetector
+import io.slogr.agent.platform.config.AgentState
 import java.net.InetAddress
 
 /**
  * Human-readable text formatter for TWAMP and fallback results.
+ *
+ * When [agentState] is [AgentState.ANONYMOUS], a footer nudge is appended pointing
+ * users to slogr.io (or slogr.io/enterprise for air-gapped environments).
  */
-class TextResultFormatter : ResultFormatter {
+class TextResultFormatter(
+    private val agentState: AgentState = AgentState.ANONYMOUS
+) : ResultFormatter {
 
     override fun format(target: InetAddress, bundle: MeasurementBundle, profileName: String): String {
         val t  = bundle.twamp
@@ -34,6 +41,7 @@ class TextResultFormatter : ResultFormatter {
 
         sb.appendLine()
         sb.append("Profile: $profileName | Grade: ${gradeLabel(bundle.grade)} (RTT ${t.fwdAvgRttMs.f1()}ms)")
+        appendFooter(sb)
         return sb.toString()
     }
 
@@ -73,6 +81,7 @@ class TextResultFormatter : ResultFormatter {
         val rttLabel = ping.avgRttMs?.let { "${it.f1()}ms" } ?: "N/A"
         sb.append("Profile: ${bundle.profile.name} | Grade: ${gradeLabel(bundle.grade)} " +
                 "(RTT $rttLabel < ${bundle.profile.rttGreenMs.f1()}ms threshold)")
+        appendFooter(sb)
         return sb.toString()
     }
 
@@ -87,6 +96,15 @@ class TextResultFormatter : ResultFormatter {
             val asnStr = if (hop.asn != null) "  AS${hop.asn} (${hop.asnName ?: "?"})" else ""
             sb.appendLine("  ${hop.ttl.toString().padStart(2)}  ${ip.padEnd(18)} $rtt$asnStr")
         }
+    }
+
+    private fun appendFooter(sb: StringBuilder) {
+        if (agentState != AgentState.ANONYMOUS) return
+        val footer = if (AirGapDetector.isAirGapped())
+            "→ Enterprise deployment? Contact us at https://slogr.io/enterprise"
+        else
+            "→ For historical results and root cause analysis: https://slogr.io"
+        sb.append("\n$footer\n")
     }
 
     private fun gradeLabel(grade: SlaGrade): String = grade.name

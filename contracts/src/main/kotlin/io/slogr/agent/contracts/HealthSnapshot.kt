@@ -29,5 +29,11 @@ data class HealthSnapshot(
     @SerialName("publish_failure_count") val publishFailureCount: Int,
     @SerialName("worker_restart_count") val workerRestartCount: Int,
     @SerialName("agent_restart_count") val agentRestartCount: Int,
-    @SerialName("schema_version") val schemaVersion: Int = 1
+    @SerialName("schema_version") val schemaVersion: Int = 1,
+
+    // ── R2: Thread pool reflector health metrics ──────────────────────────────
+    @SerialName("active_responder_sessions") val activeResponderSessions: Int = 0,
+    @SerialName("pool_size")                 val poolSize:                Int = 0,
+    @SerialName("pool_active_threads")       val poolActiveThreads:       Int = 0,
+    @SerialName("pool_queue_depth")          val poolQueueDepth:          Int = 0
 )

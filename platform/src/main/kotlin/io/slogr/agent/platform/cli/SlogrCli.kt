@@ -16,7 +16,8 @@ class SlogrCli(ctx: CliContext) : CliktCommand(name = "slogr-agent") {
             DaemonCommand(ctx),
             ConnectCommand(ctx),
             DisconnectCommand(ctx),
-            SetupAsnCommand(ctx)
+            SetupAsnCommand(ctx),
+            DoctorCommand(ctx)
         )
     }
 

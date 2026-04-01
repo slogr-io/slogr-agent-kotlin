@@ -3,7 +3,6 @@ package io.slogr.agent.platform.commands
 import io.slogr.agent.contracts.Schedule
 import io.slogr.agent.contracts.SessionConfig
 import io.slogr.agent.contracts.SlaProfile
-import io.slogr.agent.platform.pubsub.CommandDispatcher
 import io.slogr.agent.platform.pubsub.CommandHandler
 import io.slogr.agent.platform.pubsub.CommandResponse
 import io.slogr.agent.platform.scheduler.ScheduleStore
@@ -58,13 +57,25 @@ class SetScheduleHandler(
             val pid  = runCatching { UUID.fromString(tObj["path_id"]!!.jsonPrimitive.content) }
                            .getOrElse { UUID.randomUUID() }
             val addr = runCatching { InetAddress.getByName(ip) }.getOrNull() ?: return@mapNotNull null
+
+            val rawPorts = tObj["tcp_probe_ports"]?.jsonArray?.map { it.jsonPrimitive.int }
+                ?: listOf(443)
+            val probePorts = if (rawPorts.size > MAX_TCP_PROBE_PORTS) {
+                log.warn(
+                    "tcp_probe_ports has ${rawPorts.size} entries for path $pid; " +
+                    "capped at $MAX_TCP_PROBE_PORTS"
+                )
+                rawPorts.take(MAX_TCP_PROBE_PORTS)
+            } else rawPorts
+
             SessionConfig(
                 pathId             = pid,
                 targetIp           = addr,
                 targetPort         = port,
                 profile            = profile,
                 intervalSeconds    = intervalSeconds,
-                tracerouteEnabled  = testType != "twamp"
+                tracerouteEnabled  = testType != "twamp",
+                tcpProbePorts      = probePorts
             )
         }
 
@@ -74,5 +85,10 @@ class SetScheduleHandler(
 
         log.info("set_schedule: ${sessions.size} session(s) applied")
         return CommandResponse(commandId, agentId, tenantId, "acked")
+    }
+
+    private companion object {
+        /** ADR-040: max 5 ports per target to prevent accidental port-scan bursts. */
+        const val MAX_TCP_PROBE_PORTS = 5
     }
 }
