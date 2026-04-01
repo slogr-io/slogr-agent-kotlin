@@ -17,13 +17,30 @@ import java.util.concurrent.ConcurrentHashMap
  * ASN path = ordered, deduplicated (consecutive-same collapsed) list of ASNs
  * from non-timeout, non-private hops.  Falls back to IP-based comparison when
  * ASN data is absent.
+ *
+ * **R2 egress optimization:** Same-path results are suppressed ([shouldPublish]=false)
+ * until [heartbeatIntervalCycles] unchanged cycles have elapsed.  Every
+ * [heartbeatIntervalCycles]-th unchanged cycle emits a periodic heartbeat
+ * ([shouldPublish]=true).  Use [forceNextRefresh] to force the next detection to
+ * publish regardless of path state (Tier 3 forced refresh).
+ *
+ * @param heartbeatIntervalCycles  How many unchanged cycles before a periodic heartbeat
+ *   is emitted.  Default 1 = emit on every same-path run (R1-compatible behaviour).
+ *   Set to 6 for production R2 egress optimisation (one heartbeat per 30 min at 5-min intervals).
  */
-class PathChangeDetector {
+class PathChangeDetector(
+    private val heartbeatIntervalCycles: Int = 1
+) {
 
     /** Output of a single [detect] call. */
     data class DetectionResult(
         val traceroute: TracerouteResult,
-        val pathChange: PathChangeEvent?
+        val pathChange: PathChangeEvent?,
+        /**
+         * Whether this result should be published to the platform.
+         * false = same-path cycle that falls between periodic heartbeats — suppress to save egress.
+         */
+        val shouldPublish: Boolean = true
     )
 
     private data class PathDirectionKey(val pathId: UUID, val direction: Direction)
@@ -32,7 +49,11 @@ class PathChangeDetector {
         val asnPath: List<Int>,
         val ipPath: List<String>,   // fallback when ASN unavailable
         val hops: List<TracerouteHop>,
-        val snapshotId: UUID
+        val snapshotId: UUID,
+        /** Number of consecutive same-path cycles since last publish or change. */
+        val cycleCount: Int = 0,
+        /** When true, the next detect() call publishes regardless of path state. */
+        val forcedRefreshPending: Boolean = false
     )
 
     private val baselines = ConcurrentHashMap<PathDirectionKey, Baseline>()
@@ -41,9 +62,13 @@ class PathChangeDetector {
      * Determine whether the [result]'s hop path matches the stored baseline.
      *
      * - First call for a given (pathId, direction): stores baseline, returns
-     *   result unchanged (isHeartbeat=false, no PathChangeEvent).
-     * - Same path: returns result with isHeartbeat=true.
-     * - Different path: returns result with isHeartbeat=false + PathChangeEvent.
+     *   result unchanged (isHeartbeat=false, shouldPublish=true, no PathChangeEvent).
+     * - Same path, not heartbeat cycle: returns result with isHeartbeat=true, shouldPublish=false
+     *   (suppress to save egress).
+     * - Same path, heartbeat cycle (cycleCount % heartbeatIntervalCycles == 0): returns
+     *   result with isHeartbeat=true, shouldPublish=true.
+     * - Different path: returns result with isHeartbeat=false, shouldPublish=true + PathChangeEvent.
+     * - Forced refresh (set via [forceNextRefresh]): always shouldPublish=true regardless of path state.
      */
     fun detect(result: TracerouteResult): DetectionResult {
         val key      = PathDirectionKey(result.pathId, result.direction)
@@ -59,51 +84,72 @@ class PathChangeDetector {
                 hops       = result.hops,
                 snapshotId = result.sessionId
             )
-            return DetectionResult(traceroute = result, pathChange = null)
+            return DetectionResult(traceroute = result, pathChange = null, shouldPublish = true)
         }
 
+        val forcedRefresh = baseline.forcedRefreshPending
         val useAsn   = newAsns.isNotEmpty() && baseline.asnPath.isNotEmpty()
         val pathSame = if (useAsn) newAsns == baseline.asnPath else newIps == baseline.ipPath
 
-        if (pathSame) {
-            val heartbeat = result.copy(
-                isHeartbeat    = true,
-                prevSnapshotId = baseline.snapshotId
+        if (!pathSame) {
+            // Path changed — compute diff and emit event
+            val (changedHops, changedTtl, changedAsn, changedAsnName, hopDelta) =
+                computeDiff(baseline.hops, result.hops)
+
+            val event = PathChangeEvent(
+                pathId                = result.pathId,
+                direction             = result.direction,
+                prevAsnPath           = baseline.asnPath,
+                newAsnPath            = newAsns,
+                primaryChangedAsn     = changedAsn,
+                primaryChangedAsnName = changedAsnName,
+                changedHopTtl         = changedTtl,
+                hopDeltaMs            = hopDelta
             )
-            return DetectionResult(traceroute = heartbeat, pathChange = null)
+
+            val updated = result.copy(
+                isHeartbeat      = false,
+                isForcedRefresh  = forcedRefresh,
+                prevSnapshotId   = baseline.snapshotId,
+                changedHops      = changedHops,
+                primaryAsnChange = if (changedAsn != 0) changedAsn else null
+            )
+
+            // Update baseline to the new path; reset cycle counter
+            baselines[key] = Baseline(
+                asnPath    = newAsns,
+                ipPath     = newIps,
+                hops       = result.hops,
+                snapshotId = result.sessionId
+            )
+            return DetectionResult(traceroute = updated, pathChange = event, shouldPublish = true)
         }
 
-        // Path changed — compute diff and emit event
-        val (changedHops, changedTtl, changedAsn, changedAsnName, hopDelta) =
-            computeDiff(baseline.hops, result.hops)
+        // Same path
+        val newCycleCount = baseline.cycleCount + 1
+        val isPeriodicHeartbeat = (newCycleCount % heartbeatIntervalCycles == 0)
+        val publish = isPeriodicHeartbeat || forcedRefresh
 
-        val event = PathChangeEvent(
-            pathId              = result.pathId,
-            direction           = result.direction,
-            prevAsnPath         = baseline.asnPath,
-            newAsnPath          = newAsns,
-            primaryChangedAsn   = changedAsn,
-            primaryChangedAsnName = changedAsnName,
-            changedHopTtl       = changedTtl,
-            hopDeltaMs          = hopDelta
+        val heartbeat = result.copy(
+            isHeartbeat     = true,
+            isForcedRefresh = forcedRefresh,
+            prevSnapshotId  = baseline.snapshotId
         )
-
-        val updated = result.copy(
-            isHeartbeat      = false,
-            prevSnapshotId   = baseline.snapshotId,
-            changedHops      = changedHops,
-            primaryAsnChange = if (changedAsn != 0) changedAsn else null
+        baselines[key] = baseline.copy(
+            cycleCount           = if (publish) 0 else newCycleCount,
+            forcedRefreshPending = false
         )
+        return DetectionResult(traceroute = heartbeat, pathChange = null, shouldPublish = publish)
+    }
 
-        // Update baseline to the new path
-        baselines[key] = Baseline(
-            asnPath    = newAsns,
-            ipPath     = newIps,
-            hops       = result.hops,
-            snapshotId = result.sessionId
-        )
-
-        return DetectionResult(traceroute = updated, pathChange = event)
+    /**
+     * Schedule a forced refresh for the given (pathId, direction) pair.
+     * The next [detect] call for this key will set [TracerouteResult.isForcedRefresh]=true
+     * and [DetectionResult.shouldPublish]=true regardless of whether the path changed.
+     */
+    fun forceNextRefresh(pathId: UUID, direction: Direction) {
+        val key = PathDirectionKey(pathId, direction)
+        baselines.computeIfPresent(key) { _, b -> b.copy(forcedRefreshPending = true) }
     }
 
     /** Clear baseline for testing / reset. */

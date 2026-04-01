@@ -11,6 +11,21 @@ import kotlinx.serialization.Serializable
 @Serializable enum class PublishStatus { OK, DEGRADED, FAILING }
 @Serializable enum class ConnectionMethod { BOOTSTRAP_TOKEN, API_KEY }
 
+/**
+ * Probe mode classification — whether ICMP and/or TCP measurements succeeded (R2).
+ * Used to distinguish "ICMP filtered (TCP healthy)" from true packet loss.
+ */
+@Serializable enum class ProbeMode {
+    /** Both ICMP and TCP measurements succeeded — full data. */
+    ICMP_AND_TCP,
+    /** ICMP blocked, TCP succeeded — path is up, ICMP filtered by firewall. */
+    TCP_ONLY,
+    /** ICMP succeeded, TCP failed — unusual but possible (port blocked). */
+    ICMP_ONLY,
+    /** Neither ICMP nor TCP succeeded — target may be down. */
+    BOTH_FAILED
+}
+
 /** Clock synchronization quality reported by the virtual clock estimator (R2). */
 @Serializable enum class ClockSyncStatus {
     /** Both sender and reflector are NTP-synced — raw T2-T1 / T4-T3 used. */
