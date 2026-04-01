@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    configure)
+        getent group  slogr >/dev/null || addgroup --system slogr
+        getent passwd slogr >/dev/null || \
+            adduser --system --ingroup slogr --home /opt/slogr \
+                    --no-create-home --shell /usr/sbin/nologin slogr
+        chown -R slogr:slogr /opt/slogr
+        chmod 600 /etc/slogr/env 2>/dev/null || true
+        systemctl daemon-reload
+        systemctl enable slogr-agent
+        ;;
+esac

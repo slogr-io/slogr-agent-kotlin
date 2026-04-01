@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Slogr Agent — single-instance deployment with auto-recovery"
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t3.micro, t3.small, t3.medium, c5.large]
+
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet to launch the agent in
+
+  SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: >
+      Security group. Must allow outbound 5671/tcp (RabbitMQ TLS),
+      443/tcp (GCP Pub/Sub), and 862/udp (TWAMP test sessions).
+
+  KeyName:
+    Type: String
+    Default: ""
+    Description: EC2 key pair name (leave empty for no SSH access)
+
+  BootstrapToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: Slogr bootstrap token (SLOGR_BOOTSTRAP_TOKEN)
+
+Conditions:
+  HasKeyName: !Not [!Equals [!Ref KeyName, ""]]
+
+Resources:
+
+  AgentRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "slogr-agent-${AWS::StackName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        # SSM Session Manager access (no bastion needed)
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies:
+        - PolicyName: SlogrAgentPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParameter]
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/slogr/*"
+
+  AgentInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref AgentRole]
+
+  AgentInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      # AMI ID resolved at deploy time from SSM parameter updated by release CI (ADR-005)
+      ImageId: !Sub "{{resolve:ssm:/slogr/agent/latest-ami-id}}"
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds: [!Ref SecurityGroupId]
+      KeyName: !If [HasKeyName, !Ref KeyName, !Ref "AWS::NoValue"]
+      IamInstanceProfile: !Ref AgentInstanceProfile
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # Write bootstrap token to env file (readable only by slogr user)
+          echo "SLOGR_BOOTSTRAP_TOKEN=${BootstrapToken}" >> /etc/slogr/env
+          chmod 600 /etc/slogr/env
+          systemctl start slogr-agent
+      Tags:
+        - Key: Name
+          Value: !Sub "slogr-agent-${AWS::StackName}"
+        - Key: "slogr:managed"
+          Value: "true"
+
+  AgentRecoveryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub "slogr-agent-${AWS::StackName}-recovery"
+      MetricName: StatusCheckFailed_System
+      Namespace: AWS/EC2
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Sub "arn:aws:automate:${AWS::Region}:ec2:recover"
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref AgentInstance
+
+Outputs:
+  InstanceId:
+    Value: !Ref AgentInstance
+    Export:
+      Name: !Sub "${AWS::StackName}-InstanceId"

@@ -1,0 +1,33 @@
+[versions]
+kotlin          = "2.1.0"
+coroutines      = "1.9.0"
+serialization   = "1.8.0"
+datetime        = "0.6.1"
+rabbitmq        = "5.25.0"
+pubsub          = "1.138.0"
+maxmind         = "4.3.0"
+otel            = "1.46.0"
+clikt           = "5.0.3"
+logback         = "1.5.18"
+junit           = "5.12.0"
+junit-platform  = "1.12.0"
+mockk           = "1.14.0"
+testcontainers  = "1.20.6"
+
+[libraries]
+kotlinx-coroutines          = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",        version.ref = "coroutines" }
+kotlinx-coroutines-test     = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test",         version.ref = "coroutines" }
+kotlinx-serialization-json  = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json",      version.ref = "serialization" }
+kotlinx-datetime            = { module = "org.jetbrains.kotlinx:kotlinx-datetime",                version.ref = "datetime" }
+rabbitmq-client             = { module = "com.rabbitmq:amqp-client",                              version.ref = "rabbitmq" }
+gcp-pubsub                  = { module = "com.google.cloud:google-cloud-pubsub",                  version.ref = "pubsub" }
+maxmind-geoip2              = { module = "com.maxmind.geoip2:geoip2",                             version.ref = "maxmind" }
+otel-exporter-otlp          = { module = "io.opentelemetry:opentelemetry-exporter-otlp",          version.ref = "otel" }
+otel-sdk                    = { module = "io.opentelemetry:opentelemetry-sdk",                    version.ref = "otel" }
+clikt                       = { module = "com.github.ajalt.clikt:clikt",                          version.ref = "clikt" }
+logback                     = { module = "ch.qos.logback:logback-classic",                        version.ref = "logback" }
+junit-jupiter               = { module = "org.junit.jupiter:junit-jupiter",                        version.ref = "junit" }
+junit-platform-launcher     = { module = "org.junit.platform:junit-platform-launcher",             version.ref = "junit-platform" }
+mockk                       = { module = "io.mockk:mockk",                                        version.ref = "mockk" }
+testcontainers-rabbitmq     = { module = "org.testcontainers:rabbitmq",                           version.ref = "testcontainers" }
+testcontainers-junit        = { module = "org.testcontainers:junit-jupiter",                      version.ref = "testcontainers" }

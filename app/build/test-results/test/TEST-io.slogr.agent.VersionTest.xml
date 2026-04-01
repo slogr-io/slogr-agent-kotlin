@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.VersionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:38" hostname="DESKTOP-09GV4AV" time="1.099">
+  <properties/>
+  <testcase name="version command prints version string containing 1_0_0()" classname="io.slogr.agent.VersionTest" time="1.053"/>
+  <testcase name="version command returns exit code 0()" classname="io.slogr.agent.VersionTest" time="0.011"/>
+  <testcase name="version command prints slogr-agent prefix()" classname="io.slogr.agent.VersionTest" time="0.011"/>
+  <testcase name="unknown command returns exit code 2()" classname="io.slogr.agent.VersionTest" time="0.019"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[Usage error
+]]></system-err>
+</testsuite>

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.engine.asn.MaxMindAsnResolverTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.157">
+  <properties/>
+  <testcase name="isAvailable returns false when MMDB file does not exist()" classname="io.slogr.agent.engine.asn.MaxMindAsnResolverTest" time="0.009"/>
+  <testcase name="resolve returns null for private IPs even when DB unavailable()" classname="io.slogr.agent.engine.asn.MaxMindAsnResolverTest" time="0.135"/>
+  <testcase name="resolve returns null when MMDB file does not exist()" classname="io.slogr.agent.engine.asn.MaxMindAsnResolverTest" time="0.01"/>
+  <system-out><![CDATA[21:14:19.024 [Test worker] WARN io.slogr.agent.engine.asn.MaxMindAsnResolver -- ASN database not found at C:\nonexistent\GeoLite2-ASN.mmdb. Traceroute will show IPs only. Run 'slogr-agent setup-asn' to enable ASN enrichment.
+21:14:19.140 [Test worker @kotlinx.coroutines.test runner#14] WARN io.slogr.agent.engine.asn.MaxMindAsnResolver -- ASN database not found at C:\nonexistent\GeoLite2-ASN.mmdb. Traceroute will show IPs only. Run 'slogr-agent setup-asn' to enable ASN enrichment.
+21:14:19.172 [Test worker @kotlinx.coroutines.test runner#16] WARN io.slogr.agent.engine.asn.MaxMindAsnResolver -- ASN database not found at C:\nonexistent\GeoLite2-ASN.mmdb. Traceroute will show IPs only. Run 'slogr-agent setup-asn' to enable ASN enrichment.
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.engine.probe.TcpConnectProbeTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.069">
+  <properties/>
+  <testcase name="falls back to second port when first is refused()" classname="io.slogr.agent.engine.probe.TcpConnectProbeTest" time="0.028"/>
+  <testcase name="default ports list is 443 then 80()" classname="io.slogr.agent.engine.probe.TcpConnectProbeTest" time="0.005"/>
+  <testcase name="connects to a listening port and returns non-negative latency()" classname="io.slogr.agent.engine.probe.TcpConnectProbeTest" time="0.009"/>
+  <testcase name="all ports refused returns skipped()" classname="io.slogr.agent.engine.probe.TcpConnectProbeTest" time="0.022"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

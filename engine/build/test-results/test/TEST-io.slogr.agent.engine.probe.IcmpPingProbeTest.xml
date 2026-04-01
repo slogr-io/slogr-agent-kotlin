@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.engine.probe.IcmpPingProbeTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.09">
+  <properties/>
+  <testcase name="all probes timeout - 100 percent loss and null RTT stats()" classname="io.slogr.agent.engine.probe.IcmpPingProbeTest" time="0.028"/>
+  <testcase name="all probes respond - stats computed correctly()" classname="io.slogr.agent.engine.probe.IcmpPingProbeTest" time="0.015"/>
+  <testcase name="2 of 4 probes timeout - 50 percent loss()" classname="io.slogr.agent.engine.probe.IcmpPingProbeTest" time="0.012"/>
+  <testcase name="probe uses TTL 64 not a traceroute TTL()" classname="io.slogr.agent.engine.probe.IcmpPingProbeTest" time="0.032"/>
+  <system-out><![CDATA[21:14:19.238 [Test worker @coroutine#19] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for NativeProbeAdapter name=#31
+21:14:19.241 [Test worker @coroutine#19] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #31#32
+21:14:19.249 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.252 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.252 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.253 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.253 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.263 [Test worker @coroutine#20] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for NativeProbeAdapter name=#33
+21:14:19.268 [Test worker @coroutine#20] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #33#34
+21:14:19.272 [DefaultDispatcher-worker-1 @coroutine#20] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=127.0.0.1, rttMs=10.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#33).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.272 [DefaultDispatcher-worker-1 @coroutine#20] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=127.0.0.1, rttMs=20.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#33).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.272 [DefaultDispatcher-worker-1 @coroutine#20] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=127.0.0.1, rttMs=30.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#33).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.277 [Test worker @coroutine#21] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for NativeProbeAdapter name=#35
+21:14:19.281 [Test worker @coroutine#21] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #35#36
+21:14:19.283 [DefaultDispatcher-worker-1 @coroutine#21] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=1.2.3.4, rttMs=15.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#35).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.284 [DefaultDispatcher-worker-1 @coroutine#21] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#35).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.284 [DefaultDispatcher-worker-1 @coroutine#21] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=1.2.3.4, rttMs=15.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#35).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.285 [DefaultDispatcher-worker-1 @coroutine#21] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#35).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.292 [Test worker @coroutine#22] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for NativeProbeAdapter name=#37
+21:14:19.294 [Test worker @coroutine#22] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #37#38
+21:14:19.295 [DefaultDispatcher-worker-1 @coroutine#22] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#37).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.308 [Test worker @coroutine#22] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #37#39
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

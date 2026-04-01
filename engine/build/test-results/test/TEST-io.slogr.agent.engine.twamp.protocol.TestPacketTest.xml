@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.engine.twamp.protocol.TestPacketTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:29" hostname="DESKTOP-09GV4AV" time="0.036">
+  <properties/>
+  <testcase name="ReflectorUPacket round-trip unauthenticated()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.001"/>
+  <testcase name="ReflectorUPacket with padding round-trip()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.001"/>
+  <testcase name="SenderUPacket round-trip no padding()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.001"/>
+  <testcase name="ReflectorUPacket senderTtl preserved at 255()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.002"/>
+  <testcase name="BUG-A - ReflectorUPacket mbz2 consumed independently of mbz1()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.001"/>
+  <testcase name="SenderUPacket seqNumber wraps at max int()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.001"/>
+  <testcase name="SenderUPacket round-trip with padding()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.001"/>
+  <testcase name="ReflectorUPacket BASE_SIZE is 41()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.002"/>
+  <testcase name="SenderUPacket BASE_SIZE is 14()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.003"/>
+  <testcase name="SenderEncryptUPacket BASE_SIZE is 48()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.001"/>
+  <testcase name="SenderUPacket timestamp is captured at write time()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.001"/>
+  <testcase name="ReflectorEncryptUPacket BASE_SIZE is 112()" classname="io.slogr.agent.engine.twamp.protocol.TestPacketTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

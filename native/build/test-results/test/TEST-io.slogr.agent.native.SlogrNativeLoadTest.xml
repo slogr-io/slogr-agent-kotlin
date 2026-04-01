@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.native.SlogrNativeLoadTest" tests="2" skipped="2" failures="0" errors="0" timestamp="2026-03-31T14:45:27" hostname="DESKTOP-09GV4AV" time="0.0">
+  <properties/>
+  <testcase name="requireLoaded does not throw when library is present()" classname="io.slogr.agent.native.SlogrNativeLoadTest" time="0.0">
+    <skipped/>
+  </testcase>
+  <testcase name="SlogrNative loads without error on Linux()" classname="io.slogr.agent.native.SlogrNativeLoadTest" time="0.0">
+    <skipped/>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

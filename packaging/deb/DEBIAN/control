@@ -1,0 +1,12 @@
+Package: slogr-agent
+Version: 1.0.0
+Architecture: amd64
+Maintainer: Slogr Engineering <eng@slogr.io>
+Depends: java-21-amazon-corretto-headless | openjdk-21-jre-headless
+Section: net
+Priority: optional
+Homepage: https://slogr.io
+Description: Slogr Network Measurement Agent
+ TWAMP-based active network measurement agent for the Slogr monitoring
+ platform. Measures RTT, jitter, packet loss, and path topology using
+ RFC 5357 TWAMP (Two-Way Active Measurement Protocol).

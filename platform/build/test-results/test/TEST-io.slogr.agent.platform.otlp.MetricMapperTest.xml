@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.platform.otlp.MetricMapperTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:13:31" hostname="DESKTOP-09GV4AV" time="0.099">
+  <properties/>
+  <testcase name="locked TWAMP metric names follow slogr-network prefix()" classname="io.slogr.agent.platform.otlp.MetricMapperTest" time="0.085"/>
+  <testcase name="grade values are GREEN=0 YELLOW=1 RED=2()" classname="io.slogr.agent.platform.otlp.MetricMapperTest" time="0.002"/>
+  <testcase name="TWAMP recording does not throw and records multiple metrics()" classname="io.slogr.agent.platform.otlp.MetricMapperTest" time="0.002"/>
+  <testcase name="fallback recording does not throw()" classname="io.slogr.agent.platform.otlp.MetricMapperTest" time="0.002"/>
+  <testcase name="fallback metrics use slogr-network prefix()" classname="io.slogr.agent.platform.otlp.MetricMapperTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

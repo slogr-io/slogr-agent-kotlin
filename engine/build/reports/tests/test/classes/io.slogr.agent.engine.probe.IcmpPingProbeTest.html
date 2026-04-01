@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta http-equiv="x-ua-compatible" content="IE=edge"/>
+<title>Test results - IcmpPingProbeTest</title>
+<link href="../css/base-style.css" rel="stylesheet" type="text/css"/>
+<link href="../css/style.css" rel="stylesheet" type="text/css"/>
+<script src="../js/report.js" type="text/javascript"></script>
+</head>
+<body>
+<div id="content">
+<h1>IcmpPingProbeTest</h1>
+<div class="breadcrumbs">
+<a href="../index.html">all</a> &gt; 
+<a href="../packages/io.slogr.agent.engine.probe.html">io.slogr.agent.engine.probe</a> &gt; IcmpPingProbeTest</div>
+<div id="summary">
+<table>
+<tr>
+<td>
+<div class="summaryGroup">
+<table>
+<tr>
+<td>
+<div class="infoBox" id="tests">
+<div class="counter">4</div>
+<p>tests</p>
+</div>
+</td>
+<td>
+<div class="infoBox" id="failures">
+<div class="counter">0</div>
+<p>failures</p>
+</div>
+</td>
+<td>
+<div class="infoBox" id="ignored">
+<div class="counter">0</div>
+<p>ignored</p>
+</div>
+</td>
+<td>
+<div class="infoBox" id="duration">
+<div class="counter">0.087s</div>
+<p>duration</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</td>
+<td>
+<div class="infoBox success" id="successRate">
+<div class="percent">100%</div>
+<p>successful</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div id="tabs">
+<ul class="tabLinks">
+<li>
+<a href="#tab0">Tests</a>
+</li>
+<li>
+<a href="#tab1">Standard output</a>
+</li>
+</ul>
+<div id="tab0" class="tab">
+<h2>Tests</h2>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Duration</th>
+<th>Result</th>
+</tr>
+</thead>
+<tr>
+<td class="success">2 of 4 probes timeout - 50 percent loss()</td>
+<td class="success">0.012s</td>
+<td class="success">passed</td>
+</tr>
+<tr>
+<td class="success">all probes respond - stats computed correctly()</td>
+<td class="success">0.015s</td>
+<td class="success">passed</td>
+</tr>
+<tr>
+<td class="success">all probes timeout - 100 percent loss and null RTT stats()</td>
+<td class="success">0.028s</td>
+<td class="success">passed</td>
+</tr>
+<tr>
+<td class="success">probe uses TTL 64 not a traceroute TTL()</td>
+<td class="success">0.032s</td>
+<td class="success">passed</td>
+</tr>
+</table>
+</div>
+<div id="tab1" class="tab">
+<h2>Standard output</h2>
+<span class="code">
+<pre>21:14:19.238 [Test worker @coroutine#19] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for NativeProbeAdapter name=#31
+21:14:19.241 [Test worker @coroutine#19] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #31#32
+21:14:19.249 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.252 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.252 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.253 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.253 [DefaultDispatcher-worker-1 @coroutine#19] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#31).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.263 [Test worker @coroutine#20] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for NativeProbeAdapter name=#33
+21:14:19.268 [Test worker @coroutine#20] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #33#34
+21:14:19.272 [DefaultDispatcher-worker-1 @coroutine#20] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=127.0.0.1, rttMs=10.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#33).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.272 [DefaultDispatcher-worker-1 @coroutine#20] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=127.0.0.1, rttMs=20.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#33).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.272 [DefaultDispatcher-worker-1 @coroutine#20] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=127.0.0.1, rttMs=30.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#33).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.277 [Test worker @coroutine#21] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for NativeProbeAdapter name=#35
+21:14:19.281 [Test worker @coroutine#21] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #35#36
+21:14:19.283 [DefaultDispatcher-worker-1 @coroutine#21] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=1.2.3.4, rttMs=15.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#35).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.284 [DefaultDispatcher-worker-1 @coroutine#21] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#35).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.284 [DefaultDispatcher-worker-1 @coroutine#21] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=1.2.3.4, rttMs=15.0, reached=true, icmpType=0, icmpCode=0) on NativeProbeAdapter(#35).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.285 [DefaultDispatcher-worker-1 @coroutine#21] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#35).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.292 [Test worker @coroutine#22] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for NativeProbeAdapter name=#37
+21:14:19.294 [Test worker @coroutine#22] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #37#38
+21:14:19.295 [DefaultDispatcher-worker-1 @coroutine#22] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering ProbeResult(hopIp=null, rttMs=null, reached=false, icmpType=null, icmpCode=null) on NativeProbeAdapter(#37).icmpProbe(localhost/127.0.0.1, 64, 2000)
+21:14:19.308 [Test worker @coroutine#22] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for ProbeResult name=child of #37#39
+</pre>
+</span>
+</div>
+</div>
+<div id="footer">
+<p>
+<div>
+<label class="hidden" id="label-for-line-wrapping-toggle" for="line-wrapping-toggle">Wrap lines
+<input id="line-wrapping-toggle" type="checkbox" autocomplete="off"/>
+</label>
+</div>Generated by 
+<a href="http://www.gradle.org">Gradle 8.12</a> at Mar 31, 2026, 9:14:29 PM</p>
+</div>
+</div>
+</body>
+</html>

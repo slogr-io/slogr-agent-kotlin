@@ -1,0 +1,42 @@
+[Unit]
+Description=Slogr Network Measurement Agent
+Documentation=https://docs.slogr.io/agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=slogr
+Group=slogr
+EnvironmentFile=-/etc/slogr/env
+ExecStart=/usr/bin/slogr-agent daemon
+ExecStop=/bin/kill -SIGTERM $MAINPID
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=45
+
+# JVM heap and paths
+Environment=JAVA_OPTS=-Xmx384m
+Environment=SLOGR_DATA_DIR=/opt/slogr/data
+Environment=SLOGR_NATIVE_DIR=/opt/slogr/lib
+
+# Required capabilities:
+#   CAP_NET_RAW         — TWAMP raw socket (ICMP for traceroute)
+#   CAP_NET_BIND_SERVICE — bind port 862 as non-root
+AmbientCapabilities=CAP_NET_RAW CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_BIND_SERVICE
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=full
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/opt/slogr/data /opt/slogr/logs
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=slogr-agent
+
+[Install]
+WantedBy=multi-user.target

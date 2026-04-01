@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.platform.registration.RegistrationTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:13:32" hostname="DESKTOP-09GV4AV" time="6.503">
+  <properties/>
+  <testcase name="parseCredential handles optional gcp_service_account_key()" classname="io.slogr.agent.platform.registration.RegistrationTest" time="0.018"/>
+  <testcase name="bootstrap registration stores credential()" classname="io.slogr.agent.platform.registration.RegistrationTest" time="2.353"/>
+  <testcase name="interactive registration stores credential with API_KEY method()" classname="io.slogr.agent.platform.registration.RegistrationTest" time="2.067"/>
+  <testcase name="bootstrap registration fails on non-2xx response()" classname="io.slogr.agent.platform.registration.RegistrationTest" time="2.044"/>
+  <testcase name="parseCredential without gcp key leaves field null()" classname="io.slogr.agent.platform.registration.RegistrationTest" time="0.015"/>
+  <system-out><![CDATA[21:13:32.219 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#113
+21:13:32.240 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#114
+21:13:32.308 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for Unit name=child of #114#115
+21:13:32.317 [Test worker @coroutine#312] INFO io.slogr.agent.platform.registration.BootstrapRegistrar -- Bootstrap registration starting...
+21:13:34.565 [Test worker @coroutine#312] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on CredentialStore(#114).store(AgentCredential(agentId=9bc77953-06e5-4c40-8a34-122f5d79b487, tenantId=98813c9f-451d-4c20-914f-0d567573d9ff, displayName=test-agent, jwt=eyJ.test.jwt, rabbitmqJwt=eyJ.rmq.jwt, rabbitmqHost=mq.slogr.io, rabbitmqPort=5671, pubsubSubscription=slogr.agent-commands.9bc77953-06e5-4c40-8a34-122f5d79b487, issuedAt=2026-03-31T16:13:34.564160800Z, connectedVia=BOOTSTRAP_TOKEN, gcpServiceAccountKey=null))
+21:13:34.567 [Test worker @coroutine#312] INFO io.slogr.agent.platform.registration.BootstrapRegistrar -- Bootstrap registration complete. Agent ID: 9bc77953-06e5-4c40-8a34-122f5d79b487, Display: test-agent
+21:13:34.590 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#116
+21:13:34.593 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for Unit name=child of #116#117
+21:13:34.606 [Test worker @coroutine#316] INFO io.slogr.agent.platform.registration.InteractiveRegistrar -- Interactive registration starting...
+21:13:36.646 [Test worker @coroutine#316] DEBUG io.mockk.impl.recording.states.AnsweringState -- Answering kotlin.Unit on CredentialStore(#116).store(AgentCredential(agentId=4bdd5f67-e19e-4eb3-822d-e28fe3939f08, tenantId=bc33d974-a577-4892-8dcb-a6437e978327, displayName=test-agent, jwt=eyJ.test.jwt, rabbitmqJwt=eyJ.rmq.jwt, rabbitmqHost=mq.slogr.io, rabbitmqPort=5671, pubsubSubscription=slogr.agent-commands.4bdd5f67-e19e-4eb3-822d-e28fe3939f08, issuedAt=2026-03-31T16:13:36.645412700Z, connectedVia=API_KEY, gcpServiceAccountKey=null))
+21:13:36.646 [Test worker @coroutine#316] INFO io.slogr.agent.platform.registration.InteractiveRegistrar -- Interactive registration complete. Agent ID: 4bdd5f67-e19e-4eb3-822d-e28fe3939f08, Display: test-agent
+21:13:36.665 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#118
+21:13:36.672 [Test worker @coroutine#320] INFO io.slogr.agent.platform.registration.BootstrapRegistrar -- Bootstrap registration starting...
+21:13:38.703 [Test worker] DEBUG io.mockk.impl.instantiation.AbstractMockFactory -- Creating mockk for CredentialStore name=#119
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

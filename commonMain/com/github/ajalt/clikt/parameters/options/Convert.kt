@@ -1,0 +1,180 @@
+@file:JvmMultifileClass
+@file:JvmName("OptionWithValuesKt")
+
+package com.github.ajalt.clikt.parameters.options
+
+import com.github.ajalt.clikt.completion.CompletionCandidates
+import com.github.ajalt.clikt.core.BadParameterValue
+import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.UsageError
+import kotlin.jvm.JvmMultifileClass
+import kotlin.jvm.JvmName
+
+
+/**
+ * Convert the option's value type.
+ *
+ * The [conversion] is called once for each value in each invocation of the option. If any errors
+ * are thrown, they are caught and a [BadParameterValue] is thrown with the error message. You can
+ * call [fail][OptionTransformContext.fail] to throw a [BadParameterValue] manually.
+ *
+ * You can call `convert` more than once to wrap the result of the previous `convert`, but it cannot
+ * be called after [transformAll] (e.g. [multiple]) or [transformValues] (e.g. [pair]).
+ *
+ * ## Example
+ *
+ * ```
+ * val bd: BigDecimal? by option().convert { it.toBigDecimal() }
+ * val fileText: ByteArray? by option().file().convert { it.readBytes() }
+ * ```
+ *
+ * @param metavar The metavar for the type. Overridden by a metavar passed to [option].
+ * @param completionCandidates candidates to use when completing this option in shell autocomplete,
+ *   if no candidates are specified in [option]
+ */
+inline fun <InT : Any, ValueT : Any> NullableOption<InT, InT>.convert(
+    metavar: String,
+    completionCandidates: CompletionCandidates? = null,
+    crossinline conversion: ValueConverter<InT, ValueT>,
+): NullableOption<ValueT, ValueT> {
+    return convert({ metavar }, completionCandidates, conversion)
+}
+
+/**
+ * Convert the option's value type.
+ *
+ * The [conversion] is called once for each value in each invocation of the option. If any errors
+ * are thrown, they are caught and a [BadParameterValue] is thrown with the error message. You can
+ * call [fail][OptionTransformContext.fail] to throw a [BadParameterValue] manually.
+ *
+ * You can call `convert` more than once to wrap the result of the previous `convert`, but it cannot
+ * be called after [transformAll] (e.g. [multiple]) or [transformValues] (e.g. [pair]).
+ *
+ * ## Example
+ *
+ * ```
+ * val bd: BigDecimal? by option().convert { it.toBigDecimal() }
+ * val fileText: ByteArray? by option().file().convert { it.readBytes() }
+ * ```
+ *
+ * @param metavar A lambda returning the metavar for the type. The lambda has a [Context] receiver
+ *   for access to localization. Overridden by a metavar passed to [option].
+ * @param completionCandidates candidates to use when completing this option in shell autocomplete,
+ *   if no candidates are specified in [option]
+ */
+inline fun <InT : Any, ValueT : Any> NullableOption<InT, InT>.convert(
+    noinline metavar: Context.() -> String = { localization.defaultMetavar() },
+    completionCandidates: CompletionCandidates? = null,
+    crossinline conversion: ValueConverter<InT, ValueT>,
+): NullableOption<ValueT, ValueT> {
+    val valueTransform: ValueTransformer<ValueT> = {
+        try {
+            conversion(transformValue(it))
+        } catch (err: UsageError) {
+            err.paramName =
+                err.paramName ?: name.takeUnless { n -> n.isEmpty() } ?: option.longestName()
+            throw err
+        } catch (err: Exception) {
+            fail(err.message ?: "")
+        }
+    }
+
+    return copy(
+        valueTransform, defaultEachProcessor(), defaultAllProcessor(), defaultValidator(),
+        metavarGetter = metavarGetter ?: metavar,
+        completionCandidates = explicitCompletionCandidates ?: completionCandidates
+    )
+}
+
+
+/**
+ * Change to option to take any number of values, separated by matched of a [regex].
+ *
+ * This must be called after converting the value type, and before other transforms.
+ *
+ * ### Example:
+ *
+ * ```
+ * val opt: List<Int>? by option().int().split(Regex(","))
+ * ```
+ *
+ * Which can be called like this:
+ *
+ * `./program --opt 1,2,3`
+ *
+ * @param limit Non-negative value specifying the maximum number of substrings to return.
+ * Zero by default means no limit is set.
+ */
+fun <EachT : Any, ValueT> NullableOption<EachT, ValueT>.split(regex: Regex, limit: Int = 0)
+        : OptionWithValues<List<ValueT>?, List<ValueT>, ValueT> {
+    return copy(
+        transformValue = transformValue,
+        transformEach = { it },
+        transformAll = defaultAllProcessor(),
+        validator = defaultValidator(),
+        nvalues = 1..1,
+        valueSplit = { it.split(regex, limit) }
+    )
+}
+
+/**
+ * Change to option to take any number of values, separated by the [delimiters].
+ *
+ * This must be called after converting the value type, and before other transforms.
+ *
+ * ### Example:
+ *
+ * ```
+ * val opt: List<Int>? by option().int().split(",")
+ * ```
+ *
+ * Which can be called like this:
+ *
+ * `./program --opt 1,2,3`
+ *
+ * @param delimiters One or more strings to be used as delimiters.
+ * @param ignoreCase `true` to ignore character case when matching a delimiter. By default `false`.
+ * @param limit The maximum number of substrings to return. Zero by default means no limit is set.
+ */
+fun <EachT : Any, ValueT> NullableOption<EachT, ValueT>.split(
+    vararg delimiters: String,
+    ignoreCase: Boolean = false,
+    limit: Int = 0,
+): OptionWithValues<List<ValueT>?, List<ValueT>, ValueT> {
+    return copy(
+        transformValue = transformValue,
+        transformEach = { it },
+        transformAll = defaultAllProcessor(),
+        validator = defaultValidator(),
+        nvalues = 1..1,
+        valueSplit = { it.split(*delimiters, ignoreCase = ignoreCase, limit = limit) }
+    )
+}
+
+
+/**
+ * Split this option's value into two with a [delimiter].
+ *
+ * If the delimiter is not present in the value, the [second][Pair.second] part of the pair will be
+ * an empty string. You can use [validate] to reject these values.
+ *
+ * You cannot call [convert] before this function, but you can call it after.
+ *
+ * ### Example:
+ *
+ * ```
+ * val opt: option("-o").splitPair()
+ * ```
+ *
+ * Which can be called like this:
+ *
+ * `./program -o key=value`
+ */
+fun RawOption.splitPair(delimiter: String = "="): NullableOption<Pair<String, String>, Pair<String, String>> {
+    return convert {
+        it.substringBefore(delimiter) to it.substringAfter(
+            delimiter,
+            missingDelimiterValue = ""
+        )
+    }
+}

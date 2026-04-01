@@ -1,0 +1,307 @@
+name: Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to package (e.g. 1.0.0)'
+        required: true
+
+env:
+  VERSION: ${{ github.event.inputs.version || github.ref_name }}
+
+jobs:
+
+  # ── Build shadow JAR ────────────────────────────────────────────────────────
+  build-jar:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/libs.versions.toml') }}
+
+      - name: Resolve version
+        id: ver
+        run: |
+          V="${{ env.VERSION }}"
+          V="${V#v}"   # strip leading 'v' if present
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Build shadow JAR
+        working-directory: agent-kotlin
+        run: ./gradlew :app:shadowJar -Pversion=${{ steps.ver.outputs.version }} --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slogr-agent-jar
+          path: agent-kotlin/app/build/libs/slogr-agent-all.jar
+          retention-days: 7
+
+  # ── Build native libraries (all three targets) ──────────────────────────────
+  build-native:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: linux-amd64
+            cc: gcc
+          - target: linux-amd64-musl
+            cc: musl-gcc
+            musl: "1"
+          - target: linux-arm64
+            cc: aarch64-linux-gnu-gcc
+            arm64: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'corretto'
+
+      - name: Install musl toolchain
+        if: matrix.musl == '1'
+        run: sudo apt-get install -y musl-tools
+
+      - name: Install arm64 cross-compiler
+        if: matrix.arm64 == '1'
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build native library
+        working-directory: agent-kotlin/native
+        run: |
+          make CC=${{ matrix.cc }} TARGET=${{ matrix.target }} ${{ matrix.musl == '1' && 'MUSL=1' || '' }}
+          ls -la build/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.target }}
+          path: agent-kotlin/native/build/libslogr-native-${{ matrix.target }}.so
+          retention-days: 7
+
+  # ── Docker multi-arch image ─────────────────────────────────────────────────
+  build-docker:
+    needs: [build-jar, build-native]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: slogr-agent-jar
+          path: agent-kotlin/app/build/libs/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-linux-amd64
+          path: agent-kotlin/native/build/libs/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-linux-amd64-musl
+          path: agent-kotlin/native/build/libs/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-linux-arm64
+          path: agent-kotlin/native/build/libs/
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v5
+        with:
+          context: agent-kotlin
+          file: agent-kotlin/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            slogr/agent:${{ needs.build-jar.outputs.version }}
+            slogr/agent:latest
+          build-args: |
+            VERSION=${{ needs.build-jar.outputs.version }}
+
+      - name: Smoke test Docker image
+        run: |
+          docker run --rm slogr/agent:${{ needs.build-jar.outputs.version }} version | grep "${{ needs.build-jar.outputs.version }}"
+          docker run --rm slogr/agent:${{ needs.build-jar.outputs.version }} status
+
+  # ── RPM package ─────────────────────────────────────────────────────────────
+  build-rpm:
+    needs: [build-jar, build-native]
+    runs-on: ubuntu-latest
+    container: amazonlinux:2023
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install RPM build tools
+        run: yum install -y rpm-build rpmdevtools
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: slogr-agent-jar
+          path: /tmp/artifacts/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-linux-amd64
+          path: /tmp/artifacts/
+
+      - name: Set up RPM build tree
+        run: rpmdev-setuptree
+
+      - name: Copy artifacts to build dir
+        run: |
+          cp /tmp/artifacts/slogr-agent-all.jar ~/rpmbuild/SOURCES/
+          cp /tmp/artifacts/libslogr-native-linux-amd64.so ~/rpmbuild/SOURCES/libslogr-native.so
+          cp agent-kotlin/deploy/wrapper.sh ~/rpmbuild/SOURCES/
+          cp agent-kotlin/deploy/slogr-agent.service ~/rpmbuild/SOURCES/
+
+      - name: Build RPM
+        run: |
+          VERSION=${{ needs.build-jar.outputs.version }}
+          rpmbuild -bb \
+            --define "_topdir $HOME/rpmbuild" \
+            --define "version $VERSION" \
+            agent-kotlin/packaging/rpm/slogr-agent.spec
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slogr-agent-rpm
+          path: ~/rpmbuild/RPMS/x86_64/slogr-agent-*.rpm
+          retention-days: 30
+
+  # ── DEB package ─────────────────────────────────────────────────────────────
+  build-deb:
+    needs: [build-jar, build-native]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: slogr-agent-jar
+          path: /tmp/artifacts/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-linux-amd64
+          path: /tmp/artifacts/
+
+      - name: Assemble DEB staging tree
+        run: |
+          VERSION=${{ needs.build-jar.outputs.version }}
+          PKG=slogr-agent_${VERSION}_amd64
+          mkdir -p $PKG/opt/slogr/lib \
+                   $PKG/opt/slogr/data \
+                   $PKG/opt/slogr/logs \
+                   $PKG/usr/bin \
+                   $PKG/etc/systemd/system \
+                   $PKG/etc/slogr \
+                   $PKG/DEBIAN
+
+          cp /tmp/artifacts/slogr-agent-all.jar            $PKG/opt/slogr/
+          cp /tmp/artifacts/libslogr-native-linux-amd64.so $PKG/opt/slogr/lib/libslogr-native.so
+          cp agent-kotlin/deploy/wrapper.sh                 $PKG/usr/bin/slogr-agent
+          cp agent-kotlin/deploy/slogr-agent.service        $PKG/etc/systemd/system/
+          touch                                              $PKG/etc/slogr/env
+
+          cp agent-kotlin/packaging/deb/DEBIAN/control  $PKG/DEBIAN/control
+          cp agent-kotlin/packaging/deb/DEBIAN/postinst $PKG/DEBIAN/postinst
+          cp agent-kotlin/packaging/deb/DEBIAN/prerm    $PKG/DEBIAN/prerm
+
+          # Update version in control file
+          sed -i "s/^Version:.*/Version: $VERSION/" $PKG/DEBIAN/control
+
+          chmod 755 $PKG/usr/bin/slogr-agent
+          chmod 755 $PKG/DEBIAN/postinst
+          chmod 755 $PKG/DEBIAN/prerm
+
+          dpkg-deb --build $PKG
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slogr-agent-deb
+          path: slogr-agent_*.deb
+          retention-days: 30
+
+  # ── Packer AMI ──────────────────────────────────────────────────────────────
+  build-ami:
+    needs: [build-jar, build-native]
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: slogr-agent-jar
+          path: agent-kotlin/app/build/libs/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-linux-amd64
+          path: agent-kotlin/native/build/libs/
+
+      - name: Rename native lib
+        run: cp agent-kotlin/native/build/libs/libslogr-native-linux-amd64.so \
+                agent-kotlin/native/build/libs/libslogr-native.so
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PACKER_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-packer@v3
+        with:
+          version: "1.10.0"
+
+      - name: Build AMI
+        working-directory: agent-kotlin/deploy/packer
+        run: |
+          packer init ami.pkr.hcl
+          packer build -var "version=${{ needs.build-jar.outputs.version }}" ami.pkr.hcl
+
+      - name: Update SSM parameter with new AMI ID
+        run: |
+          AMI_ID=$(jq -r '.builds[0].artifact_id | split(":")[1]' agent-kotlin/deploy/packer/manifest.json)
+          aws ssm put-parameter \
+            --name "/slogr/agent/latest-ami-id" \
+            --value "$AMI_ID" \
+            --type String \
+            --overwrite
+          echo "Updated /slogr/agent/latest-ami-id -> $AMI_ID"
+
+  # ── Validate systemd unit ───────────────────────────────────────────────────
+  validate-systemd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate systemd unit syntax
+        run: systemd-analyze verify agent-kotlin/deploy/slogr-agent.service || true

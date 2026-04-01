@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.contracts.TracerouteResultSerializationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:17:17" hostname="DESKTOP-09GV4AV" time="0.05">
+  <properties/>
+  <testcase name="null ip hop round-trips as null()" classname="io.slogr.agent.contracts.TracerouteResultSerializationTest" time="0.008"/>
+  <testcase name="schemaVersion defaults to 1()" classname="io.slogr.agent.contracts.TracerouteResultSerializationTest" time="0.002"/>
+  <testcase name="TracerouteHop JSON contains hop_ prefixed column names()" classname="io.slogr.agent.contracts.TracerouteResultSerializationTest" time="0.005"/>
+  <testcase name="TracerouteResult round-trips through JSON()" classname="io.slogr.agent.contracts.TracerouteResultSerializationTest" time="0.006"/>
+  <testcase name="JSON contains all required ClickHouse traceroute_raw column names()" classname="io.slogr.agent.contracts.TracerouteResultSerializationTest" time="0.011"/>
+  <testcase name="changedHops defaults to empty list()" classname="io.slogr.agent.contracts.TracerouteResultSerializationTest" time="0.002"/>
+  <testcase name="isHeartbeat and isForcedRefresh default to false()" classname="io.slogr.agent.contracts.TracerouteResultSerializationTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

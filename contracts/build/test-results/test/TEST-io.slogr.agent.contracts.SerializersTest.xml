@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.contracts.SerializersTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:17:17" hostname="DESKTOP-09GV4AV" time="0.024">
+  <properties/>
+  <testcase name="InetAddressSerializer produces dotted-decimal string()" classname="io.slogr.agent.contracts.SerializersTest" time="0.003"/>
+  <testcase name="UuidSerializer produces canonical UUID string()" classname="io.slogr.agent.contracts.SerializersTest" time="0.002"/>
+  <testcase name="InetAddressSerializer round-trips IPv4()" classname="io.slogr.agent.contracts.SerializersTest" time="0.002"/>
+  <testcase name="UuidSerializer round-trips()" classname="io.slogr.agent.contracts.SerializersTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

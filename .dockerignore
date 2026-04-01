@@ -1,0 +1,11 @@
+.git/
+.github/
+*.md
+agent-cpp/
+agent-java/
+vault/
+**/build/
+**/.gradle/
+packaging/
+deploy/packer/
+deploy/cloudformation/

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.platform.scheduler.ScheduleStoreTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:13:38" hostname="DESKTOP-09GV4AV" time="0.054">
+  <properties/>
+  <testcase name="load returns null when file does not exist()" classname="io.slogr.agent.platform.scheduler.ScheduleStoreTest" time="0.01"/>
+  <testcase name="corrupt file returns null without throwing()" classname="io.slogr.agent.platform.scheduler.ScheduleStoreTest" time="0.015"/>
+  <testcase name="save and load round-trip preserves schedule()" classname="io.slogr.agent.platform.scheduler.ScheduleStoreTest" time="0.012"/>
+  <testcase name="clear removes schedule file()" classname="io.slogr.agent.platform.scheduler.ScheduleStoreTest" time="0.012"/>
+  <system-out><![CDATA[21:13:38.740 [Test worker] WARN io.slogr.agent.platform.scheduler.ScheduleStore -- schedule.json is corrupt, ignoring: Unexpected JSON token at offset 0: Expected start of the object '{', but had 't' instead at path: $
+JSON input: this is not valid json {{{{
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

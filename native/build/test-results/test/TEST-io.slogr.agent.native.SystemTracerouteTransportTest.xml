@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.native.SystemTracerouteTransportTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-03-31T14:45:28" hostname="DESKTOP-09GV4AV" time="0.082">
+  <properties/>
+  <testcase name="parses Linux traceroute hop 3 correctly()" classname="io.slogr.agent.native.SystemTracerouteTransportTest" time="0.037"/>
+  <testcase name="recvPacket always returns TIMEOUT()" classname="io.slogr.agent.native.SystemTracerouteTransportTest" time="0.005"/>
+  <testcase name="returns TIMEOUT for empty output()" classname="io.slogr.agent.native.SystemTracerouteTransportTest" time="0.004"/>
+  <testcase name="returns TIMEOUT when hop number not found()" classname="io.slogr.agent.native.SystemTracerouteTransportTest" time="0.001"/>
+  <testcase name="sendPacket always returns -1()" classname="io.slogr.agent.native.SystemTracerouteTransportTest" time="0.002"/>
+  <testcase name="createSocket always returns -1()" classname="io.slogr.agent.native.SystemTracerouteTransportTest" time="0.001"/>
+  <testcase name="parses Linux traceroute destination reached()" classname="io.slogr.agent.native.SystemTracerouteTransportTest" time="0.002"/>
+  <testcase name="returns TIMEOUT for asterisk-only Linux hop()" classname="io.slogr.agent.native.SystemTracerouteTransportTest" time="0.001"/>
+  <testcase name="parses Windows tracert hop 3 correctly()" classname="io.slogr.agent.native.SystemTracerouteTransportTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

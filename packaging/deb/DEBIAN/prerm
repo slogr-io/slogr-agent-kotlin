@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|purge)
+        systemctl stop    slogr-agent || true
+        systemctl disable slogr-agent || true
+        systemctl daemon-reload
+        ;;
+esac

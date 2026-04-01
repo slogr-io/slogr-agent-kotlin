@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.platform.buffer.WriteAheadLogTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:13:24" hostname="DESKTOP-09GV4AV" time="0.501">
+  <properties/>
+  <testcase name="sizeRows matches unacked count()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.254"/>
+  <testcase name="entries survive across WAL instances (restart simulation)()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.053"/>
+  <testcase name="compact removes acked entries from WAL file()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.028"/>
+  <testcase name="eviction keeps only most recent entries when maxRows exceeded()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.054"/>
+  <testcase name="appended entry appears in unackedEntries()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.013"/>
+  <testcase name="compact on empty WAL does not throw()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.011"/>
+  <testcase name="acked entry is removed from unackedEntries()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.016"/>
+  <testcase name="append returns unique IDs()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.015"/>
+  <testcase name="unackedEntries preserves insertion order()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.025"/>
+  <testcase name="acking one entry does not remove others()" classname="io.slogr.agent.platform.buffer.WriteAheadLogTest" time="0.019"/>
+  <system-out><![CDATA[21:13:24.450 [Test worker] DEBUG io.slogr.agent.platform.buffer.WriteAheadLog -- WAL compacted: 1 entries remaining
+21:13:24.490 [Test worker] DEBUG io.slogr.agent.platform.buffer.WriteAheadLog -- WAL compacted: 1 entries remaining
+21:13:24.533 [Test worker] WARN io.slogr.agent.platform.buffer.WriteAheadLog -- WAL evicted 1 oldest entries (limit=5)
+21:13:24.536 [Test worker] WARN io.slogr.agent.platform.buffer.WriteAheadLog -- WAL evicted 1 oldest entries (limit=5)
+21:13:24.539 [Test worker] WARN io.slogr.agent.platform.buffer.WriteAheadLog -- WAL evicted 1 oldest entries (limit=5)
+21:13:24.545 [Test worker] WARN io.slogr.agent.platform.buffer.WriteAheadLog -- WAL evicted 1 oldest entries (limit=5)
+21:13:24.550 [Test worker] WARN io.slogr.agent.platform.buffer.WriteAheadLog -- WAL evicted 1 oldest entries (limit=5)
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

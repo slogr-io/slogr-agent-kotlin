@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" tests="25" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:28" hostname="DESKTOP-09GV4AV" time="0.08">
+  <properties/>
+  <testcase name="StartSessions SIZE is 32()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="FIX-1 - ServerGreeting accepts any count value above MIN_COUNT()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="ServerGreeting writes Slogr fingerprint()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.0"/>
+  <testcase name="ServerGreeting round-trip unauthenticated()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.009"/>
+  <testcase name="FIX-3 - SetUpResponse clientIV always in plaintext()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.0"/>
+  <testcase name="AcceptTwSession round-trip unauthenticated()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="ServerGreeting detects Slogr fingerprint on read()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="ServerGreeting SIZE is 64()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="StartSessions round-trip unauthenticated()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="RequestTwSession SIZE is 112()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.0"/>
+  <testcase name="StopSessions round-trip unauthenticated()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="StartNSession round-trip 3 SIDs()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.019"/>
+  <testcase name="ServerGreeting isSlogrAgent false when fingerprint absent()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.0"/>
+  <testcase name="RequestTwSession round-trip unauthenticated()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.0"/>
+  <testcase name="FIX-2 - StopSessions sessionCount read without validation()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.003"/>
+  <testcase name="AcceptTwSession SIZE is 48()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="StartSessionsAck round-trip unauthenticated()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="StopNSession round-trip 1 SID()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.007"/>
+  <testcase name="ServerStart SIZE is 48()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="SetUpResponse SIZE is 164()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.0"/>
+  <testcase name="ServerStart round-trip unauthenticated()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="SetUpResponse round-trip unauthenticated()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="StopSessions SIZE is 32()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.001"/>
+  <testcase name="StartNAck round-trip 2 SIDs()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.006"/>
+  <testcase name="StopNAck round-trip 1 SID()" classname="io.slogr.agent.engine.twamp.protocol.ControlMessagesTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

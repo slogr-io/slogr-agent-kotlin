@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.engine.twamp.PacketUtilTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-03-31T16:14:19" hostname="DESKTOP-09GV4AV" time="0.02">
+  <properties/>
+  <testcase name="genRequestTwSession encodes dscp in typeDescriptor high byte()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.001"/>
+  <testcase name="genSetUpResponse copies supplied arrays defensively()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.001"/>
+  <testcase name="genRequestTwSession sets ipvn 6 for IPv6 addresses()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.001"/>
+  <testcase name="genRequestTwSession sets ipvn 4 for IPv4 addresses()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.001"/>
+  <testcase name="genTestPacket sets seqNumber()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.0"/>
+  <testcase name="genRequestTwSession startTime is in the future()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.0"/>
+  <testcase name="genStopSessions returns accept 0()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.002"/>
+  <testcase name="genEncryptTestPacket sets seqNumber()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.005"/>
+  <testcase name="genRequestTwSession timeout encodes seconds()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.0"/>
+  <testcase name="genSetUpResponse defaults to zero fields()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.001"/>
+  <testcase name="genStartSessions returns non-null instance()" classname="io.slogr.agent.engine.twamp.PacketUtilTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

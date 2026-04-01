@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.contracts.ScheduleSerializationTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:17:17" hostname="DESKTOP-09GV4AV" time="0.06">
+  <properties/>
+  <testcase name="SessionConfig JSON contains target_port key()" classname="io.slogr.agent.contracts.ScheduleSerializationTest" time="0.01"/>
+  <testcase name="SessionConfig round-trips through JSON()" classname="io.slogr.agent.contracts.ScheduleSerializationTest" time="0.004"/>
+  <testcase name="SessionConfig intervalSeconds defaults to 300()" classname="io.slogr.agent.contracts.ScheduleSerializationTest" time="0.002"/>
+  <testcase name="SessionConfig skipCycles defaults to 0()" classname="io.slogr.agent.contracts.ScheduleSerializationTest" time="0.001"/>
+  <testcase name="SessionConfig targetPort defaults to 862()" classname="io.slogr.agent.contracts.ScheduleSerializationTest" time="0.002"/>
+  <testcase name="SessionConfig tracerouteEnabled defaults to true()" classname="io.slogr.agent.contracts.ScheduleSerializationTest" time="0.005"/>
+  <testcase name="TwampTarget round-trips through JSON()" classname="io.slogr.agent.contracts.ScheduleSerializationTest" time="0.008"/>
+  <testcase name="Schedule round-trips through JSON()" classname="io.slogr.agent.contracts.ScheduleSerializationTest" time="0.01"/>
+  <testcase name="Schedule with commandId round-trips()" classname="io.slogr.agent.contracts.ScheduleSerializationTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

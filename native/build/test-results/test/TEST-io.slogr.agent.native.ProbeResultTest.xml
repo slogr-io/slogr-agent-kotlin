@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="io.slogr.agent.native.ProbeResultTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-03-31T14:45:27" hostname="DESKTOP-09GV4AV" time="0.011">
+  <properties/>
+  <testcase name="TIMEOUT sentinel has null fields and isTimeout=true()" classname="io.slogr.agent.native.ProbeResultTest" time="0.003"/>
+  <testcase name="destination reached result has reached=true()" classname="io.slogr.agent.native.ProbeResultTest" time="0.001"/>
+  <testcase name="TTL expired result has reached=false and isTimeout=false()" classname="io.slogr.agent.native.ProbeResultTest" time="0.001"/>
+  <testcase name="data class equality works()" classname="io.slogr.agent.native.ProbeResultTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
