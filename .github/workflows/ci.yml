@@ -2,9 +2,9 @@ name: Slogr Agent CI
 
 on:
   push:
-    branches: [master, main]
+    branches: [master, main, R2]
   pull_request:
-    branches: [master, main]
+    branches: [master, main, R2]
 
 jobs:
   test:
@@ -29,8 +29,19 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
+      # Build libslogr-native.so so JNI tests can run on Linux.
+      # The Makefile uses $JAVA_HOME (set by actions/setup-java above) for JNI headers.
+      - name: Install native build dependencies
+        run: sudo apt-get install -y --no-install-recommends gcc
+
+      - name: Build native library
+        run: make -C native JAVA_HOME=$JAVA_HOME
+
       - name: Run unit tests
         run: ./gradlew test
+        env:
+          # Point the JNI loader to the freshly built library
+          SLOGR_NATIVE_DIR: ${{ github.workspace }}/native/build
 
       - name: Build fat JAR
         run: ./gradlew shadowJar
@@ -60,6 +71,19 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
+
+      - name: Install native build dependencies
+        run: sudo apt-get install -y --no-install-recommends gcc musl-tools
+
+      # Build both glibc and musl variants.
+      # The Dockerfile (Alpine-based) needs the musl variant at native/build/libs/.
+      - name: Build native libraries for Docker
+        run: |
+          make -C native JAVA_HOME=$JAVA_HOME
+          make -C native JAVA_HOME=$JAVA_HOME MUSL=1
+          mkdir -p native/build/libs
+          cp native/build/libslogr-native-musl.so \
+             native/build/libs/libslogr-native-linux-amd64-musl.so
 
       - name: Build fat JAR
         run: ./gradlew shadowJar
