@@ -56,5 +56,12 @@ data class MeasurementResult(
     val packets: List<PacketEntry>? = null,
     val grade: SlaGrade? = null,
 
+    // ── R2: Virtual clock estimation ─────────────────────────────────────────
+    @SerialName("clock_sync_status")
+    val clockSyncStatus: ClockSyncStatus = ClockSyncStatus.ESTIMATED,
+
+    @SerialName("estimated_clock_offset_ms")
+    val estimatedClockOffsetMs: Float? = null,
+
     @SerialName("schema_version") val schemaVersion: Int = 1
 )
