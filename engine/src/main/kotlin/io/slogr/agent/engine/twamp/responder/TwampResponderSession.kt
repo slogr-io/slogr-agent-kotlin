@@ -111,9 +111,14 @@ class TwampResponderSession(
         startServerWaitTimer()
     }
 
+    /**
+     * R2: advertise unauthenticated (mode=1) + encrypted (mode=4) = 0x05 when a
+     * shared secret is configured. Clients that support mode=4 will select it;
+     * clients that only support mode=1 will fall back gracefully.
+     */
     private fun advertisedModes(): Int =
         if (sharedSecret != null)
-            TwampMode.UNAUTHENTICATED or TwampMode.AUTHENTICATED
+            TwampMode.UNAUTHENTICATED or TwampMode.ENCRYPTED
         else
             TwampMode.UNAUTHENTICATED
 
