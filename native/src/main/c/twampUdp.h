@@ -23,8 +23,10 @@ JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_setSocketTos6(JNI
 JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_setSocketTimeout(JNIEnv *, jobject, jint, jint);
 
 /* Packet I/O */
+JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_getLocalPort(JNIEnv *, jobject, jint);
+JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_enableTimestamping(JNIEnv *, jobject, jint);
 JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_sendTo(JNIEnv *, jobject, jint, jbyteArray, jshort, jbyteArray, jint);
-JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_recvMsg(JNIEnv *, jobject, jint, jbyteArray, jint, jintArray, jshortArray, jshortArray, jshortArray);
+JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_recvMsg(JNIEnv *, jobject, jint, jbyteArray, jint, jintArray, jshortArray, jshortArray, jshortArray, jlongArray, jintArray);
 
 #ifdef __cplusplus
 }

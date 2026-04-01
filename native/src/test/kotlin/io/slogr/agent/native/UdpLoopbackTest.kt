@@ -94,7 +94,8 @@ class UdpLoopbackTest {
         val ttlOut  = ShortArray(1)
         val tosOut  = ShortArray(1)
 
-        val rv = SlogrNative.recvMsg(recvFd, buf, buf.size, ipOut, portOut, ttlOut, tosOut)
+        val ntpOut = LongArray(1); val tsOut = IntArray(1)
+        val rv = SlogrNative.recvMsg(recvFd, buf, buf.size, ipOut, portOut, ttlOut, tosOut, ntpOut, tsOut)
         assertTrue(rv > 0, "recvMsg returned $rv")
         assertEquals(payload.size, rv)
         assertEquals("slogr-loopback-test", buf.copyOf(rv).decodeToString())
@@ -113,7 +114,8 @@ class UdpLoopbackTest {
 
         val buf   = ByteArray(256)
         val empty = IntArray(1); val ep = ShortArray(1); val et = ShortArray(1); val eo = ShortArray(1)
-        val rv = SlogrNative.recvMsg(recvFd, buf, buf.size, empty, ep, et, eo)
+        val ntp   = LongArray(1); val tsSrc = IntArray(1)
+        val rv = SlogrNative.recvMsg(recvFd, buf, buf.size, empty, ep, et, eo, ntp, tsSrc)
         assertTrue(rv <= 0, "Expected timeout (<=0), got $rv")
     }
 }

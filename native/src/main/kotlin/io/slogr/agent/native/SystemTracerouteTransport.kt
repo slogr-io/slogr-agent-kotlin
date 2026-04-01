@@ -26,6 +26,7 @@ open class SystemTracerouteTransport : NativeProbeAdapter {
     override fun setTos(fd: Int, tos: Short, ipv6: Boolean): Boolean = false
     override fun setTimeout(fd: Int, timeoutMs: Int): Boolean = false
     override fun connectSocket(fd: Int, remoteIp: InetAddress, remotePort: Int): Boolean = false
+    override fun enableTimestamping(fd: Int): Boolean = false
     override fun sendPacket(fd: Int, destIp: InetAddress, destPort: Int, data: ByteArray): Int = -1
     override fun recvPacket(fd: Int, data: ByteArray): RecvResult = RecvResult.TIMEOUT
 

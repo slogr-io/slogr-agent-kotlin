@@ -53,27 +53,34 @@ class JniProbeAdapter : NativeProbeAdapter {
     override fun connectSocket(fd: Int, remoteIp: InetAddress, remotePort: Int): Boolean =
         SlogrNative.connectSocket(fd, remoteIp.address, remotePort.toShort()) == 0
 
+    override fun enableTimestamping(fd: Int): Boolean =
+        SlogrNative.enableTimestamping(fd) == 0
+
     // ── Packet I/O ───────────────────────────────────────────────────────
 
     override fun sendPacket(fd: Int, destIp: InetAddress, destPort: Int, data: ByteArray): Int =
         SlogrNative.sendTo(fd, destIp.address, destPort.toShort(), data, data.size)
 
     override fun recvPacket(fd: Int, data: ByteArray): RecvResult {
-        val ipOut   = IntArray(1)
-        val portOut = ShortArray(1)
-        val ttlOut  = ShortArray(1)
-        val tosOut  = ShortArray(1)
+        val ipOut    = IntArray(1)
+        val portOut  = ShortArray(1)
+        val ttlOut   = ShortArray(1)
+        val tosOut   = ShortArray(1)
+        val ntpTs    = LongArray(1)
+        val tsSource = IntArray(1)   // 0 = USERSPACE, 1 = KERNEL
 
-        val rv = SlogrNative.recvMsg(fd, data, data.size, ipOut, portOut, ttlOut, tosOut)
+        val rv = SlogrNative.recvMsg(fd, data, data.size, ipOut, portOut, ttlOut, tosOut, ntpTs, tsSource)
         if (rv <= 0) return RecvResult.TIMEOUT
 
         val ipBytes = ByteBuffer.allocate(4).putInt(ipOut[0]).array()
         return RecvResult(
-            bytesRead = rv,
-            srcIp     = InetAddress.getByAddress(ipBytes),
-            srcPort   = portOut[0].toInt() and 0xFFFF,
-            ttl       = ttlOut[0],
-            tos       = tosOut[0]
+            bytesRead          = rv,
+            srcIp              = InetAddress.getByAddress(ipBytes),
+            srcPort            = portOut[0].toInt() and 0xFFFF,
+            ttl                = ttlOut[0],
+            tos                = tosOut[0],
+            kernelTimestampNtp = ntpTs[0],
+            timestampSource    = if (tsSource[0] == 1) TimestampSource.KERNEL else TimestampSource.USERSPACE
         )
     }
 

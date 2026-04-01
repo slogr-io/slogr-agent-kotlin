@@ -41,6 +41,15 @@ interface NativeProbeAdapter {
     /** Connect [fd] to [remoteIp]:[remotePort] (optional but improves kernel filtering). */
     fun connectSocket(fd: Int, remoteIp: InetAddress, remotePort: Int): Boolean
 
+    /**
+     * Enable SO_TIMESTAMPING on [fd] so that [recvPacket] returns a kernel-captured
+     * T2 timestamp in [RecvResult.kernelTimestampNtp].
+     *
+     * Must be called after [setTtlAndCapture]. On platforms without SO_TIMESTAMPING
+     * (Windows, macOS, [JavaUdpTransport]) this is a safe no-op that returns true.
+     */
+    fun enableTimestamping(fd: Int): Boolean
+
     // ── Packet I/O ───────────────────────────────────────────────────────
 
     /**

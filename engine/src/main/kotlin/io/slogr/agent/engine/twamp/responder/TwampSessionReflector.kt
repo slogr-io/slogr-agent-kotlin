@@ -85,6 +85,7 @@ class TwampSessionReflector(
         boundPort = if (fd >= 0) adapter.getLocalPort(fd) else 0
         if (fd >= 0) {
             adapter.setTtlAndCapture(fd, 64)
+            adapter.enableTimestamping(fd)
             adapter.setTimeout(fd, inactivityIntervalMs.toInt())
         }
 

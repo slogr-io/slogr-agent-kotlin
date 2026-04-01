@@ -52,6 +52,9 @@ class JavaUdpTransport(
     override fun setTtlAndCapture(fd: Int, ttl: Int, ipv6: Boolean): Boolean =
         sockets.containsKey(fd)
 
+    /** SO_TIMESTAMPING is not available via [DatagramSocket]; silently accepted. */
+    override fun enableTimestamping(fd: Int): Boolean = sockets.containsKey(fd)
+
     /** TOS is not supported via [DatagramSocket]; silently accepted. */
     override fun setTos(fd: Int, tos: Short, ipv6: Boolean): Boolean =
         sockets.containsKey(fd)

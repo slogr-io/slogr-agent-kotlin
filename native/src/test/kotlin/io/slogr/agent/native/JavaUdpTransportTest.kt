@@ -67,6 +67,17 @@ class JavaUdpTransportTest {
     }
 
     @Test
+    fun `enableTimestamping returns true for open socket (no-op on JavaUdpTransport)`() {
+        val fd = openSocket()
+        assertTrue(transport.enableTimestamping(fd))
+    }
+
+    @Test
+    fun `enableTimestamping returns false for unknown fd`() {
+        assertFalse(transport.enableTimestamping(9999))
+    }
+
+    @Test
     fun `localPort returns assigned ephemeral port`() {
         val fd = openSocket(0)
         val port = transport.localPort(fd)

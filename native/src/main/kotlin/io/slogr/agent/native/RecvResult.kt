@@ -2,6 +2,9 @@ package io.slogr.agent.native
 
 import java.net.InetAddress
 
+/** Whether the T2 receive timestamp was captured by the kernel or userspace. */
+enum class TimestampSource { KERNEL, USERSPACE }
+
 /**
  * Result of a raw UDP receive operation (recvPacket).
  * TTL and TOS are populated only when the JNI adapter is in use;
@@ -19,7 +22,9 @@ data class RecvResult(
     val ttl: Short,
     val tos: Short,
     /** Kernel-level T2 timestamp (NTP 64-bit). 0L = unavailable (use userspace clock). */
-    val kernelTimestampNtp: Long = 0L
+    val kernelTimestampNtp: Long = 0L,
+    /** Whether [kernelTimestampNtp] was supplied by the kernel (SO_TIMESTAMPING) or userspace. */
+    val timestampSource: TimestampSource = TimestampSource.USERSPACE
 ) {
     val isTimeout: Boolean get() = bytesRead <= 0
 

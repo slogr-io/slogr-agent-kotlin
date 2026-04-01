@@ -11,11 +11,35 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+/* SO_TIMESTAMPING / SCM_TIMESTAMPING — available since Linux 2.6.30. */
+#ifndef SO_TIMESTAMPING
+#  define SO_TIMESTAMPING 37
+#endif
+#ifndef SCM_TIMESTAMPING
+#  define SCM_TIMESTAMPING SO_TIMESTAMPING
+#endif
+/* Flags: receive software timestamp + report it in the cmsg. */
+#ifndef SOF_TIMESTAMPING_RX_SOFTWARE
+#  define SOF_TIMESTAMPING_RX_SOFTWARE (1 << 3)
+#endif
+#ifndef SOF_TIMESTAMPING_SOFTWARE
+#  define SOF_TIMESTAMPING_SOFTWARE    (1 << 4)
+#endif
+
+/* struct scm_timestamping — three timespec entries (software, deprecated HW, raw HW). */
+struct slogr_scm_timestamping {
+    struct timespec ts[3];
+};
+
+/* NTP era 0 epoch offset: seconds between 1900-01-01 and 1970-01-01. */
+#define NTP_EPOCH_OFFSET 2208988800ULL
 
 #include "twampUdp.h"
 
@@ -188,6 +212,34 @@ Java_io_slogr_agent_native_SlogrNative_setSocketTimeout(JNIEnv *env, jobject obj
 
 /* ── Packet I/O ────────────────────────────────────────────────────────── */
 
+/*
+ * getLocalPort — return the ephemeral port the socket is bound to via getsockname().
+ * Needed after bind(port=0) to discover the kernel-assigned port number.
+ */
+JNIEXPORT jint JNICALL
+Java_io_slogr_agent_native_SlogrNative_getLocalPort(JNIEnv *env, jobject obj, jint fd)
+{
+    struct sockaddr_in addr;
+    socklen_t len = sizeof(addr);
+    if (getsockname((int)fd, (struct sockaddr *)&addr, &len) != 0) return 0;
+    return (jint)ntohs(addr.sin_port);
+}
+
+/*
+ * enableTimestamping — enable SO_TIMESTAMPING (RX_SOFTWARE | SOFTWARE) on fd.
+ * Must be called after setSocketOption. Returns 0 on success, -1 on error.
+ */
+JNIEXPORT jint JNICALL
+Java_io_slogr_agent_native_SlogrNative_enableTimestamping(JNIEnv *env, jobject obj, jint fd)
+{
+    int flags = SOF_TIMESTAMPING_RX_SOFTWARE | SOF_TIMESTAMPING_SOFTWARE;
+    if (setsockopt((int)fd, SOL_SOCKET, SO_TIMESTAMPING, &flags, sizeof(flags)) != 0) {
+        fprintf(stderr, "slogr-native: setsockopt(SO_TIMESTAMPING): %s\n", strerror(errno));
+        return -1;
+    }
+    return 0;
+}
+
 JNIEXPORT jint JNICALL
 Java_io_slogr_agent_native_SlogrNative_sendTo(JNIEnv *env, jobject obj,
                                                jint fd, jbyteArray ip, jshort port,
@@ -205,14 +257,17 @@ Java_io_slogr_agent_native_SlogrNative_sendTo(JNIEnv *env, jobject obj,
 }
 
 /*
- * recvMsg — receive a UDP packet via recvmsg(2) and extract TTL and TOS from
- * IP_RECVTTL / IP_RECVTOS ancillary data (requires setSocketOption first).
+ * recvMsg — receive a UDP packet via recvmsg(2) and extract ancillary data:
+ *   IP_RECVTTL / IP_RECVTOS    — TTL and DSCP (requires setSocketOption first)
+ *   SCM_TIMESTAMPING           — kernel T2 timestamp (requires enableTimestamping first)
  *
  * Output arrays (each length 1):
- *   ip[]   — source IPv4 address as host-order int
- *   port[] — source port
- *   ttl[]  — received IP TTL (0 if not available)
- *   tos[]  — received IP TOS (0 if not available)
+ *   ip[]       — source IPv4 address as host-order int
+ *   port[]     — source port
+ *   ttl[]      — received IP TTL (0 if not available)
+ *   tos[]      — received IP TOS (0 if not available)
+ *   ntpTs[]    — kernel T2 in NTP 64-bit format (0 if unavailable)
+ *   tsSource[] — 1 if ntpTs was filled by kernel timestamp, 0 otherwise
  *
  * Returns: bytes read (> 0), 0 on EOF, -1 on timeout/error.
  */
@@ -220,7 +275,8 @@ JNIEXPORT jint JNICALL
 Java_io_slogr_agent_native_SlogrNative_recvMsg(JNIEnv *env, jobject obj,
                                                 jint fd, jbyteArray data, jint len,
                                                 jintArray ip, jshortArray port,
-                                                jshortArray ttl, jshortArray tos)
+                                                jshortArray ttl, jshortArray tos,
+                                                jlongArray ntpTs, jintArray tsSource)
 {
     char             ctrl_buf[SLOGR_RECV_BUF];
     struct sockaddr_in src;
@@ -255,9 +311,11 @@ Java_io_slogr_agent_native_SlogrNative_recvMsg(JNIEnv *env, jobject obj,
     (*env)->ReleaseIntArrayElements(env, ip, ip_p, 0);
     (*env)->ReleaseShortArrayElements(env, port, port_p, 0);
 
-    /* Ancillary data: TTL and TOS */
-    jshort *ttl_p = (*env)->GetShortArrayElements(env, ttl, NULL);
-    jshort *tos_p = (*env)->GetShortArrayElements(env, tos, NULL);
+    /* Ancillary data: TTL, TOS, and kernel timestamp */
+    jshort *ttl_p      = (*env)->GetShortArrayElements(env, ttl, NULL);
+    jshort *tos_p      = (*env)->GetShortArrayElements(env, tos, NULL);
+    jlong  *ntp_ts_p   = (*env)->GetLongArrayElements(env, ntpTs, NULL);
+    jint   *ts_src_p   = (*env)->GetIntArrayElements(env, tsSource, NULL);
 
     struct cmsghdr *cmsg;
     for (cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
@@ -268,11 +326,24 @@ Java_io_slogr_agent_native_SlogrNative_recvMsg(JNIEnv *env, jobject obj,
             *ttl_p = (jshort)(*(int *)CMSG_DATA(cmsg));
         } else if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_TOS) {
             *tos_p = (jshort)(*(int *)CMSG_DATA(cmsg));
+        } else if (cmsg->cmsg_level == SOL_SOCKET &&
+                   cmsg->cmsg_type  == SCM_TIMESTAMPING) {
+            /* ts[0] = software RX timestamp */
+            struct slogr_scm_timestamping *tss =
+                (struct slogr_scm_timestamping *)CMSG_DATA(cmsg);
+            if (tss->ts[0].tv_sec != 0 || tss->ts[0].tv_nsec != 0) {
+                uint64_t secs = (uint64_t)tss->ts[0].tv_sec + NTP_EPOCH_OFFSET;
+                uint64_t frac = ((uint64_t)tss->ts[0].tv_nsec << 32) / 1000000000ULL;
+                *ntp_ts_p  = (jlong)((secs << 32) | frac);
+                *ts_src_p  = 1;
+            }
         }
     }
 
     (*env)->ReleaseShortArrayElements(env, ttl, ttl_p, 0);
     (*env)->ReleaseShortArrayElements(env, tos, tos_p, 0);
+    (*env)->ReleaseLongArrayElements(env, ntpTs, ntp_ts_p, 0);
+    (*env)->ReleaseIntArrayElements(env, tsSource, ts_src_p, 0);
 
     return rv;
 }
