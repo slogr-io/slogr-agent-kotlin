@@ -11,6 +11,17 @@ import java.net.InetAddress
 interface MeasurementEngine {
 
     /**
+     * Start engine services (TWAMP reflector, controller).
+     *
+     * Must be called before the first [measure]/[twamp]/[traceroute] call.
+     * Calling [measure] without [start] may work in test code but is not
+     * guaranteed to have the reflector listening for inbound connections.
+     *
+     * Default implementation is a no-op (for implementations that start eagerly).
+     */
+    fun start() {}
+
+    /**
      * Run a complete measurement: TWAMP + optional traceroute + ASN + SLA eval.
      * Target can be another Slogr agent or any RFC 5357 compliant TWAMP reflector.
      */

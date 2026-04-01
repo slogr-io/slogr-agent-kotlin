@@ -4,11 +4,14 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
+import io.slogr.agent.contracts.Schedule
 import io.slogr.agent.platform.config.AgentState
 import io.slogr.agent.platform.registration.ApiKeyRegistrar
 import io.slogr.agent.platform.scheduler.TestScheduler
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import java.io.File
 
 /**
  * Runs the agent as a background daemon.
@@ -23,6 +26,10 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
     override fun help(context: Context) = "Run the agent as a background daemon"
 
     private val log = LoggerFactory.getLogger(DaemonCommand::class.java)
+
+    private companion object {
+        val json = Json { ignoreUnknownKeys = true }
+    }
 
     private val configPath: String by option(
         "--config",
@@ -63,7 +70,24 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
             }
         }
 
-        val schedule = ctx.scheduleStore.load()
+        // ── Issue 1 fix: force reflector to bind 0.0.0.0:862 immediately ────
+        ctx.engine.start()
+
+        // ── Issue 2 fix: use --config file when provided ──────────────────────
+        val schedule = if (configPath.isNotEmpty()) {
+            val file = File(configPath)
+            if (file.exists()) {
+                val parsed = json.decodeFromString(Schedule.serializer(), file.readText())
+                log.info("Loaded schedule from $configPath (${parsed.sessions.size} session(s))")
+                parsed
+            } else {
+                log.warn("Config file not found: $configPath — falling back to persisted schedule")
+                ctx.scheduleStore.load()
+            }
+        } else {
+            ctx.scheduleStore.load()
+        }
+
         if (schedule == null) {
             log.info("No persisted schedule found — running in responder-only mode")
         } else {
