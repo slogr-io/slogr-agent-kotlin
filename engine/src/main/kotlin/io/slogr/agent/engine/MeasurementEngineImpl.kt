@@ -23,6 +23,7 @@ import io.slogr.agent.engine.twamp.controller.TimingMode
 import io.slogr.agent.engine.twamp.controller.TwampController
 import io.slogr.agent.engine.twamp.responder.TwampReflector
 import io.slogr.agent.native.NativeProbeAdapter
+import org.slf4j.LoggerFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -64,15 +65,21 @@ class MeasurementEngineImpl(
     /** The actual TCP port the embedded TWAMP responder is listening on. */
     val reflectorActualPort: Int get() = reflector.actualPort
 
+    private val log = LoggerFactory.getLogger(MeasurementEngineImpl::class.java)
+
     init {
+        log.info("MeasurementEngineImpl init — starting reflector on port $reflectorListenPort")
         reflector.start()
+        log.info("Reflector thread started — waiting for bind")
         // Wait up to 3 s for the reflector to bind its port (needed when listenPort=0)
         val deadline = System.currentTimeMillis() + 3_000L
         while (reflector.actualPort == 0 && System.currentTimeMillis() < deadline) {
             Thread.sleep(5)
         }
+        log.info("Reflector bound on port ${reflector.actualPort} — starting controller")
         controller = TwampController(adapter = adapter, port = reflector.actualPort, localIp = localIp)
         controller.start()
+        log.info("Controller started")
     }
 
     // ── MeasurementEngine ─────────────────────────────────────────────────────
