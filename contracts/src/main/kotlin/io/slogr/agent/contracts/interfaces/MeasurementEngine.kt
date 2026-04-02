@@ -41,6 +41,13 @@ interface MeasurementEngine {
         mode: TracerouteMode? = null  // null = auto (try ICMP, then UDP)
     ): TracerouteResult
 
+    /**
+     * Start the engine eagerly: bind the embedded TWAMP reflector to its port.
+     * Must be called at daemon startup so the agent can act as a responder even
+     * when no outbound schedule is configured. Default is a no-op (for test doubles).
+     */
+    fun start() {}
+
     /** Shutdown: cancel in-flight tests, release resources. */
     fun shutdown()
 }

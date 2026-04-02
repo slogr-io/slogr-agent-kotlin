@@ -64,8 +64,11 @@ fun run(args: Array<String>): Int {
         )
     }
 
-    // Delegate that only starts the engine on first measurement call
+    // Delegate that only starts the engine on first measurement call,
+    // unless start() is called explicitly (daemon mode).
     val engineProxy = object : MeasurementEngine {
+        override fun start() { engineLazy.value }  // forces init{} → reflector binds port 862
+
         override suspend fun measure(
             target: InetAddress, targetPort: Int, profile: SlaProfile,
             traceroute: Boolean, authMode: TwampAuthMode, keyId: String?
