@@ -38,7 +38,7 @@ class KeyValidationCache(
         if (!Files.exists(cacheFile)) return null
         return runCatching {
             val text  = Files.readString(cacheFile)
-            val entry = json.decodeFromString<Entry>(text)
+            val entry = json.decodeFromString(Entry.serializer(), text)
             if (isExpired(entry.validatedAt)) {
                 log.debug("Key validation cache expired")
                 null
@@ -54,7 +54,7 @@ class KeyValidationCache(
     fun write(entry: Entry) {
         runCatching {
             Files.createDirectories(cacheFile.parent)
-            Files.writeString(cacheFile, json.encodeToString(entry))
+            Files.writeString(cacheFile, json.encodeToString(Entry.serializer(), entry))
         }.onFailure {
             log.warn("Could not write key validation cache: ${it.message}")
         }
