@@ -39,7 +39,7 @@ FROM amazoncorretto:21-alpine
 # CAP_NET_RAW      — required for TWAMP raw socket operations
 # CAP_NET_BIND_SERVICE — required for binding port 862 as non-root
 
-RUN apk add --no-cache libcap && \
+RUN apk add --no-cache bash libcap && \
     addgroup -S slogr && \
     adduser  -S -G slogr -h /opt/slogr -s /sbin/nologin slogr && \
     mkdir -p /opt/slogr/lib /opt/slogr/data /opt/slogr/logs /etc/slogr && \
