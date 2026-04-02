@@ -51,10 +51,16 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
         Runtime.getRuntime().addShutdownHook(shutdownHook)
 
         log.info("slogr-agent daemon running. Press Ctrl+C to stop.")
-        try {
-            Thread.currentThread().join()
-        } catch (_: InterruptedException) {
-            // Interrupted by shutdown hook
+        // Block the main thread so daemon threads (reflector, controller) stay alive.
+        // Loop on InterruptedException — spurious interrupts must not exit daemon mode;
+        // only a JVM shutdown (SIGTERM → shutdown hook) should terminate the process.
+        while (true) {
+            try {
+                Thread.currentThread().join()
+                break
+            } catch (_: InterruptedException) {
+                log.debug("Main thread interrupted — continuing daemon loop")
+            }
         }
     }
 }
