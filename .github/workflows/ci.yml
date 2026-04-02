@@ -99,12 +99,13 @@ jobs:
           cp native/build/libslogr-native-musl.so \
              native/libs/libslogr-native-linux-amd64-musl.so
 
-      # Download pre-built JAR from test job — no need to run ./gradlew shadowJar again
+      # Download pre-built JAR from test job — no need to run ./gradlew shadowJar again.
+      # No path specified: download-artifact restores the artifact's internal directory
+      # structure relative to the workspace root (app/build/libs/slogr-agent-all.jar).
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: slogr-build-artifacts
-          path: app/build/libs/
 
       - name: Build Docker image
         run: docker build -f Dockerfile.ci -t slogr-agent:test .
