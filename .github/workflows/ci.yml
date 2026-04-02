@@ -83,14 +83,15 @@ jobs:
         run: sudo apt-get install -y --no-install-recommends gcc musl-tools
 
       # Build both glibc and musl variants.
-      # The Dockerfile (Alpine-based) needs the musl variant at native/build/libs/.
+      # The Dockerfile (Alpine-based) needs the musl variant at native/libs/
+      # (not native/build/libs/ — .dockerignore excludes **/build/).
       - name: Build native libraries for Docker
         run: |
           make -C native JAVA_HOME=$JAVA_HOME
           make -C native JAVA_HOME=$JAVA_HOME MUSL=1
-          mkdir -p native/build/libs
+          mkdir -p native/libs
           cp native/build/libslogr-native-musl.so \
-             native/build/libs/libslogr-native-linux-amd64-musl.so
+             native/libs/libslogr-native-linux-amd64-musl.so
 
       - name: Build fat JAR
         run: ./gradlew shadowJar

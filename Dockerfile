@@ -25,9 +25,10 @@ COPY native/src   native/src/
 COPY platform/src platform/src/
 COPY app/src      app/src/
 
-# Copy pre-built native libraries assembled by build-native.yml CI
+# Copy pre-built native libraries assembled by CI
 # musl variant used for Alpine; glibc variant embedded for non-Alpine deployments
-COPY native/build/libs/ native/build/libs/
+# Note: placed in native/libs/ (not native/build/libs/) to avoid .dockerignore exclusion
+COPY native/libs/ native/libs/
 
 # Build shadow JAR — tests are already run by CI before this stage
 RUN ./gradlew :app:shadowJar --no-daemon -x test
@@ -48,7 +49,7 @@ RUN apk add --no-cache libcap && \
 COPY --from=builder /build/app/build/libs/slogr-agent-all.jar /opt/slogr/slogr-agent-all.jar
 
 # musl-compiled native library for Alpine
-COPY --from=builder /build/native/build/libs/libslogr-native-linux-amd64-musl.so /opt/slogr/lib/libslogr-native.so
+COPY --from=builder /build/native/libs/libslogr-native-linux-amd64-musl.so /opt/slogr/lib/libslogr-native.so
 
 COPY deploy/wrapper.sh /usr/local/bin/slogr-agent
 RUN chmod +x /usr/local/bin/slogr-agent && \
