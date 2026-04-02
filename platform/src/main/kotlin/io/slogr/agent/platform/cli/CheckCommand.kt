@@ -50,7 +50,7 @@ class CheckCommand(private val ctx: CliContext) : CliktCommand(name = "check") {
     ).default("internet")
 
     private val format: String by option(
-        "--format",
+        "--format", "-f",
         help = "Output format: text or json"
     ).default("text")
 
