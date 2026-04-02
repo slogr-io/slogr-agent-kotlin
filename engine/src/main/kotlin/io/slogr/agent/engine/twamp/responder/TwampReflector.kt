@@ -81,32 +81,36 @@ class TwampReflector(
     // ── Selector event loop ──────────────────────────────────────────────────
 
     override fun run() {
-        val server = ServerSocketChannel.open()
-        server.configureBlocking(false)
-        server.socket().reuseAddress = true
-        server.socket().bind(InetSocketAddress(bindIp, listenPort))
-        server.register(selector, SelectionKey.OP_ACCEPT)
-        serverChannel = server
-        log.info("TWAMP reflector listening on ${server.localAddress}")
+        try {
+            val server = ServerSocketChannel.open()
+            server.configureBlocking(false)
+            server.socket().reuseAddress = true
+            server.socket().bind(InetSocketAddress(bindIp, listenPort))
+            server.register(selector, SelectionKey.OP_ACCEPT)
+            serverChannel = server
+            log.info("TWAMP reflector listening on ${server.localAddress}")
 
-        while (isAlive || sessionMap.isNotEmpty()) {
-            if (Thread.currentThread().isInterrupted) break
-            selector.select(SELECT_TIMEOUT_MS)
-            val keys = selector.selectedKeys().iterator()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                keys.remove()
-                when {
-                    key.isAcceptable -> handleAccept(key)
-                    key.isReadable   -> handleRead(key)
+            while (isAlive || sessionMap.isNotEmpty()) {
+                if (Thread.currentThread().isInterrupted) break
+                selector.select(SELECT_TIMEOUT_MS)
+                val keys = selector.selectedKeys().iterator()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    keys.remove()
+                    when {
+                        key.isAcceptable -> handleAccept(key)
+                        key.isReadable   -> handleRead(key)
+                    }
                 }
+                sessionMap.entries.removeIf { (_, session) -> session.isClosed }
             }
-            sessionMap.entries.removeIf { (_, session) -> session.isClosed }
-        }
 
-        server.close()
-        scheduler.shutdown()
-        log.info("TWAMP reflector stopped")
+            server.close()
+            scheduler.shutdown()
+            log.info("TWAMP reflector stopped")
+        } catch (e: Exception) {
+            log.error("TWAMP reflector failed to start on port $listenPort: ${e.javaClass.simpleName}: ${e.message}", e)
+        }
     }
 
     private fun handleAccept(key: SelectionKey) {
