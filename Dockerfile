@@ -44,8 +44,7 @@ RUN apk add --no-cache bash libcap && \
     adduser  -S -G slogr -h /opt/slogr -s /sbin/nologin slogr && \
     mkdir -p /opt/slogr/lib /opt/slogr/data /opt/slogr/logs /etc/slogr && \
     chown -R slogr:slogr /opt/slogr && \
-    touch /etc/slogr/env && chmod 600 /etc/slogr/env && \
-    setcap 'cap_net_bind_service=+ep' $(readlink -f $(which java))
+    touch /etc/slogr/env && chmod 600 /etc/slogr/env
 
 COPY --from=builder /build/app/build/libs/slogr-agent-all.jar /opt/slogr/slogr-agent-all.jar
 

@@ -148,6 +148,7 @@ jobs:
             --network slogr-test-net \
             --cap-add NET_RAW \
             --cap-add NET_BIND_SERVICE \
+            --user root \
             slogr-agent:test daemon
 
           echo "Waiting for Agent B TWAMP reflector to be ready..."
@@ -230,6 +231,7 @@ jobs:
             --network slogr-test-net \
             --cap-add NET_RAW \
             --cap-add NET_BIND_SERVICE \
+            --user root \
             slogr-agent:test daemon
 
           sleep 3
