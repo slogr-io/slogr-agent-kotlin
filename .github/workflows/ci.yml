@@ -100,12 +100,14 @@ jobs:
              native/libs/libslogr-native-linux-amd64-musl.so
 
       # Download pre-built JAR from test job — no need to run ./gradlew shadowJar again.
-      # No path specified: download-artifact restores the artifact's internal directory
-      # structure relative to the workspace root (app/build/libs/slogr-agent-all.jar).
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: slogr-build-artifacts
+
+      # app/build/ is excluded by .dockerignore; stage JAR into deploy/ which is included.
+      - name: Stage JAR for Docker build context
+        run: cp app/build/libs/slogr-agent-all.jar deploy/slogr-agent-all.jar
 
       - name: Build Docker image
         run: docker build -f Dockerfile.ci -t slogr-agent:test .
