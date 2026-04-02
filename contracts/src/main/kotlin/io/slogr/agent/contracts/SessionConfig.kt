@@ -20,7 +20,8 @@ data class SessionConfig(
     val profile: SlaProfile,
     @SerialName("interval_seconds") val intervalSeconds: Int = 300,
     @SerialName("traceroute_enabled") val tracerouteEnabled: Boolean = true,
-    @SerialName("skip_cycles") val skipCycles: Int = 0
+    @SerialName("skip_cycles") val skipCycles: Int = 0,
+    @SerialName("tcp_probe_ports") val tcpProbePorts: List<Int> = listOf(443)
 )
 
 @Serializable

@@ -1,5 +1,6 @@
 package io.slogr.agent.engine.twamp.responder
 
+import io.slogr.agent.engine.reflector.ReflectorThreadPool
 import io.slogr.agent.engine.twamp.SessionId
 import io.slogr.agent.engine.twamp.TwampCommand
 import io.slogr.agent.engine.twamp.TwampConstants
@@ -13,7 +14,6 @@ import io.slogr.agent.engine.twamp.protocol.StopNSession
 import io.slogr.agent.engine.twamp.protocol.StopSessions
 import io.slogr.agent.native.NativeProbeAdapter
 import org.slf4j.LoggerFactory
-import java.io.ByteArrayOutputStream
 import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.nio.channels.SelectionKey
@@ -28,6 +28,10 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * Implements RFC 5357 from the responder's perspective. Runs on the NIO
  * Selector thread of [TwampReflector]; no blocking calls permitted.
+ *
+ * **R2 change**: Test session reflectors are submitted to [ReflectorThreadPool]
+ * instead of spawning a dedicated thread per session. The pool is shared across
+ * all control sessions managed by the same [TwampReflector].
  *
  * **State machine:**
  * ```
@@ -49,7 +53,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * @param allowlist      IP allowlist for unauthenticated connections.
  * @param sharedSecret   Shared secret for authenticated mode (null = unauth only).
  * @param adapter        UDP socket adapter for test reflectors.
- * @param scheduler      Shared ScheduledExecutorService for timeout and reflector tasks.
+ * @param threadPool     Shared [ReflectorThreadPool] — reflector tasks are submitted here.
  * @param agentIdBytes   Optional first 6 bytes of this agent's UUID (Slogr fingerprint).
  */
 class TwampResponderSession(
@@ -59,7 +63,7 @@ class TwampResponderSession(
     private val allowlist: IpAllowlist,
     private val sharedSecret: ByteArray? = null,
     private val adapter: NativeProbeAdapter,
-    private val scheduler: ScheduledExecutorService,
+    private val threadPool: ReflectorThreadPool,
     private val agentIdBytes: ByteArray? = null
 ) {
     private val log = LoggerFactory.getLogger(TwampResponderSession::class.java)
@@ -76,7 +80,7 @@ class TwampResponderSession(
     private val serverCount = TwampConstants.DEFAULT_COUNT
 
     // Active test sessions keyed by SID
-    private val testSessions = mutableMapOf<SessionId, ReflectorSession>()
+    private val testSessions = mutableMapOf<SessionId, ReflectorTask>()
 
     // Server-wait timeout task
     private var serverWaitTask: Future<*>? = null
@@ -107,14 +111,19 @@ class TwampResponderSession(
         startServerWaitTimer()
     }
 
+    /**
+     * R2: advertise unauthenticated (mode=1) + encrypted (mode=4) = 0x05 when a
+     * shared secret is configured. Clients that support mode=4 will select it;
+     * clients that only support mode=1 will fall back gracefully.
+     */
     private fun advertisedModes(): Int =
         if (sharedSecret != null)
-            TwampMode.UNAUTHENTICATED or TwampMode.AUTHENTICATED
+            TwampMode.UNAUTHENTICATED or TwampMode.ENCRYPTED
         else
             TwampMode.UNAUTHENTICATED
 
     private fun startServerWaitTimer() {
-        serverWaitTask = scheduler.scheduleAtFixedRate({
+        serverWaitTask = threadPool.scheduler.scheduleAtFixedRate({
             if (serverWaitCount.incrementAndGet() >= 10) {
                 log.debug("Server-wait timeout — closing idle control session")
                 close()
@@ -161,9 +170,7 @@ class TwampResponderSession(
                 log.warn("Auth mode requested but no shared secret configured")
                 close(); return
             }
-            // Derive key-derivation-key from shared secret + salt + count
             val kdk = TwampCrypto.pbkdf2(secret, serverSalt, serverCount)
-            // Decrypt token: [challenge | aesKey | hmacKey]
             val tokenPlain = TwampCrypto.decryptAesCbc(kdk, response.token, ByteArray(16), updateIv = false)
             val recvChallenge = tokenPlain.copyOf(16)
             if (!recvChallenge.contentEquals(serverChallenge)) {
@@ -181,7 +188,7 @@ class TwampResponderSession(
 
     private fun sendServerStart() {
         val start = ResponderPacketUtil.genServerStart(twampMode.mode)
-        twampMode.serverStartMsg = start  // stash for AcceptTwSession HMAC chaining
+        twampMode.serverStartMsg = start
         if (twampMode.isControlEncrypted()) {
             twampMode.sendIv = start.serverIv.copyOf()
         }
@@ -210,14 +217,19 @@ class TwampResponderSession(
         val paddingLen = req.paddingLength
 
         val reflector = TwampSessionReflector(
-            adapter      = adapter,
-            localIp      = localIp,
+            adapter       = adapter,
+            localIp       = localIp,
             paddingLength = paddingLen,
-            mode         = twampMode.getTestSessionMode(sid),
-            timeoutMs    = TwampConstants.DEFAULT_REF_WAIT_SEC * 1000L,
-            scheduler    = scheduler
+            mode          = twampMode.getTestSessionMode(sid),
+            sessionId     = sid,
+            senderIp      = clientIp,
+            senderPort    = req.senderPort.toInt() and 0xFFFF,
+            timeoutMs     = TwampConstants.DEFAULT_REF_WAIT_SEC * 1000L,
+            threadPool    = threadPool
         )
-        testSessions[sid] = ReflectorSession(reflector, Thread(reflector, "twamp-reflector-${sid}"))
+        // Submit to pool instead of spawning a dedicated thread per session.
+        val future = threadPool.submit(reflector)
+        testSessions[sid] = ReflectorTask(reflector, future)
 
         val accept = ResponderPacketUtil.genAcceptSession(sid, port = reflector.boundPort.toShort(), accept = 0)
         val bb = ByteBuffer.allocate(/* AcceptTwSession */ 48)
@@ -227,7 +239,8 @@ class TwampResponderSession(
 
     private fun handleStartSessions(buf: ByteBuffer) {
         StartSessions.readFrom(buf, twampMode)
-        testSessions.values.forEach { it.thread.also { t -> t.isDaemon = true; t.start() } }
+        // Reflectors are already submitted to the pool in handleRequestTwSession.
+        // StartSessions is acknowledged without starting additional threads.
         val ack = ResponderPacketUtil.genStartAck()
         val bb = ByteBuffer.allocate(/* StartSessionsAck */ 32)
         ack.writeTo(bb, twampMode)
@@ -237,19 +250,16 @@ class TwampResponderSession(
     private fun handleStopSessions(buf: ByteBuffer) {
         // FIX-2: read but ignore sessionCount field
         StopSessions.readFrom(buf, twampMode)
-        testSessions.values.forEach { it.reflector.stop(it.thread) }
-        testSessions.clear()
+        stopAllSessions()
         close()
     }
 
     private fun handleStartNSession(buf: ByteBuffer) {
         val req = StartNSession.readFrom(buf, twampMode)
-        req.sids.forEach { sid ->
-            testSessions[sid]?.thread?.also { it.isDaemon = true; it.start() }
-        }
+        // For N-session, reflectors are already running (submitted at REQUEST time).
         val ack = ResponderPacketUtil.genStartNAck(req.sids.toList())
         val sidList = req.sids.toList()
-        val ackSz = 32 + sidList.size * 16  // header + SID list
+        val ackSz = 32 + sidList.size * 16
         val bb = ByteBuffer.allocate(ackSz)
         ack.writeTo(bb, twampMode)
         writeRaw(bb.array().copyOf(bb.position()))
@@ -258,7 +268,7 @@ class TwampResponderSession(
     private fun handleStopNSession(buf: ByteBuffer) {
         val req = StopNSession.readFrom(buf, twampMode)
         req.sids.forEach { sid ->
-            testSessions.remove(sid)?.also { s -> s.reflector.stop(s.thread) }
+            testSessions.remove(sid)?.reflector?.stop()
         }
         val ack = ResponderPacketUtil.genStopNAck(req.sids.toList())
         val sidList = req.sids.toList()
@@ -295,16 +305,24 @@ class TwampResponderSession(
         if (state == State.CLOSED) return
         state = State.CLOSED
         serverWaitTask?.cancel(false)
-        testSessions.values.forEach { it.reflector.stop(it.thread) }
-        testSessions.clear()
+        stopAllSessions()
         try { key.channel().close() } catch (_: Exception) {}
         key.cancel()
     }
 
     val isClosed: Boolean get() = state == State.CLOSED
 
-    private data class ReflectorSession(
+    private fun stopAllSessions() {
+        testSessions.values.forEach { task ->
+            task.reflector.stop()
+        }
+        testSessions.clear()
+    }
+
+    // ── Inner: binds a reflector to its pool future ──────────────────────────
+
+    private data class ReflectorTask(
         val reflector: TwampSessionReflector,
-        val thread: Thread
+        val future: Future<*>
     )
 }

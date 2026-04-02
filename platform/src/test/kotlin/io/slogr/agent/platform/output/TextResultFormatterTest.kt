@@ -3,15 +3,23 @@ package io.slogr.agent.platform.output
 import io.slogr.agent.contracts.*
 import io.slogr.agent.engine.probe.IcmpPingProbe
 import io.slogr.agent.engine.probe.TcpConnectProbe
+import io.slogr.agent.platform.config.AgentState
+import io.slogr.agent.platform.config.AirGapDetector
 import kotlinx.datetime.Clock
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.net.InetAddress
 import java.util.UUID
 
 class TextResultFormatterTest {
 
-    private val formatter = TextResultFormatter()
+    @BeforeEach
+    @AfterEach
+    fun resetAirGap() { AirGapDetector.resetForTest() }
+
+    private val formatter = TextResultFormatter(AgentState.CONNECTED)  // no footer by default
     private val loopback  = InetAddress.getLoopbackAddress()
     private val profile   = voipProfile()
 
@@ -115,6 +123,30 @@ class TextResultFormatterTest {
         grade     = SlaGrade.GREEN,
         profile   = profile
     )
+
+    // ── Footer nudge (ANONYMOUS state) ───────────────────────────────────────
+
+    @Test
+    fun `ANONYMOUS formatter appends footer to TWAMP output`() {
+        val anon   = TextResultFormatter(AgentState.ANONYMOUS)
+        val output = anon.format(loopback, makeTwampBundle(), "voip")
+        assertTrue(output.contains("slogr.io"), "Footer should contain slogr.io")
+    }
+
+    @Test
+    fun `REGISTERED formatter has no footer`() {
+        val reg    = TextResultFormatter(AgentState.REGISTERED)
+        val output = reg.format(loopback, makeTwampBundle(), "voip")
+        assertFalse(output.trimEnd().endsWith(".io\n") || output.contains("slogr.io/enterprise"),
+            "REGISTERED state should not show footer")
+    }
+
+    @Test
+    fun `ANONYMOUS formatter appends footer to fallback output`() {
+        val anon   = TextResultFormatter(AgentState.ANONYMOUS)
+        val output = anon.formatFallback(makeFallbackBundle())
+        assertTrue(output.contains("slogr.io"), "Footer should contain slogr.io")
+    }
 
     private fun voipProfile() = SlaProfile(
         name = "voip", nPackets = 100, intervalMs = 20L, waitTimeMs = 500L,

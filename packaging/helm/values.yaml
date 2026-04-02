@@ -1,0 +1,61 @@
+slogr:
+  # API key for connecting to Slogr. Set via --set slogr.apiKey=sk_live_...
+  apiKey: ""
+
+  # Name of an existing Kubernetes Secret containing the API key.
+  # When set, slogr.apiKey is ignored.
+  existingSecret: ""
+
+  # Key within the Secret that holds the API key value.
+  secretKey: "api-key"
+
+  # Agent configuration passed via agent.yaml
+  config:
+    traceroute_max_hops: 30
+    traceroute_heartbeat_interval_cycles: 6
+
+image:
+  repository: ghcr.io/slogr/agent
+  tag: ""   # defaults to Chart.appVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Resource requests/limits per agent pod (one per node)
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Node selector, tolerations, and affinity for DaemonSet scheduling
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Additional environment variables injected into every agent container
+extraEnv: []
+# - name: SLOGR_LOG_LEVEL
+#   value: "debug"
+
+# Additional volumes/volumeMounts
+extraVolumes: []
+extraVolumeMounts: []
+
+# Priority class for agent pods
+priorityClassName: ""
+
+# Update strategy for the DaemonSet
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1

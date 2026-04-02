@@ -89,6 +89,28 @@ class ScheduleSerializationTest {
     }
 
     @Test
+    fun `SessionConfig tcpProbePorts defaults to list of 443`() {
+        assertEquals(listOf(443), sampleSession().tcpProbePorts)
+    }
+
+    @Test
+    fun `SessionConfig tcpProbePorts round-trips through JSON`() {
+        val session = sampleSession().copy(tcpProbePorts = listOf(443, 1433, 6379))
+        val json = SlogrJson.encodeToString(SessionConfig.serializer(), session)
+        val decoded = SlogrJson.decodeFromString(SessionConfig.serializer(), json)
+        assertEquals(listOf(443, 1433, 6379), decoded.tcpProbePorts)
+    }
+
+    @Test
+    fun `SessionConfig without tcp_probe_ports in JSON deserializes to default 443`() {
+        val json = """{"path_id":"550e8400-e29b-41d4-a716-446655440001","target_ip":"10.0.0.1",
+            "target_port":862,"profile":${SlogrJson.encodeToString(SlaProfile.serializer(), sampleSession().profile)},
+            "interval_seconds":300,"traceroute_enabled":true,"skip_cycles":0}"""
+        val decoded = SlogrJson.decodeFromString(SessionConfig.serializer(), json)
+        assertEquals(listOf(443), decoded.tcpProbePorts)
+    }
+
+    @Test
     fun `TwampTarget round-trips through JSON`() {
         val target = TwampTarget(ip = InetAddress.getByName("192.168.1.1"))
         val json = SlogrJson.encodeToString(TwampTarget.serializer(), target)

@@ -100,3 +100,50 @@ jobs:
             dist/slogr-agent-all.jar
             dist/slogr-agent-*.rpm
             dist/slogr-agent_*.deb
+            agent-kotlin/install.sh
+
+      # ── Publish Helm chart to ghcr.io OCI registry ───────────────────────
+      - name: Install Helm
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Package and push Helm chart
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          V=${{ steps.ver.outputs.version }}
+          helm package agent-kotlin/packaging/helm --version "$V" --app-version "$V" -d dist/
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+          helm push dist/slogr-agent-${V}.tgz oci://ghcr.io/slogr/charts
+
+      # ── Update Homebrew tap formula ───────────────────────────────────────
+      - name: Update Homebrew tap
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          V=${{ steps.ver.outputs.version }}
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/slogr/homebrew-tap.git" /tmp/homebrew-tap
+          cp agent-kotlin/packaging/homebrew/slogr-agent.rb /tmp/homebrew-tap/Formula/slogr-agent.rb
+          # Update version in formula
+          sed -i "s/version \".*\"/version \"${V}\"/" /tmp/homebrew-tap/Formula/slogr-agent.rb
+          cd /tmp/homebrew-tap
+          git config user.email "bot@slogr.io"
+          git config user.name "Slogr Release Bot"
+          git add Formula/slogr-agent.rb
+          git commit -m "chore: update slogr-agent to v${V}"
+          git push
+
+      # ── Push Chocolatey package ───────────────────────────────────────────
+      - name: Push Chocolatey package
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          V=${{ steps.ver.outputs.version }}
+          # Update version in nuspec
+          sed -i "s/<version>.*<\/version>/<version>${V}<\/version>/" \
+            agent-kotlin/packaging/chocolatey/slogr-agent.nuspec
+          choco pack agent-kotlin/packaging/chocolatey/slogr-agent.nuspec --outputdirectory dist/
+          choco push dist/slogr-agent.${V}.nupkg \
+            --source https://push.chocolatey.org/ \
+            --api-key ${{ secrets.CHOCOLATEY_API_KEY }}

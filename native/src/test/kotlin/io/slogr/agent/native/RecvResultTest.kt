@@ -39,4 +39,38 @@ class RecvResultTest {
         val b = RecvResult(bytesRead = -1, srcIp = null, srcPort = 0, ttl = 0, tos = 0)
         assertEquals(a, b)
     }
+
+    // ── R2-TS-01: TimestampSource enum ────────────────────────────────────
+
+    @Test
+    fun `R2-TS-01 TimestampSource has KERNEL and USERSPACE values`() {
+        assertEquals(2, TimestampSource.entries.size)
+        assertNotNull(TimestampSource.valueOf("KERNEL"))
+        assertNotNull(TimestampSource.valueOf("USERSPACE"))
+    }
+
+    // ── R2-TS-02: USERSPACE default and KERNEL when timestamp present ─────
+
+    @Test
+    fun `R2-TS-02 default timestampSource is USERSPACE and zero NTP`() {
+        val r = RecvResult(bytesRead = 14, srcIp = null, srcPort = 862, ttl = 64, tos = 0)
+        assertEquals(TimestampSource.USERSPACE, r.timestampSource)
+        assertEquals(0L, r.kernelTimestampNtp)
+    }
+
+    @Test
+    fun `R2-TS-02 non-zero kernelTimestampNtp with KERNEL source is preserved`() {
+        val ntpTs = 0x00000001_80000000L   // arbitrary NTP value (fits in signed Long)
+        val r = RecvResult(
+            bytesRead          = 14,
+            srcIp              = null,
+            srcPort            = 862,
+            ttl                = 64,
+            tos                = 0,
+            kernelTimestampNtp = ntpTs,
+            timestampSource    = TimestampSource.KERNEL
+        )
+        assertEquals(TimestampSource.KERNEL, r.timestampSource)
+        assertEquals(ntpTs, r.kernelTimestampNtp)
+    }
 }

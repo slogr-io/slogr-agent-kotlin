@@ -58,6 +58,14 @@ object MetricMapper {
             meter.gaugeBuilder("slogr.network.traceroute.path_changed").build()
                 .set(if (bundle.pathChange != null) 1.0 else 0.0, base)
         }
+
+        // R2: clock sync metrics (0=SYNCED, 1=ESTIMATED, 2=UNSYNCABLE)
+        meter.gaugeBuilder("slogr.network.clock.sync_status").build()
+            .set(t.clockSyncStatus.ordinal.toDouble(), base)
+        t.estimatedClockOffsetMs?.let {
+            meter.gaugeBuilder("slogr.network.clock.offset_ms").build()
+                .set(it.toDouble(), base)
+        }
     }
 
     /**

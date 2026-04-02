@@ -121,9 +121,21 @@ object SlogrNative {
     external fun sendTo(fd: Int, ip: ByteArray, port: Short, data: ByteArray, len: Int): Int
     /** Returns the local port of [fd] via getsockname(), or 0 on error. */
     external fun getLocalPort(fd: Int): Int
+    /**
+     * Enable SO_TIMESTAMPING (RX_SOFTWARE | SOFTWARE) on [fd].
+     * Returns 0 on success, -1 on error or on kernels without SO_TIMESTAMPING.
+     */
+    external fun enableTimestamping(fd: Int): Int
+    /**
+     * Receive a UDP datagram via recvmsg(2).
+     *
+     * @param ntpTs    LongArray(1) — out: kernel T2 in NTP 64-bit (0 if unavailable)
+     * @param tsSource IntArray(1)  — out: 1 if kernel timestamp present, 0 otherwise
+     */
     external fun recvMsg(
         fd: Int, data: ByteArray, len: Int,
-        ip: IntArray, port: ShortArray, ttl: ShortArray, tos: ShortArray
+        ip: IntArray, port: ShortArray, ttl: ShortArray, tos: ShortArray,
+        ntpTs: LongArray, tsSource: IntArray
     ): Int
 
     // ── Traceroute probes (JNI) ───────────────────────────────────────────

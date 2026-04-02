@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "slogr-agent.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "slogr-agent.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "slogr-agent.selectorLabels" . | nindent 6 }}
+  updateStrategy:
+    {{- toYaml .Values.updateStrategy | nindent 4 }}
+  template:
+    metadata:
+      labels:
+        {{- include "slogr-agent.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "slogr-agent.serviceAccountName" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      # NET_RAW required for ICMP traceroute; NET_BIND_SERVICE for port 862
+      securityContext:
+        runAsNonRoot: false
+      containers:
+        - name: slogr-agent
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["daemon"]
+          env:
+            - name: SLOGR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "slogr-agent.secretName" . }}
+                  key: {{ .Values.slogr.secretKey }}
+            - name: SLOGR_CONFIG_FILE
+              value: /etc/slogr/agent.yaml
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          securityContext:
+            capabilities:
+              add:
+                - NET_RAW
+                - NET_BIND_SERVICE
+          volumeMounts:
+            - name: config
+              mountPath: /etc/slogr
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/slogr
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command: ["slogr-agent", "status", "--quiet"]
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "slogr-agent.fullname" . }}-config
+        - name: data
+          hostPath:
+            path: /var/lib/slogr
+            type: DirectoryOrCreate
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      hostNetwork: false
+      dnsPolicy: ClusterFirst

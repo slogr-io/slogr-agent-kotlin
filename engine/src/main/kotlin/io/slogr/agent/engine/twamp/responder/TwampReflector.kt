@@ -1,5 +1,6 @@
 package io.slogr.agent.engine.twamp.responder
 
+import io.slogr.agent.engine.reflector.ReflectorThreadPool
 import io.slogr.agent.native.NativeProbeAdapter
 import org.slf4j.LoggerFactory
 import java.net.InetAddress
@@ -9,22 +10,23 @@ import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
 
 /**
  * TWAMP responder — NIO Selector event loop.
  *
  * Listens on [listenPort] (default 862) for incoming controller connections.
  * Accepts each connection and runs a [TwampResponderSession] state machine on
- * the same single-threaded selector loop. Test packet reflectors run in
- * separate daemon threads (managed by the responder sessions).
+ * the same single-threaded selector loop.
+ *
+ * **R2 change**: Test packet reflectors are no longer started as dedicated threads.
+ * Instead a shared [ReflectorThreadPool] is created here and passed to each
+ * [TwampResponderSession]. The pool is shut down when [stop] completes.
  *
  * **Usage:**
  * ```kotlin
  * val reflector = TwampReflector(adapter = jniAdapter)
  * reflector.start()
- * // ...
+ * // …
  * reflector.stop()
  * ```
  *
@@ -49,10 +51,8 @@ class TwampReflector(
     private val selector: Selector = Selector.open()
     private val sessionMap = HashMap<SelectionKey, TwampResponderSession>()
 
-    private val scheduler: ScheduledExecutorService =
-        Executors.newScheduledThreadPool(4) { r ->
-            Thread(r, "twamp-resp-scheduler").also { it.isDaemon = true }
-        }
+    /** Shared thread pool for all reflector sessions managed by this reflector instance. */
+    val threadPool: ReflectorThreadPool = ReflectorThreadPool()
 
     @Volatile private var isAlive = false
     private var serverChannel: ServerSocketChannel? = null
@@ -107,7 +107,7 @@ class TwampReflector(
             }
 
             server.close()
-            scheduler.shutdown()
+            threadPool.shutdown()
             log.info("TWAMP reflector stopped")
         } catch (e: Throwable) {
             log.error("TWAMP reflector failed on port $listenPort: ${e.javaClass.name}: ${e.message}", e)
@@ -129,7 +129,7 @@ class TwampReflector(
             allowlist    = allowlist,
             sharedSecret = sharedSecret,
             adapter      = adapter,
-            scheduler    = scheduler,
+            threadPool   = threadPool,
             agentIdBytes = agentIdBytes
         )
         sessionMap[clientKey] = session

@@ -64,10 +64,11 @@ fun run(args: Array<String>): Int {
         )
     }
 
-    // Delegate that only starts the engine on first measurement call,
-    // unless start() is called explicitly (daemon mode).
+    // Delegate that only starts the engine on first measurement call.
+    // DaemonCommand calls start() to ensure the TWAMP reflector is listening
+    // before any remote controller tries to connect.
     val engineProxy = object : MeasurementEngine {
-        override fun start() { engineLazy.value }  // forces init{} → reflector binds port 862
+        override fun start() { engineLazy.value }  // force eager initialization
 
         override suspend fun measure(
             target: InetAddress, targetPort: Int, profile: SlaProfile,

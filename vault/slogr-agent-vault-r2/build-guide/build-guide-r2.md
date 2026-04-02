@@ -40,6 +40,8 @@ R1 is complete (Phases 0-8, 388+ tests passing). R2 builds on top of R1. All R1 
 | `platform/output/JsonResultFormatter.kt` | Include `probe_mode` in JSON output. |
 | `platform/commands/CommandDispatcher.kt` | Register `halt_measurement` as 6th command type. |
 | `platform/cli/SlogrCli.kt` | Register `doctor` subcommand. |
+| `platform/commands/SetScheduleHandler.kt` | Parse `tcp_probe_ports` from target payload. Validate max 5 ports. Default to `[443]` when omitted. |
+| `engine/probe/TcpConnectProbe.kt` | Iterate over `tcp_probe_ports` array. 2-second timeout per port. One `ProbeResult` per port. Sequential, not parallel. |
 
 ### R1 Files Deleted in R2
 

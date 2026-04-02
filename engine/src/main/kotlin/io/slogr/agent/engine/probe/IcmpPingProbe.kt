@@ -1,5 +1,6 @@
 package io.slogr.agent.engine.probe
 
+import io.slogr.agent.contracts.ProbeMode
 import io.slogr.agent.native.NativeProbeAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -59,8 +60,21 @@ class IcmpPingProbe(private val adapter: NativeProbeAdapter) {
         )
     }
 
-    private companion object {
+    companion object {
         /** TTL large enough to reach any public endpoint without expiring en route. */
         const val TTL_ENDPOINT = 64
+
+        /**
+         * Classify probe mode from ICMP and TCP availability.
+         *
+         * @param icmpSuccess true when ICMP loss < 100% (at least one echo reply received)
+         * @param tcpSuccess  true when at least one TCP port connected successfully
+         */
+        fun classify(icmpSuccess: Boolean, tcpSuccess: Boolean): ProbeMode = when {
+            icmpSuccess && tcpSuccess   -> ProbeMode.ICMP_AND_TCP
+            !icmpSuccess && tcpSuccess  -> ProbeMode.TCP_ONLY
+            icmpSuccess && !tcpSuccess  -> ProbeMode.ICMP_ONLY
+            else                        -> ProbeMode.BOTH_FAILED
+        }
     }
 }

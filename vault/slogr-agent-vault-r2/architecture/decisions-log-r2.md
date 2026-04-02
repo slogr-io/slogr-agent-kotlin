@@ -136,3 +136,14 @@ Extends R1 `architecture/decisions-log.md`. ADRs 001-020 remain locked. R2 adds 
 **Context:** Misconfigured schedule could accidentally flood a target. Need instant remote stop.
 **Decision:** New command type `halt_measurement`. Immediately stops all sessions, purges in-memory schedule, agent stays connected and responsive. 30-second timeout. Resume via new `set_schedule`.
 **Consequence:** 6th command type added to Layer 2.5 command payloads. Admin Console gets "Emergency Stop" button.
+
+## ADR-040: Multi-Port TCP Probe (Application-Aware Path Analysis)
+
+**Status:** Locked
+**Context:** Default TCP probe on port 443 only detects "is HTTPS reachable." Cloud firewalls (Azure NSGs, AWS Security Groups) often allow :443 but block specific application ports (:1433 SQL, :6379 Redis, :5432 PostgreSQL, :27017 MongoDB). Probing only 443 gives a false sense of security. Probing actual application ports enables service-level reachability diagnosis.
+**Decision:** Add `tcp_probe_ports` array to `set_schedule` target payload. Default: `[443]`. Maximum: 5 ports per target. One `probe_raw` row per port. TCP connect timeout: 2 seconds (aggressive — blocked ports should fail fast, not hang the worker thread).
+**Consequence:** `probe_raw` table already has `tcp_port` column. Agent produces one row per port per measurement window. ClickHouse can rollup per-port latency spikes. SaaS Path Detail view shows per-service reachability. Transforms Slogr from "network observability" to "application-aware path analysis."
+**Guardrails:**
+- Max 5 ports per target (agent validation). Prevents accidental port scanning that triggers IDS alerts.
+- 2-second TCP connect timeout per port. Probes run sequentially per target, not parallel (avoids burst).
+- Default `[443]` when omitted. Zero friction for free/anonymous users.

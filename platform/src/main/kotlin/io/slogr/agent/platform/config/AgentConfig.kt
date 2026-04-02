@@ -4,6 +4,11 @@ package io.slogr.agent.platform.config
  * Runtime configuration for the agent.
  *
  * All values have sensible defaults. Updated via push_config (Phase 6).
+ *
+ * [apiKey] is read from `SLOGR_API_KEY` env var. Its prefix determines [agentState]:
+ * - `sk_free_*` → REGISTERED (OTLP enabled)
+ * - `sk_live_*` → CONNECTED  (OTLP + RabbitMQ + Pub/Sub)
+ * - null or invalid → ANONYMOUS (stdout only)
  */
 data class AgentConfig(
     /** Maximum number of concurrent measurement sessions. */
@@ -32,5 +37,11 @@ data class AgentConfig(
         System.getProperty("user.home") + "/.slogr"),
 
     /** OTLP endpoint; null = OTLP disabled. */
-    val otlpEndpoint: String? = System.getenv("SLOGR_OTLP_ENDPOINT")
-)
+    val otlpEndpoint: String? = System.getenv("SLOGR_OTLP_ENDPOINT"),
+
+    /** API key from `SLOGR_API_KEY`. Determines [agentState]. */
+    val apiKey: String? = System.getenv("SLOGR_API_KEY")
+) {
+    /** Operational mode derived from [apiKey] prefix. Evaluated once at construction. */
+    val agentState: AgentState = determineState(apiKey)
+}

@@ -26,6 +26,6 @@ data class CliContext(
     val icmpPingProbe: IcmpPingProbe,
     val tcpConnectProbe: TcpConnectProbe,
     val tracerouteOrchestrator: TracerouteOrchestrator,
-    val textFormatter: ResultFormatter = TextResultFormatter(),
+    val textFormatter: ResultFormatter = TextResultFormatter(config.agentState),
     val jsonFormatter: ResultFormatter = JsonResultFormatter()
 )
