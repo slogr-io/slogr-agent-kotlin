@@ -31,6 +31,9 @@ jobs:
 
       # Build libslogr-native.so so JNI tests can run on Linux.
       # The Makefile uses $JAVA_HOME (set by actions/setup-java above) for JNI headers.
+      - name: Fix gradlew permissions
+        run: chmod +x gradlew
+
       - name: Install native build dependencies
         run: sudo apt-get install -y --no-install-recommends gcc
 
@@ -71,6 +74,9 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
+
+      - name: Fix gradlew permissions
+        run: chmod +x gradlew
 
       - name: Install native build dependencies
         run: sudo apt-get install -y --no-install-recommends gcc musl-tools
