@@ -30,9 +30,15 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
 
         // Eagerly initialize the engine so the TWAMP reflector binds port 862
         // immediately — even when there is no outbound schedule (responder-only mode).
-        log.info("Starting engine (reflector init)...")
-        ctx.engine.start()
-        log.info("Engine start() returned — reflector thread should be alive")
+        System.err.println("[DIAG] Before engine.start()")
+        try {
+            ctx.engine.start()
+        } catch (e: Throwable) {
+            System.err.println("[DIAG] engine.start() threw: ${e.javaClass.name}: ${e.message}")
+            e.printStackTrace(System.err)
+            throw e
+        }
+        System.err.println("[DIAG] After engine.start()")
 
         val scheduler = TestScheduler(
             engine   = ctx.engine,
