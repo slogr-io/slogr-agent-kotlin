@@ -99,6 +99,10 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
             log.info("Loaded schedule with ${schedule.sessions.size} session(s)")
         }
 
+        // Eagerly initialize the engine so the TWAMP reflector binds port 862
+        // immediately — even when there is no outbound schedule (responder-only mode).
+        ctx.engine.start()
+
         val scheduler = TestScheduler(
             engine   = ctx.engine,
             onResult = { cfg, bundle ->
@@ -118,10 +122,16 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
         Runtime.getRuntime().addShutdownHook(shutdownHook)
 
         log.info("slogr-agent daemon running. Press Ctrl+C to stop.")
-        try {
-            Thread.currentThread().join()
-        } catch (_: InterruptedException) {
-            // Interrupted by shutdown hook
+        // Block the main thread so daemon threads (reflector, controller) stay alive.
+        // Loop on InterruptedException — spurious interrupts must not exit daemon mode;
+        // only a JVM shutdown (SIGTERM → shutdown hook) should terminate the process.
+        while (true) {
+            try {
+                Thread.currentThread().join()
+                break
+            } catch (_: InterruptedException) {
+                log.debug("Main thread interrupted — continuing daemon loop")
+            }
         }
     }
 }

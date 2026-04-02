@@ -90,22 +90,26 @@ class TwampController(
     // ── Selector event loop ──────────────────────────────────────────────────
 
     override fun run() {
-        while (isAlive || sessionMap.isNotEmpty()) {
-            processConnectQueue()
-            selector.select(SELECT_TIMEOUT_MS)
-            val keys = selector.selectedKeys().iterator()
-            while (keys.hasNext()) {
-                val key = keys.next()
-                keys.remove()
-                when {
-                    key.isConnectable -> handleConnect(key)
-                    key.isReadable    -> handleRead(key)
+        try {
+            while (isAlive || sessionMap.isNotEmpty()) {
+                processConnectQueue()
+                selector.select(SELECT_TIMEOUT_MS)
+                val keys = selector.selectedKeys().iterator()
+                while (keys.hasNext()) {
+                    val key = keys.next()
+                    keys.remove()
+                    when {
+                        key.isConnectable -> handleConnect(key)
+                        key.isReadable    -> handleRead(key)
+                    }
                 }
+                // Purge closed sessions
+                sessionMap.entries.removeIf { (_, session) -> session.isClosed }
             }
-            // Purge closed sessions
-            sessionMap.entries.removeIf { (_, session) -> session.isClosed }
+            scheduler.shutdown()
+        } catch (e: Throwable) {
+            log.error("TwampController selector loop failed: ${e.javaClass.name}: ${e.message}", e)
         }
-        scheduler.shutdown()
     }
 
     private fun processConnectQueue() {
