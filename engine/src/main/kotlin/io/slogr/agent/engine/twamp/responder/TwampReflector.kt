@@ -81,6 +81,7 @@ class TwampReflector(
     // ── Selector event loop ──────────────────────────────────────────────────
 
     override fun run() {
+        log.info("TWAMP reflector thread started (port=$listenPort, bind=$bindIp)")
         try {
             val server = ServerSocketChannel.open()
             server.configureBlocking(false)
@@ -108,8 +109,8 @@ class TwampReflector(
             server.close()
             scheduler.shutdown()
             log.info("TWAMP reflector stopped")
-        } catch (e: Exception) {
-            log.error("TWAMP reflector failed to start on port $listenPort: ${e.javaClass.simpleName}: ${e.message}", e)
+        } catch (e: Throwable) {
+            log.error("TWAMP reflector failed on port $listenPort: ${e.javaClass.name}: ${e.message}", e)
         }
     }
 
