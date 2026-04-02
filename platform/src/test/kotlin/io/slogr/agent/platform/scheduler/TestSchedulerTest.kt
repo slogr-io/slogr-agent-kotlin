@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Timeout
 import java.net.InetAddress
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
 
 @Timeout(15)
 class TestSchedulerTest {
@@ -46,14 +47,14 @@ class TestSchedulerTest {
 
     @Test
     fun `max 2 concurrent sessions when maxConcurrent=2`() = runBlocking {
-        var concurrentCount = 0
-        var maxObserved = 0
+        val concurrentCount = AtomicInteger(0)
+        val maxObserved = AtomicInteger(0)
         val engine = mockk<MeasurementEngine>()
         coEvery { engine.measure(any(), any(), any(), any(), any(), any()) } coAnswers {
-            concurrentCount++
-            if (concurrentCount > maxObserved) maxObserved = concurrentCount
+            val count = concurrentCount.incrementAndGet()
+            maxObserved.updateAndGet { maxOf(it, count) }
             delay(200L)
-            concurrentCount--
+            concurrentCount.decrementAndGet()
             MeasurementBundle(twamp = fakeTwampResult(firstArg()), grade = SlaGrade.GREEN)
         }
 
@@ -65,7 +66,7 @@ class TestSchedulerTest {
         delay(1500L)
         scheduler.stop()
 
-        assertTrue(maxObserved <= 2, "Max concurrent was $maxObserved but limit is 2")
+        assertTrue(maxObserved.get() <= 2, "Max concurrent was ${maxObserved.get()} but limit is 2")
     }
 
     // ── Update schedule adds new sessions ─────────────────────────────────────
