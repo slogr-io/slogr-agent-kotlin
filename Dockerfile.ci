@@ -2,8 +2,11 @@
 # Do NOT use this for standalone/production builds; use Dockerfile instead.
 #
 # Expected files present before `docker build -f Dockerfile.ci .`:
-#   app/build/libs/slogr-agent-all.jar
+#   deploy/slogr-agent-all.jar             (staged from app/build/libs/ by CI)
 #   native/libs/libslogr-native-linux-amd64-musl.so
+#
+# Note: app/build/ is excluded by .dockerignore, so the JAR is staged into
+# deploy/ which is included in the Docker build context.
 
 FROM amazoncorretto:21-alpine
 
@@ -14,7 +17,7 @@ RUN apk add --no-cache bash libcap && \
     chown -R slogr:slogr /opt/slogr && \
     touch /etc/slogr/env && chmod 600 /etc/slogr/env
 
-COPY app/build/libs/slogr-agent-all.jar                        /opt/slogr/slogr-agent-all.jar
+COPY deploy/slogr-agent-all.jar                                /opt/slogr/slogr-agent-all.jar
 COPY native/libs/libslogr-native-linux-amd64-musl.so           /opt/slogr/lib/libslogr-native.so
 COPY deploy/wrapper.sh                                          /usr/local/bin/slogr-agent
 
