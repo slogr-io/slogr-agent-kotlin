@@ -138,15 +138,29 @@ jobs:
             --cap-add NET_BIND_SERVICE \
             slogr-agent:test daemon
 
-          echo "Waiting for Agent B to start..."
-          sleep 5
-          docker logs agent-b
+          echo "Waiting for Agent B TWAMP reflector to be ready..."
 
-          # Fail fast if Agent B exited unexpectedly
-          STATUS=$(docker inspect -f '{{.State.Status}}' agent-b)
-          echo "Agent B status: $STATUS"
-          if [ "$STATUS" != "running" ]; then
-            echo "❌ Agent B is not running (status: $STATUS)"
+          # Poll up to 30s for "TWAMP reflector listening" in Agent B logs
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(docker inspect -f '{{.State.Status}}' agent-b)
+            if [ "$STATUS" != "running" ]; then
+              echo "❌ Agent B exited unexpectedly (status: $STATUS)"
+              docker logs agent-b
+              exit 1
+            fi
+            if docker logs agent-b 2>&1 | grep -q "TWAMP reflector listening"; then
+              echo "✅ Agent B TWAMP reflector is ready"
+              break
+            fi
+            ATTEMPT=$((ATTEMPT + 1))
+            sleep 1
+          done
+
+          if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+            echo "❌ Agent B TWAMP reflector did not start within 30 seconds"
+            docker logs agent-b
             exit 1
           fi
 
