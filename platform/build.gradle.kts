@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm")
+    kotlin("plugin.serialization")
 }
 
 kotlin {
@@ -29,6 +30,7 @@ dependencies {
     implementation(libs.otel.exporter.otlp)
     implementation(libs.otel.sdk)
     implementation(libs.clikt)
+    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.mockk)
     testRuntimeOnly(libs.junit.platform.launcher)

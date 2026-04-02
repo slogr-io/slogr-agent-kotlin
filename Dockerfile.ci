@@ -1,0 +1,32 @@
+# CI fast-build Dockerfile — uses pre-built artifacts from the test job.
+# Do NOT use this for standalone/production builds; use Dockerfile instead.
+#
+# Expected files present before `docker build -f Dockerfile.ci .`:
+#   app/build/libs/slogr-agent-all.jar
+#   native/libs/libslogr-native-linux-amd64-musl.so
+
+FROM amazoncorretto:21-alpine
+
+RUN apk add --no-cache bash libcap && \
+    addgroup -S slogr && \
+    adduser  -S -G slogr -h /opt/slogr -s /sbin/nologin slogr && \
+    mkdir -p /opt/slogr/lib /opt/slogr/data /opt/slogr/logs /etc/slogr && \
+    chown -R slogr:slogr /opt/slogr && \
+    touch /etc/slogr/env && chmod 600 /etc/slogr/env
+
+COPY app/build/libs/slogr-agent-all.jar                        /opt/slogr/slogr-agent-all.jar
+COPY native/libs/libslogr-native-linux-amd64-musl.so           /opt/slogr/lib/libslogr-native.so
+COPY deploy/wrapper.sh                                          /usr/local/bin/slogr-agent
+
+RUN chmod +x /usr/local/bin/slogr-agent && \
+    chown slogr:slogr /opt/slogr/slogr-agent-all.jar /opt/slogr/lib/libslogr-native.so
+
+USER slogr
+WORKDIR /opt/slogr
+
+ENV SLOGR_DATA_DIR=/opt/slogr/data
+ENV SLOGR_NATIVE_DIR=/opt/slogr/lib
+ENV JAVA_OPTS="-Xmx384m"
+
+ENTRYPOINT ["/usr/local/bin/slogr-agent"]
+CMD ["daemon"]
