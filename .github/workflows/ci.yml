@@ -10,7 +10,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,7 +62,8 @@ jobs:
           name: test-results
           path: '**/build/reports/tests/'
 
-  e2e-twamp:
+  # ── Build Docker image and upload as artifact ──────────────────────────────
+  build-image:
     needs: test
     runs-on: ubuntu-latest
 
@@ -99,6 +100,31 @@ jobs:
       - name: Build Docker image
         run: docker build -t slogr-agent:test .
 
+      - name: Save Docker image as artifact
+        run: docker save slogr-agent:test | gzip > /tmp/slogr-agent-test.tar.gz
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: slogr-agent-image
+          path: /tmp/slogr-agent-test.tar.gz
+          retention-days: 1
+
+  # ── E2E tests — re-run this job alone to skip the Docker build ─────────────
+  run-e2e:
+    needs: build-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: slogr-agent-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load < /tmp/slogr-agent-test.tar.gz
+
       - name: Create test network
         run: docker network create slogr-test-net
 
@@ -129,42 +155,42 @@ jobs:
         run: |
           AGENT_B_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-b)
           echo "Agent B IP: $AGENT_B_IP"
-          
+
           docker run --rm \
             --network slogr-test-net \
             --cap-add NET_RAW \
             --cap-add NET_BIND_SERVICE \
             slogr-agent:test check "$AGENT_B_IP"
-          
+
           echo "✅ TWAMP A → B passed"
 
       # ── Test 2: TWAMP A → B (JSON, validate fields) ─────────
       - name: "E2E: TWAMP check A → B (JSON validation)"
         run: |
           AGENT_B_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-b)
-          
+
           docker run --rm \
             --network slogr-test-net \
             --cap-add NET_RAW \
             --cap-add NET_BIND_SERVICE \
             slogr-agent:test check "$AGENT_B_IP" -f json | tee /tmp/twamp.json
-          
+
           python3 -c "
           import json, sys
           data = json.load(sys.stdin)
-          
+
           checks = {
             'has_rtt': 'fwd_avg_rtt_ms' in str(data),
             'has_packets': 'packets_sent' in str(data),
             'has_grade': 'grade' in str(data),
             'valid_json': True
           }
-          
+
           failed = [k for k, v in checks.items() if not v]
           if failed:
             print(f'❌ Failed checks: {failed}')
             sys.exit(1)
-          
+
           print('✅ JSON validation passed')
           print(json.dumps(data, indent=2)[:500])
           " < /tmp/twamp.json
@@ -178,20 +204,20 @@ jobs:
             --cap-add NET_RAW \
             --cap-add NET_BIND_SERVICE \
             slogr-agent:test daemon
-          
+
           sleep 3
 
       - name: "E2E: TWAMP check B → A (bidirectional)"
         run: |
           AGENT_A_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-a)
           echo "Agent A IP: $AGENT_A_IP"
-          
+
           docker run --rm \
             --network slogr-test-net \
             --cap-add NET_RAW \
             --cap-add NET_BIND_SERVICE \
             slogr-agent:test check "$AGENT_A_IP"
-          
+
           echo "✅ Bidirectional TWAMP B → A passed"
 
       # ── Test 4: ICMP/TCP fallback (non-TWAMP target) ────────
@@ -202,26 +228,26 @@ jobs:
             --name target-http \
             --network slogr-test-net \
             python:3-slim python3 -m http.server 443
-          
+
           sleep 2
-          
+
           TARGET_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' target-http)
           echo "HTTP target IP: $TARGET_IP"
-          
+
           # This should fall back to ICMP/TCP since target has no TWAMP
           docker run --rm \
             --network slogr-test-net \
             --cap-add NET_RAW \
             --cap-add NET_BIND_SERVICE \
             slogr-agent:test check "$TARGET_IP" || true
-          
+
           echo "✅ Fallback test completed (non-zero exit OK — ICMP may be filtered in Docker)"
 
       # ── Test 5: Multiple concurrent sessions ────────────────
       - name: "E2E: Multiple concurrent TWAMP checks"
         run: |
           AGENT_B_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-b)
-          
+
           # Run 5 concurrent TWAMP checks against Agent B
           for i in 1 2 3 4 5; do
             docker run -d \
@@ -231,7 +257,7 @@ jobs:
               --cap-add NET_BIND_SERVICE \
               slogr-agent:test check "$AGENT_B_IP"
           done
-          
+
           # Wait for all to complete
           FAILED=0
           for i in 1 2 3 4 5; do
@@ -242,7 +268,7 @@ jobs:
               FAILED=1
             fi
           done
-          
+
           if [ "$FAILED" = "0" ]; then
             echo "✅ All 5 concurrent TWAMP sessions passed"
           else
@@ -255,10 +281,10 @@ jobs:
         run: |
           VERSION=$(docker run --rm slogr-agent:test version)
           echo "Version: $VERSION"
-          
+
           STATUS=$(docker run --rm slogr-agent:test status)
           echo "Status: $STATUS"
-          
+
           # Verify version string is present
           echo "$VERSION" | grep -q "slogr-agent" || { echo "❌ Version check failed"; exit 1; }
           echo "✅ Version and status commands passed"
