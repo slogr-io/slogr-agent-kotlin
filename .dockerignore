@@ -5,6 +5,7 @@ agent-cpp/
 agent-java/
 vault/
 **/build/
+!native/build/libs/
 **/.gradle/
 packaging/
 deploy/packer/
