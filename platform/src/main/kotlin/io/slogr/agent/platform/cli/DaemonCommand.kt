@@ -77,9 +77,14 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
         val schedule = if (configPath.isNotEmpty()) {
             val file = File(configPath)
             if (file.exists()) {
-                val parsed = json.decodeFromString(Schedule.serializer(), file.readText())
-                log.info("Loaded schedule from $configPath (${parsed.sessions.size} session(s))")
-                parsed
+                try {
+                    val parsed = json.decodeFromString(Schedule.serializer(), file.readText())
+                    log.info("Loaded schedule from $configPath (${parsed.sessions.size} session(s))")
+                    parsed
+                } catch (e: Exception) {
+                    log.warn("Config file $configPath is corrupt, falling back to persisted schedule: ${e.message}")
+                    ctx.scheduleStore.load()
+                }
             } else {
                 log.warn("Config file not found: $configPath — falling back to persisted schedule")
                 ctx.scheduleStore.load()
