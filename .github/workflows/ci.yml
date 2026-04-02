@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ── Build, test, and upload compiled artifacts ─────────────────────────────
   test:
     runs-on: ubuntu-latest
 
@@ -30,21 +31,19 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      # Build libslogr-native.so so JNI tests can run on Linux.
-      # The Makefile uses $JAVA_HOME (set by actions/setup-java above) for JNI headers.
       - name: Fix gradlew permissions
         run: chmod +x gradlew
 
       - name: Install native build dependencies
-        run: sudo apt-get install -y --no-install-recommends gcc
+        run: sudo apt-get install -y --no-install-recommends gcc musl-tools
 
-      - name: Build native library
+      # Build glibc variant for unit tests
+      - name: Build native library (glibc)
         run: make -C native JAVA_HOME=$JAVA_HOME
 
       - name: Run unit tests
         run: ./gradlew test
         env:
-          # Point the JNI loader to the freshly built library
           SLOGR_NATIVE_DIR: ${{ github.workspace }}/native/build
 
       - name: Build fat JAR
@@ -55,6 +54,24 @@ jobs:
           java -jar app/build/libs/slogr-agent-all.jar version
           java -jar app/build/libs/slogr-agent-all.jar status
 
+      # Build musl variant for Docker (Alpine)
+      - name: Build native library (musl — for Docker)
+        run: |
+          make -C native JAVA_HOME=$JAVA_HOME MUSL=1
+          mkdir -p native/libs
+          cp native/build/libslogr-native-musl.so \
+             native/libs/libslogr-native-linux-amd64-musl.so
+
+      # Upload JAR + musl .so so build-image can skip Gradle and make entirely
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: slogr-build-artifacts
+          path: |
+            app/build/libs/slogr-agent-all.jar
+            native/libs/libslogr-native-linux-amd64-musl.so
+          retention-days: 1
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,7 +79,7 @@ jobs:
           name: test-results
           path: '**/build/reports/tests/'
 
-  # ── Build Docker image and upload as artifact ──────────────────────────────
+  # ── Build Docker image from pre-built artifacts (no Gradle, no make) ───────
   build-image:
     needs: test
     runs-on: ubuntu-latest
@@ -71,34 +88,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
+      # Download the JAR + native lib built by the test job
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          distribution: 'temurin'
-          java-version: '21'
+          name: slogr-build-artifacts
 
-      - name: Fix gradlew permissions
-        run: chmod +x gradlew
-
-      - name: Install native build dependencies
-        run: sudo apt-get install -y --no-install-recommends gcc musl-tools
-
-      # Build both glibc and musl variants.
-      # The Dockerfile (Alpine-based) needs the musl variant at native/libs/
-      # (not native/build/libs/ — .dockerignore excludes **/build/).
-      - name: Build native libraries for Docker
+      # Restore directory structure expected by Dockerfile.ci
+      - name: Place artifacts
         run: |
-          make -C native JAVA_HOME=$JAVA_HOME
-          make -C native JAVA_HOME=$JAVA_HOME MUSL=1
-          mkdir -p native/libs
-          cp native/build/libslogr-native-musl.so \
-             native/libs/libslogr-native-linux-amd64-musl.so
-
-      - name: Build fat JAR
-        run: ./gradlew shadowJar
+          mkdir -p app/build/libs native/libs
+          # download-artifact places files flat; move them to expected paths
+          mv slogr-agent-all.jar             app/build/libs/ 2>/dev/null || true
+          mv libslogr-native-linux-amd64-musl.so native/libs/ 2>/dev/null || true
 
       - name: Build Docker image
-        run: docker build -t slogr-agent:test .
+        run: docker build -f Dockerfile.ci -t slogr-agent:test .
 
       - name: Save Docker image as artifact
         run: docker save slogr-agent:test | gzip > /tmp/slogr-agent-test.tar.gz
@@ -187,11 +192,12 @@ jobs:
             --network slogr-test-net \
             --cap-add NET_RAW \
             --cap-add NET_BIND_SERVICE \
-            slogr-agent:test check "$AGENT_B_IP" -f json | tee /tmp/twamp.json
+            slogr-agent:test check "$AGENT_B_IP" --format json > /tmp/twamp.json
 
           python3 -c "
           import json, sys
-          data = json.load(sys.stdin)
+          with open('/tmp/twamp.json') as f:
+              data = json.load(f)
 
           checks = {
             'has_rtt': 'fwd_avg_rtt_ms' in str(data),
@@ -207,7 +213,7 @@ jobs:
 
           print('✅ JSON validation passed')
           print(json.dumps(data, indent=2)[:500])
-          " < /tmp/twamp.json
+          "
 
       # ── Test 3: Bidirectional TWAMP (B → A) ─────────────────
       - name: Start Agent A (for reverse test)
