@@ -182,10 +182,11 @@ jobs:
 
       - name: Copy artifacts to build dir
         run: |
-          cp /tmp/artifacts/slogr-agent-all.jar ~/rpmbuild/SOURCES/
-          cp /tmp/artifacts/libslogr-native-linux-amd64.so ~/rpmbuild/SOURCES/libslogr-native.so
-          cp deploy/wrapper.sh ~/rpmbuild/SOURCES/
-          cp deploy/slogr-agent.service ~/rpmbuild/SOURCES/
+          mkdir -p ~/rpmbuild/BUILD
+          cp /tmp/artifacts/slogr-agent-all.jar          ~/rpmbuild/BUILD/
+          cp /tmp/artifacts/libslogr-native-linux-amd64.so ~/rpmbuild/BUILD/libslogr-native.so
+          cp deploy/wrapper.sh                            ~/rpmbuild/BUILD/
+          cp deploy/slogr-agent.service                  ~/rpmbuild/BUILD/
 
       - name: Build RPM
         run: |
