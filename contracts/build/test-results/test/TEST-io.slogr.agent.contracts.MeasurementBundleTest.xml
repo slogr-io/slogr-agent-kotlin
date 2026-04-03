@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.contracts.MeasurementBundleTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:17:17" hostname="DESKTOP-09GV4AV" time="0.048">
-  <properties/>
-  <testcase name="MeasurementBundle with only twamp result round-trips()" classname="io.slogr.agent.contracts.MeasurementBundleTest" time="0.028"/>
-  <testcase name="MeasurementBundle grade defaults through correctly()" classname="io.slogr.agent.contracts.MeasurementBundleTest" time="0.019"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.native.RecvResultTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-03-31T14:45:27" hostname="DESKTOP-09GV4AV" time="0.007">
-  <properties/>
-  <testcase name="successful result has isTimeout=false()" classname="io.slogr.agent.native.RecvResultTest" time="0.001"/>
-  <testcase name="TIMEOUT sentinel has bytesRead=-1 and isTimeout=true()" classname="io.slogr.agent.native.RecvResultTest" time="0.001"/>
-  <testcase name="data class equality works()" classname="io.slogr.agent.native.RecvResultTest" time="0.001"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

@@ -66,12 +66,12 @@ jobs:
           fi
           gem install package_cloud --no-document -q
           # RPM — covers RHEL 8/9, CentOS Stream, Amazon Linux 2023, Fedora
-          package_cloud push nasimkz/agent-rpm/el/8  dist/slogr-agent-*.rpm || true
-          package_cloud push nasimkz/agent-rpm/el/9  dist/slogr-agent-*.rpm || true
+          package_cloud push slogr/agent-rpm/el/8  dist/slogr-agent-*.rpm || true
+          package_cloud push slogr/agent-rpm/el/9  dist/slogr-agent-*.rpm || true
           # DEB — covers Ubuntu 20.04 (focal), 22.04 (jammy), Debian 12 (bookworm)
-          package_cloud push nasimkz/agent-deb/ubuntu/focal     dist/slogr-agent_*.deb || true
-          package_cloud push nasimkz/agent-deb/ubuntu/jammy     dist/slogr-agent_*.deb || true
-          package_cloud push nasimkz/agent-deb/debian/bookworm  dist/slogr-agent_*.deb || true
+          package_cloud push slogr/agent-deb/ubuntu/focal     dist/slogr-agent_*.deb || true
+          package_cloud push slogr/agent-deb/ubuntu/jammy     dist/slogr-agent_*.deb || true
+          package_cloud push slogr/agent-deb/debian/bookworm  dist/slogr-agent_*.deb || true
         env:
           PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
 

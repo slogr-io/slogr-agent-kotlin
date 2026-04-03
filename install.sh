@@ -5,7 +5,7 @@
 set -e
 
 SLOGR_VERSION="${SLOGR_VERSION:-1.0.0}"
-RELEASES_BASE="https://github.com/slogr/agent-kotlin/releases/download/v${SLOGR_VERSION}"
+RELEASES_BASE="https://github.com/slogr-io/slogr-agent-kotlin/releases/download/v${SLOGR_VERSION}"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
