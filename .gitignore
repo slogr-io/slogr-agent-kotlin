@@ -1,0 +1,29 @@
+# Gradle build outputs
+build/
+.gradle/
+out/
+
+# Compiled files
+*.class
+*.jar
+*.war
+
+# Native build outputs
+native/build/
+native/libs/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temp install directory
+.tmp-install/

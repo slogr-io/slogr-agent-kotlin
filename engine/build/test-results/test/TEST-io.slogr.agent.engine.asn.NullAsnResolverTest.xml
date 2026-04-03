@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.asn.NullAsnResolverTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:36" hostname="DESKTOP-09GV4AV" time="0.012">
-  <properties/>
-  <testcase name="isAvailable returns false()" classname="io.slogr.agent.engine.asn.NullAsnResolverTest" time="0.002"/>
-  <testcase name="resolve always returns null()" classname="io.slogr.agent.engine.asn.NullAsnResolverTest" time="0.009"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

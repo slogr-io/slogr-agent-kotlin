@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="io.slogr.agent.engine.twamp.FillModeTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-04-01T04:36:38" hostname="DESKTOP-09GV4AV" time="0.003">
-  <properties/>
-  <testcase name="ZERO and RANDOM are present()" classname="io.slogr.agent.engine.twamp.FillModeTest" time="0.001"/>
-  <testcase name="enum has exactly two values()" classname="io.slogr.agent.engine.twamp.FillModeTest" time="0.001"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
