@@ -260,6 +260,7 @@ jobs:
   build-ami:
     needs: [build-jar, build-native]
     runs-on: ubuntu-latest
+    continue-on-error: true
     environment: production
     permissions:
       id-token: write
