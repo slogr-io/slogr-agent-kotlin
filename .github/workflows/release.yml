@@ -69,21 +69,35 @@ jobs:
       - name: Push packages to Buildkite Package Registries
         if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
-          if [ -z "$PACKAGECLOUD_TOKEN" ]; then
-            echo "PACKAGECLOUD_TOKEN not set — skipping Buildkite package registry publish"
+          if [ -z "$BUILDKITE_API_TOKEN" ]; then
+            echo "BUILDKITE_API_TOKEN not set — skipping Buildkite package registry publish"
             exit 0
           fi
-          sudo gem install package_cloud --no-document -q
-          # RPM — covers RHEL 8/9, CentOS Stream, Amazon Linux 2023, Fedora
-          package_cloud push slogr/agent-rpm/el/8  dist/slogr-agent-*.rpm || true
-          package_cloud push slogr/agent-rpm/el/9  dist/slogr-agent-*.rpm || true
-          # DEB — covers Ubuntu 20.04 (focal), 22.04 (jammy), Debian 12 (bookworm)
-          package_cloud push slogr/agent-deb/ubuntu/focal     dist/slogr-agent_*.deb || true
-          package_cloud push slogr/agent-deb/ubuntu/jammy     dist/slogr-agent_*.deb || true
-          package_cloud push slogr/agent-deb/debian/bookworm  dist/slogr-agent_*.deb || true
+          API="https://api.buildkite.com/v2/packages/organizations/slogr/registries"
+          upload() {
+            local registry="$1" file="$2"
+            echo "Uploading $file to $registry..."
+            HTTP=$(curl -s -o /tmp/bk_response.json -w "%{http_code}" \
+              -X POST "$API/$registry/packages" \
+              -H "Authorization: Bearer $BUILDKITE_API_TOKEN" \
+              -F "file=@$file")
+            if [ "$HTTP" = "201" ]; then
+              echo "  -> OK ($file)"
+            else
+              echo "  -> WARN: HTTP $HTTP"
+              cat /tmp/bk_response.json || true
+            fi
+          }
+          # RPM registry
+          for f in dist/slogr-agent-*.rpm; do
+            [ -f "$f" ] && upload agent-rpm "$f"
+          done
+          # DEB registry
+          for f in dist/slogr-agent_*.deb; do
+            [ -f "$f" ] && upload agent-deb "$f"
+          done
         env:
-          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
-          PACKAGECLOUD_URL: https://packages.buildkite.com
+          BUILDKITE_API_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
 
       # ── Publish to S3 release bucket ──────────────────────────────────────
       - uses: aws-actions/configure-aws-credentials@v4
