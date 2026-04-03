@@ -107,20 +107,21 @@ jobs:
           name: slogr-agent-jar
           path: agent-kotlin/app/build/libs/
 
+      # Dockerfile COPY expects native/libs/ relative to the build context (agent-kotlin/)
       - uses: actions/download-artifact@v4
         with:
           name: native-linux-amd64
-          path: agent-kotlin/native/build/libs/
+          path: agent-kotlin/native/libs/
 
       - uses: actions/download-artifact@v4
         with:
           name: native-linux-amd64-musl
-          path: agent-kotlin/native/build/libs/
+          path: agent-kotlin/native/libs/
 
       - uses: actions/download-artifact@v4
         with:
           name: native-linux-arm64
-          path: agent-kotlin/native/build/libs/
+          path: agent-kotlin/native/libs/
 
       - uses: docker/setup-qemu-action@v3
 
@@ -128,8 +129,9 @@ jobs:
 
       - uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v5
@@ -139,15 +141,15 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            slogr/agent:${{ needs.build-jar.outputs.version }}
-            slogr/agent:latest
+            ghcr.io/${{ github.repository_owner }}/agent:${{ needs.build-jar.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/agent:latest
           build-args: |
             VERSION=${{ needs.build-jar.outputs.version }}
 
       - name: Smoke test Docker image
         run: |
-          docker run --rm slogr/agent:${{ needs.build-jar.outputs.version }} version | grep "${{ needs.build-jar.outputs.version }}"
-          docker run --rm slogr/agent:${{ needs.build-jar.outputs.version }} status
+          docker run --rm ghcr.io/${{ github.repository_owner }}/agent:${{ needs.build-jar.outputs.version }} version | grep "${{ needs.build-jar.outputs.version }}"
+          docker run --rm ghcr.io/${{ github.repository_owner }}/agent:${{ needs.build-jar.outputs.version }} status
 
   # ── RPM package ─────────────────────────────────────────────────────────────
   build-rpm:

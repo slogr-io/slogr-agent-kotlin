@@ -56,6 +56,25 @@ jobs:
           path: dist/
         continue-on-error: true
 
+      # ── Publish RPM + DEB to Buildkite Package Registries ────────────────
+      - name: Push packages to Buildkite Package Registries
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          if [ -z "$PACKAGECLOUD_TOKEN" ]; then
+            echo "PACKAGECLOUD_TOKEN not set — skipping Buildkite package registry publish"
+            exit 0
+          fi
+          gem install package_cloud --no-document -q
+          # RPM — covers RHEL 8/9, CentOS Stream, Amazon Linux 2023, Fedora
+          package_cloud push nasimkz/agent-rpm/el/8  dist/slogr-agent-*.rpm || true
+          package_cloud push nasimkz/agent-rpm/el/9  dist/slogr-agent-*.rpm || true
+          # DEB — covers Ubuntu 20.04 (focal), 22.04 (jammy), Debian 12 (bookworm)
+          package_cloud push nasimkz/agent-deb/ubuntu/focal     dist/slogr-agent_*.deb || true
+          package_cloud push nasimkz/agent-deb/ubuntu/jammy     dist/slogr-agent_*.deb || true
+          package_cloud push nasimkz/agent-deb/debian/bookworm  dist/slogr-agent_*.deb || true
+        env:
+          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+
       # ── Publish to S3 release bucket ──────────────────────────────────────
       - uses: aws-actions/configure-aws-credentials@v4
         with:
