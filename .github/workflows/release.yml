@@ -42,18 +42,24 @@ jobs:
         with:
           name: slogr-agent-jar
           path: dist/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       - uses: actions/download-artifact@v4
         with:
           name: slogr-agent-rpm
           path: dist/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       - uses: actions/download-artifact@v4
         with:
           name: slogr-agent-deb
           path: dist/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       # ── Publish RPM + DEB to Buildkite Package Registries ────────────────
@@ -64,7 +70,7 @@ jobs:
             echo "PACKAGECLOUD_TOKEN not set — skipping Buildkite package registry publish"
             exit 0
           fi
-          gem install package_cloud --no-document -q
+          sudo gem install package_cloud --no-document -q
           # RPM — covers RHEL 8/9, CentOS Stream, Amazon Linux 2023, Fedora
           package_cloud push slogr/agent-rpm/el/8  dist/slogr-agent-*.rpm || true
           package_cloud push slogr/agent-rpm/el/9  dist/slogr-agent-*.rpm || true
