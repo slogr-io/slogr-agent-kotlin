@@ -86,12 +86,14 @@ jobs:
 
       # ── Publish to S3 release bucket ──────────────────────────────────────
       - uses: aws-actions/configure-aws-credentials@v4
+        continue-on-error: true
         with:
           role-to-assume: ${{ secrets.AWS_RELEASE_ROLE_ARN }}
           aws-region: us-east-1
 
       - name: Publish artifacts to S3
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         run: |
           V=${{ steps.ver.outputs.version }}
           aws s3 cp dist/ s3://releases.slogr.io/agent/$V/ \
@@ -103,10 +105,12 @@ jobs:
       # ── Publish Docker image to ECR ───────────────────────────────────────
       - name: Login to Amazon ECR
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Tag and push to ECR
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         run: |
           V=${{ steps.ver.outputs.version }}
           ECR="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/slogr/agent"
