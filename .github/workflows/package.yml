@@ -41,13 +41,12 @@ jobs:
           echo "version=$V" >> "$GITHUB_OUTPUT"
 
       - name: Build shadow JAR
-        working-directory: agent-kotlin
         run: ./gradlew :app:shadowJar -Pversion=${{ steps.ver.outputs.version }} --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
           name: slogr-agent-jar
-          path: agent-kotlin/app/build/libs/slogr-agent-all.jar
+          path: app/build/libs/slogr-agent-all.jar
           retention-days: 7
 
   # ── Build native libraries (all three targets) ──────────────────────────────
@@ -81,7 +80,8 @@ jobs:
         run: sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build native library
-        working-directory: agent-kotlin/native
+        working-directory: native
+
         run: |
           make CC=${{ matrix.cc }} TARGET=${{ matrix.target }} ${{ matrix.musl == '1' && 'MUSL=1' || '' }}
           ls -la build/
@@ -89,7 +89,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: native-${{ matrix.target }}
-          path: agent-kotlin/native/build/libslogr-native-${{ matrix.target }}.so
+          path: native/build/libslogr-native-${{ matrix.target }}.so
           retention-days: 7
 
   # ── Docker multi-arch image ─────────────────────────────────────────────────
@@ -105,23 +105,23 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: slogr-agent-jar
-          path: agent-kotlin/app/build/libs/
+          path: app/build/libs/
 
-      # Dockerfile COPY expects native/libs/ relative to the build context (agent-kotlin/)
+      # Dockerfile COPY expects native/libs/ relative to the build context ()
       - uses: actions/download-artifact@v4
         with:
           name: native-linux-amd64
-          path: agent-kotlin/native/libs/
+          path: native/libs/
 
       - uses: actions/download-artifact@v4
         with:
           name: native-linux-amd64-musl
-          path: agent-kotlin/native/libs/
+          path: native/libs/
 
       - uses: actions/download-artifact@v4
         with:
           name: native-linux-arm64
-          path: agent-kotlin/native/libs/
+          path: native/libs/
 
       - uses: docker/setup-qemu-action@v3
 
@@ -136,8 +136,8 @@ jobs:
       - name: Build and push multi-arch image
         uses: docker/build-push-action@v5
         with:
-          context: agent-kotlin
-          file: agent-kotlin/Dockerfile
+          context: .
+          file: Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -179,8 +179,8 @@ jobs:
         run: |
           cp /tmp/artifacts/slogr-agent-all.jar ~/rpmbuild/SOURCES/
           cp /tmp/artifacts/libslogr-native-linux-amd64.so ~/rpmbuild/SOURCES/libslogr-native.so
-          cp agent-kotlin/deploy/wrapper.sh ~/rpmbuild/SOURCES/
-          cp agent-kotlin/deploy/slogr-agent.service ~/rpmbuild/SOURCES/
+          cp deploy/wrapper.sh ~/rpmbuild/SOURCES/
+          cp deploy/slogr-agent.service ~/rpmbuild/SOURCES/
 
       - name: Build RPM
         run: |
@@ -188,7 +188,7 @@ jobs:
           rpmbuild -bb \
             --define "_topdir $HOME/rpmbuild" \
             --define "version $VERSION" \
-            agent-kotlin/packaging/rpm/slogr-agent.spec
+            packaging/rpm/slogr-agent.spec
 
       - uses: actions/upload-artifact@v4
         with:
@@ -227,13 +227,13 @@ jobs:
 
           cp /tmp/artifacts/slogr-agent-all.jar            $PKG/opt/slogr/
           cp /tmp/artifacts/libslogr-native-linux-amd64.so $PKG/opt/slogr/lib/libslogr-native.so
-          cp agent-kotlin/deploy/wrapper.sh                 $PKG/usr/bin/slogr-agent
-          cp agent-kotlin/deploy/slogr-agent.service        $PKG/etc/systemd/system/
+          cp deploy/wrapper.sh                 $PKG/usr/bin/slogr-agent
+          cp deploy/slogr-agent.service        $PKG/etc/systemd/system/
           touch                                              $PKG/etc/slogr/env
 
-          cp agent-kotlin/packaging/deb/DEBIAN/control  $PKG/DEBIAN/control
-          cp agent-kotlin/packaging/deb/DEBIAN/postinst $PKG/DEBIAN/postinst
-          cp agent-kotlin/packaging/deb/DEBIAN/prerm    $PKG/DEBIAN/prerm
+          cp packaging/deb/DEBIAN/control  $PKG/DEBIAN/control
+          cp packaging/deb/DEBIAN/postinst $PKG/DEBIAN/postinst
+          cp packaging/deb/DEBIAN/prerm    $PKG/DEBIAN/prerm
 
           # Update version in control file
           sed -i "s/^Version:.*/Version: $VERSION/" $PKG/DEBIAN/control
@@ -264,16 +264,16 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: slogr-agent-jar
-          path: agent-kotlin/app/build/libs/
+          path: app/build/libs/
 
       - uses: actions/download-artifact@v4
         with:
           name: native-linux-amd64
-          path: agent-kotlin/native/build/libs/
+          path: native/build/libs/
 
       - name: Rename native lib
-        run: cp agent-kotlin/native/build/libs/libslogr-native-linux-amd64.so \
-                agent-kotlin/native/build/libs/libslogr-native.so
+        run: cp native/build/libs/libslogr-native-linux-amd64.so \
+                native/build/libs/libslogr-native.so
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -285,14 +285,14 @@ jobs:
           version: "1.10.0"
 
       - name: Build AMI
-        working-directory: agent-kotlin/deploy/packer
+        working-directory: deploy/packer
         run: |
           packer init ami.pkr.hcl
           packer build -var "version=${{ needs.build-jar.outputs.version }}" ami.pkr.hcl
 
       - name: Update SSM parameter with new AMI ID
         run: |
-          AMI_ID=$(jq -r '.builds[0].artifact_id | split(":")[1]' agent-kotlin/deploy/packer/manifest.json)
+          AMI_ID=$(jq -r '.builds[0].artifact_id | split(":")[1]' deploy/packer/manifest.json)
           aws ssm put-parameter \
             --name "/slogr/agent/latest-ami-id" \
             --value "$AMI_ID" \
@@ -306,4 +306,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate systemd unit syntax
-        run: systemd-analyze verify agent-kotlin/deploy/slogr-agent.service || true
+        run: systemd-analyze verify deploy/slogr-agent.service || true

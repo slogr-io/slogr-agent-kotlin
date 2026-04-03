@@ -119,7 +119,7 @@ jobs:
             dist/slogr-agent-all.jar
             dist/slogr-agent-*.rpm
             dist/slogr-agent_*.deb
-            agent-kotlin/install.sh
+            install.sh
 
       # ── Publish Helm chart to ghcr.io OCI registry ───────────────────────
       - name: Install Helm
@@ -132,7 +132,7 @@ jobs:
         if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
           V=${{ steps.ver.outputs.version }}
-          helm package agent-kotlin/packaging/helm --version "$V" --app-version "$V" -d dist/
+          helm package packaging/helm --version "$V" --app-version "$V" -d dist/
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
           helm push dist/slogr-agent-${V}.tgz oci://ghcr.io/slogr/charts
 
@@ -144,7 +144,7 @@ jobs:
         run: |
           V=${{ steps.ver.outputs.version }}
           git clone "https://x-access-token:${TAP_TOKEN}@github.com/slogr/homebrew-tap.git" /tmp/homebrew-tap
-          cp agent-kotlin/packaging/homebrew/slogr-agent.rb /tmp/homebrew-tap/Formula/slogr-agent.rb
+          cp packaging/homebrew/slogr-agent.rb /tmp/homebrew-tap/Formula/slogr-agent.rb
           # Update version in formula
           sed -i "s/version \".*\"/version \"${V}\"/" /tmp/homebrew-tap/Formula/slogr-agent.rb
           cd /tmp/homebrew-tap
@@ -161,8 +161,8 @@ jobs:
           V=${{ steps.ver.outputs.version }}
           # Update version in nuspec
           sed -i "s/<version>.*<\/version>/<version>${V}<\/version>/" \
-            agent-kotlin/packaging/chocolatey/slogr-agent.nuspec
-          choco pack agent-kotlin/packaging/chocolatey/slogr-agent.nuspec --outputdirectory dist/
+            packaging/chocolatey/slogr-agent.nuspec
+          choco pack packaging/chocolatey/slogr-agent.nuspec --outputdirectory dist/
           choco push dist/slogr-agent.${V}.nupkg \
             --source https://push.chocolatey.org/ \
             --api-key ${{ secrets.CHOCOLATEY_API_KEY }}
