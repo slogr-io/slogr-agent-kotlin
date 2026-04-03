@@ -73,11 +73,11 @@ jobs:
 
       - name: Install musl toolchain
         if: matrix.musl == '1'
-        run: sudo apt-get install -y musl-tools
+        run: sudo apt-get update -y && sudo apt-get install -y musl-tools
 
       - name: Install arm64 cross-compiler
         if: matrix.arm64 == '1'
-        run: sudo apt-get install -y gcc-aarch64-linux-gnu
+        run: sudo apt-get update -y && sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build native library
         working-directory: native
