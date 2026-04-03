@@ -81,10 +81,15 @@ jobs:
 
       - name: Build native library
         working-directory: native
-
         run: |
-          make CC=${{ matrix.cc }} TARGET=${{ matrix.target }} ${{ matrix.musl == '1' && 'MUSL=1' || '' }}
+          make CC=${{ matrix.cc }} ${{ matrix.musl == '1' && 'MUSL=1' || '' }} ${{ matrix.arm64 == '1' && 'ARCH=aarch64' || '' }}
           ls -la build/
+          # Rename to canonical target name for artifact upload
+          if [ "${{ matrix.musl }}" = "1" ]; then
+            cp build/libslogr-native-musl.so build/libslogr-native-${{ matrix.target }}.so
+          else
+            cp build/libslogr-native.so build/libslogr-native-${{ matrix.target }}.so
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -157,10 +162,10 @@ jobs:
     runs-on: ubuntu-latest
     container: amazonlinux:2023
     steps:
-      - uses: actions/checkout@v4
+      - name: Install prerequisites
+        run: yum install -y tar git rpm-build rpmdevtools
 
-      - name: Install RPM build tools
-        run: yum install -y rpm-build rpmdevtools
+      - uses: actions/checkout@v4
 
       - uses: actions/download-artifact@v4
         with:
