@@ -10,6 +10,9 @@ on:
       version:
         description: 'Version to release (e.g. 1.0.0)'
         required: true
+      source_run_id:
+        description: 'Package workflow run ID to pull artifacts from'
+        required: false
       dry_run:
         description: 'Dry run (skip publish steps)'
         type: boolean
@@ -42,7 +45,7 @@ jobs:
         with:
           name: slogr-agent-jar
           path: dist/
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ github.event.workflow_run.id || github.event.inputs.source_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
@@ -50,7 +53,7 @@ jobs:
         with:
           name: slogr-agent-rpm
           path: dist/
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ github.event.workflow_run.id || github.event.inputs.source_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
@@ -58,7 +61,7 @@ jobs:
         with:
           name: slogr-agent-deb
           path: dist/
-          run-id: ${{ github.event.workflow_run.id }}
+          run-id: ${{ github.event.workflow_run.id || github.event.inputs.source_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
