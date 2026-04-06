@@ -9,18 +9,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
+import io.slogr.agent.contracts.SlaGrade
+import io.slogr.agent.engine.MeasurementEngineImpl
+import io.slogr.agent.engine.asn.NullAsnResolver
+import io.slogr.agent.engine.sla.ProfileRegistry
+import io.slogr.agent.native.JavaUdpTransport
 import io.slogr.agent.platform.config.AgentState
 import io.slogr.desktop.core.DataDirectory
 import io.slogr.desktop.core.profiles.ProfileManager
 import io.slogr.desktop.core.reflectors.NearestSelector
 import io.slogr.desktop.core.reflectors.ReflectorCache
 import io.slogr.desktop.core.reflectors.ReflectorDiscoveryClient
+import io.slogr.desktop.core.scheduler.DesktopMeasurementScheduler
 import io.slogr.desktop.core.settings.DesktopSettingsStore
 import io.slogr.desktop.core.settings.EncryptedKeyStore
 import io.slogr.desktop.core.state.DesktopStateManager
+import io.slogr.desktop.core.viewmodel.DesktopAgentViewModel
 import io.slogr.desktop.ui.settings.SettingsWindow
 import io.slogr.desktop.ui.theme.SlogrTheme
 import io.slogr.desktop.ui.tray.TrayIconGenerator
+import io.slogr.desktop.ui.window.MainContent
+import kotlinx.coroutines.launch
+import java.util.UUID
 
 fun main() = application {
     val dataDir = remember { DataDirectory.resolve() }
@@ -30,8 +40,19 @@ fun main() = application {
     val profileManager = remember { ProfileManager(settingsStore, stateManager) }
     val reflectorCache = remember { ReflectorCache(dataDir) }
     val discoveryClient = remember { ReflectorDiscoveryClient(reflectorCache, stateManager) }
+    val viewModel = remember { DesktopAgentViewModel() }
 
-    // Initialize on first composition
+    // Engine: pure-Java mode (no JNI)
+    val engine = remember {
+        MeasurementEngineImpl(
+            adapter = JavaUdpTransport(),
+            asnResolver = NullAsnResolver(),
+            agentId = UUID.randomUUID(),
+        )
+    }
+    val scheduler = remember { DesktopMeasurementScheduler(engine, viewModel) }
+
+    // Initialize
     LaunchedEffect(Unit) {
         settingsStore.load()
         stateManager.initialize()
@@ -41,36 +62,71 @@ fun main() = application {
         // Auto-select nearest reflectors if none selected
         val settings = settingsStore.settings.value
         if (settings.selectedReflectorIds.isEmpty()) {
-            val all = discoveryClient.reflectors.value
-            val accessible = discoveryClient.filterByTier(all)
-            val userRegion = discoveryClient.userRegion.value
+            val accessible = discoveryClient.filterByTier(discoveryClient.reflectors.value)
             if (accessible.isNotEmpty()) {
-                // Use first reflector's coordinates as rough user location if no region info
-                val nearest = if (userRegion != null) {
-                    // Mock: use Karachi as user location for pk-sindh
-                    NearestSelector.selectNearest(accessible, 24.8607, 67.0011, maxCount = 3)
-                } else {
-                    accessible.take(3)
-                }
+                val nearest = NearestSelector.selectNearest(accessible, 24.8607, 67.0011, maxCount = 3)
                 settingsStore.update { it.copy(selectedReflectorIds = nearest.map { r -> r.id }) }
             }
         }
     }
 
+    // Start/restart scheduler when settings or reflectors change
+    val settings by settingsStore.settings.collectAsState()
+    val agentState by stateManager.state.collectAsState()
+    val allReflectors by discoveryClient.reflectors.collectAsState()
+    val overallGrade by viewModel.overallGrade.collectAsState()
+    val isMeasuring by viewModel.isMeasuring.collectAsState()
+    val results by viewModel.results.collectAsState()
+    val lastTestTime by viewModel.lastTestTime.collectAsState()
+    val activeProfileName by profileManager.activeProfileName.collectAsState()
+
+    LaunchedEffect(settings.selectedReflectorIds, activeProfileName, settings.testIntervalSeconds) {
+        val selectedReflectors = allReflectors.filter { it.id in settings.selectedReflectorIds }
+        val profile = ProfileRegistry.get(activeProfileName) ?: return@LaunchedEffect
+        if (selectedReflectors.isNotEmpty()) {
+            scheduler.start(selectedReflectors, profile, settings.testIntervalSeconds, settings.tracerouteEnabled)
+        }
+    }
+
+    // Cleanup on exit
+    DisposableEffect(Unit) {
+        onDispose { scheduler.shutdown() }
+    }
+
     var isWindowVisible by remember { mutableStateOf(true) }
     var isSettingsOpen by remember { mutableStateOf(false) }
     val windowState = rememberWindowState(size = DpSize(480.dp, 640.dp))
-    val settings by settingsStore.settings.collectAsState()
-    val agentState by stateManager.state.collectAsState()
+    val scope = rememberCoroutineScope()
 
-    val trayIcon = remember { TrayIconGenerator.greyIcon() }
+    // Dynamic tray icon based on grade
+    val trayIcon = remember(overallGrade) {
+        when (overallGrade) {
+            SlaGrade.GREEN -> TrayIconGenerator.greenIcon()
+            SlaGrade.YELLOW -> TrayIconGenerator.yellowIcon()
+            SlaGrade.RED -> TrayIconGenerator.redIcon()
+            null -> TrayIconGenerator.greyIcon()
+        }
+    }
+    val trayTooltip = when (overallGrade) {
+        SlaGrade.GREEN -> "Slogr \u2014 Connection quality: GREEN"
+        SlaGrade.YELLOW -> "Slogr \u2014 Connection quality: YELLOW"
+        SlaGrade.RED -> "Slogr \u2014 Connection quality: RED"
+        null -> if (isMeasuring) "Slogr \u2014 Measuring..." else "Slogr"
+    }
 
     Tray(
         icon = trayIcon,
-        tooltip = "Slogr",
+        tooltip = trayTooltip,
         onAction = { isWindowVisible = true },
         menu = {
             Item("Open Window", onClick = { isWindowVisible = true })
+            Item("Run Test Now", enabled = !isMeasuring, onClick = {
+                scope.launch {
+                    val selected = allReflectors.filter { it.id in settings.selectedReflectorIds }
+                    val profile = ProfileRegistry.get(activeProfileName) ?: return@launch
+                    scheduler.runOnce(selected, profile, settings.tracerouteEnabled)
+                }
+            })
             Separator()
             Item("Settings...", onClick = { isSettingsOpen = true })
             Separator()
@@ -80,11 +136,8 @@ fun main() = application {
 
     Window(
         onCloseRequest = {
-            if (settings.minimizeToTrayOnClose) {
-                isWindowVisible = false
-            } else {
-                exitApplication()
-            }
+            if (settings.minimizeToTrayOnClose) isWindowVisible = false
+            else exitApplication()
         },
         visible = isWindowVisible,
         title = "Slogr",
@@ -98,14 +151,20 @@ fun main() = application {
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
             ) {
-                // Main content area (placeholder until Phase 3)
-                Box(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "Slogr Desktop — measurement UI coming in Phase 3",
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                // Main content
+                Box(modifier = Modifier.weight(1f)) {
+                    MainContent(
+                        overallGrade = overallGrade,
+                        isMeasuring = isMeasuring,
+                        results = results,
+                        lastTestTime = lastTestTime,
+                        onRunTestNow = {
+                            scope.launch {
+                                val selected = allReflectors.filter { it.id in settings.selectedReflectorIds }
+                                val profile = ProfileRegistry.get(activeProfileName) ?: return@launch
+                                scheduler.runOnce(selected, profile, settings.tracerouteEnabled)
+                            }
+                        },
                     )
                 }
 
@@ -128,7 +187,6 @@ fun main() = application {
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     )
-
                     TextButton(onClick = { isSettingsOpen = true }) {
                         Text("\u2699 Settings")
                     }

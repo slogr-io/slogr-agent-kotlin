@@ -11,10 +11,11 @@ repositories {
 }
 
 dependencies {
-    // Reuse L1 modules — shared engine, contracts, platform
+    // Reuse L1 modules — shared engine, contracts, platform, native (pure-Java transport)
     implementation(project(":contracts"))
     implementation(project(":engine"))
     implementation(project(":platform"))
+    implementation(project(":native"))
 
     // Compose Desktop
     implementation(compose.desktop.currentOs)
