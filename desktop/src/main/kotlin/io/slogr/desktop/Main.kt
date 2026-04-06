@@ -12,6 +12,9 @@ import androidx.compose.ui.window.*
 import io.slogr.agent.platform.config.AgentState
 import io.slogr.desktop.core.DataDirectory
 import io.slogr.desktop.core.profiles.ProfileManager
+import io.slogr.desktop.core.reflectors.NearestSelector
+import io.slogr.desktop.core.reflectors.ReflectorCache
+import io.slogr.desktop.core.reflectors.ReflectorDiscoveryClient
 import io.slogr.desktop.core.settings.DesktopSettingsStore
 import io.slogr.desktop.core.settings.EncryptedKeyStore
 import io.slogr.desktop.core.state.DesktopStateManager
@@ -25,12 +28,33 @@ fun main() = application {
     val keyStore = remember { EncryptedKeyStore(dataDir) }
     val stateManager = remember { DesktopStateManager(keyStore) }
     val profileManager = remember { ProfileManager(settingsStore, stateManager) }
+    val reflectorCache = remember { ReflectorCache(dataDir) }
+    val discoveryClient = remember { ReflectorDiscoveryClient(reflectorCache, stateManager) }
 
     // Initialize on first composition
     LaunchedEffect(Unit) {
         settingsStore.load()
         stateManager.initialize()
         profileManager.initialize(settingsStore.settings.value)
+        discoveryClient.discover()
+
+        // Auto-select nearest reflectors if none selected
+        val settings = settingsStore.settings.value
+        if (settings.selectedReflectorIds.isEmpty()) {
+            val all = discoveryClient.reflectors.value
+            val accessible = discoveryClient.filterByTier(all)
+            val userRegion = discoveryClient.userRegion.value
+            if (accessible.isNotEmpty()) {
+                // Use first reflector's coordinates as rough user location if no region info
+                val nearest = if (userRegion != null) {
+                    // Mock: use Karachi as user location for pk-sindh
+                    NearestSelector.selectNearest(accessible, 24.8607, 67.0011, maxCount = 3)
+                } else {
+                    accessible.take(3)
+                }
+                settingsStore.update { it.copy(selectedReflectorIds = nearest.map { r -> r.id }) }
+            }
+        }
     }
 
     var isWindowVisible by remember { mutableStateOf(true) }
@@ -119,6 +143,7 @@ fun main() = application {
             stateManager = stateManager,
             settingsStore = settingsStore,
             profileManager = profileManager,
+            discoveryClient = discoveryClient,
         )
     }
 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.rememberWindowState
 import io.slogr.agent.platform.config.AgentState
 import io.slogr.desktop.core.profiles.ProfileManager
+import io.slogr.desktop.core.reflectors.ReflectorDiscoveryClient
 import io.slogr.desktop.core.settings.DesktopSettings
 import io.slogr.desktop.core.settings.DesktopSettingsStore
 import io.slogr.desktop.core.state.DesktopStateManager
@@ -34,6 +35,7 @@ fun SettingsWindow(
     stateManager: DesktopStateManager,
     settingsStore: DesktopSettingsStore,
     profileManager: ProfileManager,
+    discoveryClient: ReflectorDiscoveryClient,
 ) {
     Window(
         onCloseRequest = onClose,
@@ -97,7 +99,11 @@ fun SettingsWindow(
                             profileManager = profileManager,
                             onUpdateSettings = { settingsStore.save(it) },
                         )
-                        SettingsTab.LOCATIONS -> LocationsSection()
+                        SettingsTab.LOCATIONS -> LocationsSection(
+                            discoveryClient = discoveryClient,
+                            settingsStore = settingsStore,
+                            agentState = agentState,
+                        )
                         SettingsTab.APPLICATION -> ApplicationSection(
                             settings = settings,
                             onUpdateSettings = { settingsStore.save(it) },
