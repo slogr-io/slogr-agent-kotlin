@@ -99,9 +99,7 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
             log.info("Loaded schedule with ${schedule.sessions.size} session(s)")
         }
 
-        // Eagerly initialize the engine so the TWAMP reflector binds port 862
-        // immediately — even when there is no outbound schedule (responder-only mode).
-        ctx.engine.start()
+        // engine.start() already called above (line 74) — duplicate removed (ISSUE-19)
 
         val scheduler = TestScheduler(
             engine   = ctx.engine,
