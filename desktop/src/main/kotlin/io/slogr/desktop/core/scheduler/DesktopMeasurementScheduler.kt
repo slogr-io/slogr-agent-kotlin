@@ -2,6 +2,7 @@ package io.slogr.desktop.core.scheduler
 
 import io.slogr.agent.contracts.SlaProfile
 import io.slogr.agent.contracts.interfaces.MeasurementEngine
+import io.slogr.desktop.core.history.LocalHistoryStore
 import io.slogr.desktop.core.reflectors.Reflector
 import io.slogr.desktop.core.viewmodel.DesktopAgentViewModel
 import kotlinx.coroutines.*
@@ -16,6 +17,7 @@ import java.net.InetAddress
 class DesktopMeasurementScheduler(
     private val engine: MeasurementEngine,
     private val viewModel: DesktopAgentViewModel,
+    private val historyStore: LocalHistoryStore? = null,
 ) {
 
     private val log = LoggerFactory.getLogger(DesktopMeasurementScheduler::class.java)
@@ -107,6 +109,11 @@ class DesktopMeasurementScheduler(
                 traceroute = tracerouteEnabled,
             )
             viewModel.updateResult(reflector.id, reflector.displayName, bundle)
+            try {
+                historyStore?.insert(bundle.twamp, reflector, bundle.grade)
+            } catch (e: Exception) {
+                log.warn("Failed to write history for {}: {}", reflector.displayName, e.message)
+            }
             log.info(
                 "Measurement to {} ({}): RTT={}ms loss={}% grade={}",
                 reflector.displayName, reflector.host,

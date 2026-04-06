@@ -16,6 +16,8 @@ import io.slogr.agent.engine.sla.ProfileRegistry
 import io.slogr.agent.native.JavaUdpTransport
 import io.slogr.agent.platform.config.AgentState
 import io.slogr.desktop.core.DataDirectory
+import io.slogr.desktop.core.history.HistoryPruner
+import io.slogr.desktop.core.history.LocalHistoryStore
 import io.slogr.desktop.core.profiles.ProfileManager
 import io.slogr.desktop.core.reflectors.NearestSelector
 import io.slogr.desktop.core.reflectors.ReflectorCache
@@ -41,6 +43,8 @@ fun main() = application {
     val reflectorCache = remember { ReflectorCache(dataDir) }
     val discoveryClient = remember { ReflectorDiscoveryClient(reflectorCache, stateManager) }
     val viewModel = remember { DesktopAgentViewModel() }
+    val historyStore = remember { LocalHistoryStore(dataDir) }
+    val historyPruner = remember { HistoryPruner(historyStore) }
 
     // Engine: pure-Java mode (no JNI)
     val engine = remember {
@@ -50,13 +54,16 @@ fun main() = application {
             agentId = UUID.randomUUID(),
         )
     }
-    val scheduler = remember { DesktopMeasurementScheduler(engine, viewModel) }
+    val scheduler = remember { DesktopMeasurementScheduler(engine, viewModel, historyStore) }
 
     // Initialize
     LaunchedEffect(Unit) {
         settingsStore.load()
         stateManager.initialize()
         profileManager.initialize(settingsStore.settings.value)
+        historyStore.initialize()
+        historyPruner.start()
+        viewModel.refreshHistory(historyStore)
         discoveryClient.discover()
 
         // Auto-select nearest reflectors if none selected
@@ -78,6 +85,7 @@ fun main() = application {
     val isMeasuring by viewModel.isMeasuring.collectAsState()
     val results by viewModel.results.collectAsState()
     val lastTestTime by viewModel.lastTestTime.collectAsState()
+    val recentHistory by viewModel.recentHistory.collectAsState()
     val activeProfileName by profileManager.activeProfileName.collectAsState()
 
     LaunchedEffect(settings.selectedReflectorIds, activeProfileName, settings.testIntervalSeconds) {
@@ -90,7 +98,11 @@ fun main() = application {
 
     // Cleanup on exit
     DisposableEffect(Unit) {
-        onDispose { scheduler.shutdown() }
+        onDispose {
+            scheduler.shutdown()
+            historyPruner.stop()
+            historyStore.close()
+        }
     }
 
     var isWindowVisible by remember { mutableStateOf(true) }
@@ -125,6 +137,7 @@ fun main() = application {
                     val selected = allReflectors.filter { it.id in settings.selectedReflectorIds }
                     val profile = ProfileRegistry.get(activeProfileName) ?: return@launch
                     scheduler.runOnce(selected, profile, settings.tracerouteEnabled)
+                    viewModel.refreshHistory(historyStore)
                 }
             })
             Separator()
@@ -158,11 +171,13 @@ fun main() = application {
                         isMeasuring = isMeasuring,
                         results = results,
                         lastTestTime = lastTestTime,
+                        recentHistory = recentHistory,
                         onRunTestNow = {
                             scope.launch {
                                 val selected = allReflectors.filter { it.id in settings.selectedReflectorIds }
                                 val profile = ProfileRegistry.get(activeProfileName) ?: return@launch
                                 scheduler.runOnce(selected, profile, settings.tracerouteEnabled)
+                    viewModel.refreshHistory(historyStore)
                             }
                         },
                     )

@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.slogr.agent.contracts.SlaGrade
+import io.slogr.desktop.core.history.HistoryEntry
 import io.slogr.desktop.core.viewmodel.ReflectorResult
 import kotlinx.datetime.Instant
 import kotlinx.datetime.Clock
@@ -19,6 +20,7 @@ fun MainContent(
     isMeasuring: Boolean,
     results: Map<String, ReflectorResult>,
     lastTestTime: Instant?,
+    recentHistory: List<HistoryEntry>,
     onRunTestNow: () -> Unit,
 ) {
     Column(
@@ -92,7 +94,7 @@ fun MainContent(
 
         Spacer(Modifier.height(16.dp))
 
-        // History placeholder (Phase 4)
+        // Recent History
         HorizontalDivider(color = MaterialTheme.colorScheme.outline)
         Spacer(Modifier.height(12.dp))
         Text(
@@ -101,10 +103,9 @@ fun MainContent(
             color = MaterialTheme.colorScheme.onBackground,
         )
         Spacer(Modifier.height(8.dp))
-        Text(
-            "History chart coming in Phase 4",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f),
+        HistoryChart(
+            entries = recentHistory,
+            modifier = Modifier.fillMaxWidth(),
         )
 
         Spacer(Modifier.height(16.dp))

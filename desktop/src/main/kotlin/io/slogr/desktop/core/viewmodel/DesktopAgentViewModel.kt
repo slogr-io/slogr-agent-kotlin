@@ -2,6 +2,8 @@ package io.slogr.desktop.core.viewmodel
 
 import io.slogr.agent.contracts.MeasurementBundle
 import io.slogr.agent.contracts.SlaGrade
+import io.slogr.desktop.core.history.HistoryEntry
+import io.slogr.desktop.core.history.LocalHistoryStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +39,9 @@ class DesktopAgentViewModel {
 
     private val _isMeasuring = MutableStateFlow(false)
     val isMeasuring: StateFlow<Boolean> = _isMeasuring.asStateFlow()
+
+    private val _recentHistory = MutableStateFlow<List<HistoryEntry>>(emptyList())
+    val recentHistory: StateFlow<List<HistoryEntry>> = _recentHistory.asStateFlow()
 
     fun setMeasuring(active: Boolean) {
         _isMeasuring.value = active
@@ -78,6 +83,10 @@ class DesktopAgentViewModel {
 
         _lastTestTime.value = result.timestamp
         _overallGrade.value = worstGrade(updated.values)
+    }
+
+    suspend fun refreshHistory(store: LocalHistoryStore) {
+        _recentHistory.value = store.getRecentResults(limit = 200)
     }
 
     private fun worstGrade(results: Collection<ReflectorResult>): SlaGrade? {
