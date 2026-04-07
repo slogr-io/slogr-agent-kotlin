@@ -64,7 +64,8 @@ class TwampResponderSession(
     private val sharedSecret: ByteArray? = null,
     private val adapter: NativeProbeAdapter,
     private val threadPool: ReflectorThreadPool,
-    private val agentIdBytes: ByteArray? = null
+    private val agentIdBytes: ByteArray? = null,
+    private val testPort: Int = 0
 ) {
     private val log = LoggerFactory.getLogger(TwampResponderSession::class.java)
 
@@ -237,7 +238,8 @@ class TwampResponderSession(
             senderIp      = clientIp,
             senderPort    = req.senderPort.toInt() and 0xFFFF,
             timeoutMs     = TwampConstants.DEFAULT_REF_WAIT_SEC * 1000L,
-            threadPool    = threadPool
+            threadPool    = threadPool,
+            testPort      = testPort
         )
         // Submit to pool instead of spawning a dedicated thread per session.
         val future = threadPool.submit(reflector)

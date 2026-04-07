@@ -159,6 +159,7 @@ class TwampControllerSession(
         serverSalt = greeting.salt
         serverCount = greeting.count   // FIX-1: no ceiling
 
+        log.info("TWAMP greeting received (modes=0x${greeting.modes.toString(16)}, selected=0x${selectedMode.toString(16)}, slogr=${greeting.isSlogrAgent})")
         sendSetUpResponse(greeting.challenge)
         state = State.AWAITING_SERVER_START
     }
@@ -206,6 +207,7 @@ class TwampControllerSession(
         if (twampMode.isControlEncrypted()) {
             twampMode.receiveIv = start.serverIv.copyOf()
         }
+        log.info("TWAMP server-start accepted, sending RequestTwSession")
         sendRequestTwSession()
         state = State.AWAITING_ACCEPT_SESSION
     }
@@ -236,6 +238,7 @@ class TwampControllerSession(
         }
         reflectorUdpPort = accept.port.toInt() and 0xFFFF
         acceptedSid = SessionId.fromByteArray(accept.sid)
+        log.info("TWAMP session accepted (udpPort=$reflectorUdpPort, sid=$acceptedSid)")
         sendStartSessions()
     }
 
@@ -265,6 +268,7 @@ class TwampControllerSession(
             closeReason = "start-sessions rejected (accept=${ack.accept})"
             close(); return
         }
+        log.info("TWAMP start-ack received, launching sender")
         startSenders()
     }
 
@@ -316,6 +320,7 @@ class TwampControllerSession(
         activeSenders.add(t)
         state = State.RUNNING
         t.start()
+        log.info("TWAMP sender started (sid=$sid, reflectorPort=$port, packets=${config.count})")
     }
 
     private fun mergeSenderResults(): SenderResult =

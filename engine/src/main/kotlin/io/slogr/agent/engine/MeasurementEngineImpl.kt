@@ -53,11 +53,12 @@ class MeasurementEngineImpl(
     private val localIp: InetAddress = InetAddress.getByName("0.0.0.0"),
     private val keyStore: Map<String, ByteArray> = emptyMap(),
     reflectorListenPort: Int = 862,
-    private val startReflector: Boolean = true
+    private val startReflector: Boolean = true,
+    private val testPort: Int = 0
 ) : MeasurementEngine {
 
     private val log = LoggerFactory.getLogger(MeasurementEngineImpl::class.java)
-    private val reflector              = TwampReflector(adapter = adapter, listenPort = reflectorListenPort, bindIp = localIp)
+    private val reflector              = TwampReflector(adapter = adapter, listenPort = reflectorListenPort, bindIp = localIp, testPort = testPort)
     // Controller port is wired to the reflector's actual port after binding so that loopback
     // tests can use an ephemeral port (reflectorListenPort=0) without needing privileged ports.
     private val controller: TwampController
@@ -185,6 +186,8 @@ class MeasurementEngineImpl(
 
         if (result.error != null) {
             log.warn("TWAMP to $target:$targetPort failed: ${result.error}")
+        } else {
+            log.info("TWAMP to $target:$targetPort completed: sent=${result.packetsSent} recv=${result.packetsRecv}")
         }
 
         MeasurementAssembler.assemble(

@@ -17,6 +17,9 @@ data class AgentConfig(
     /** Default TWAMP target port. */
     val defaultTwampPort: Int = 862,
 
+    /** Fixed UDP port for TWAMP test sessions. 0 = ephemeral (kernel-assigned). */
+    val testUdpPort: Int = System.getenv("SLOGR_TEST_PORT")?.toIntOrNull() ?: 0,
+
     /** Maximum traceroute hops. */
     val maxTracerouteHops: Int = 30,
 

@@ -32,6 +32,10 @@
 #ifndef SOF_TIMESTAMPING_SOFTWARE
 #  define SOF_TIMESTAMPING_SOFTWARE    (1 << 4)
 #endif
+/* SO_REUSEPORT — allows multiple sockets to bind to the same port (Linux 3.9+). */
+#ifndef SO_REUSEPORT
+#  define SO_REUSEPORT 15
+#endif
 
 /* struct scm_timestamping — three timespec entries (software, deprecated HW, raw HW). */
 struct slogr_scm_timestamping {
@@ -116,6 +120,17 @@ Java_io_slogr_agent_native_SlogrNative_bindSocket6(JNIEnv *env, jobject obj,
     int addrlen = 0;
     struct sockaddr *addr = fill_sockaddr(env, ip, port, &addrlen, &a4, &a6);
     return bind((int)fd, addr, (socklen_t)addrlen);
+}
+
+JNIEXPORT jint JNICALL
+Java_io_slogr_agent_native_SlogrNative_setReusePort(JNIEnv *env, jobject obj, jint fd)
+{
+    int one = 1;
+    if (setsockopt((int)fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)) != 0) {
+        fprintf(stderr, "slogr-native: setsockopt(SO_REUSEPORT): %s\n", strerror(errno));
+        return -1;
+    }
+    return 0;
 }
 
 JNIEXPORT jint JNICALL

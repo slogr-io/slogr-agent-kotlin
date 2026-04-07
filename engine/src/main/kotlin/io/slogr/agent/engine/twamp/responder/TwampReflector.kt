@@ -46,7 +46,8 @@ class TwampReflector(
     private val allowlist: IpAllowlist = IpAllowlist(),
     private val sharedSecret: ByteArray? = null,
     private val agentIdBytes: ByteArray? = null,
-    val isMeshMode: Boolean = false
+    val isMeshMode: Boolean = false,
+    private val testPort: Int = 0
 ) : Runnable {
 
     private val log = LoggerFactory.getLogger(TwampReflector::class.java)
@@ -153,7 +154,8 @@ class TwampReflector(
             sharedSecret = sharedSecret,
             adapter      = adapter,
             threadPool   = threadPool,
-            agentIdBytes = agentIdBytes
+            agentIdBytes = agentIdBytes,
+            testPort     = testPort
         )
         sessionMap[clientKey] = session
         session.smStart()

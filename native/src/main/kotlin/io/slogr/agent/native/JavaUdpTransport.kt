@@ -28,9 +28,19 @@ class JavaUdpTransport(
 
     // ── Socket lifecycle ─────────────────────────────────────────────────
 
-    override fun createSocket(localIp: InetAddress, localPort: Int): Int {
+    override fun createSocket(localIp: InetAddress, localPort: Int): Int =
+        createSocket(localIp, localPort, reusePort = false)
+
+    override fun createSocket(localIp: InetAddress, localPort: Int, reusePort: Boolean): Int {
         return try {
-            val socket = DatagramSocket(localPort, localIp)
+            val socket = if (reusePort) {
+                DatagramSocket(null).apply {
+                    reuseAddress = true
+                    bind(java.net.InetSocketAddress(localIp, localPort))
+                }
+            } else {
+                DatagramSocket(localPort, localIp)
+            }
             val fd = fdSource.getAndIncrement()
             sockets[fd] = socket
             fd

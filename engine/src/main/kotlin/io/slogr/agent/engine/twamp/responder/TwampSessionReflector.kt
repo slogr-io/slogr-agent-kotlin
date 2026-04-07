@@ -53,7 +53,8 @@ class TwampSessionReflector(
     private val senderIp: InetAddress,
     private val senderPort: Int,
     private val timeoutMs: Long,
-    private val threadPool: ReflectorThreadPool
+    private val threadPool: ReflectorThreadPool,
+    private val testPort: Int = 0
 ) : Runnable {
 
     private val log = LoggerFactory.getLogger(TwampSessionReflector::class.java)
@@ -81,7 +82,8 @@ class TwampSessionReflector(
     val boundPort: Int
 
     init {
-        fd = adapter.createSocket(localIp, 0)
+        val bindPort = if (testPort > 0) testPort else 0
+        fd = adapter.createSocket(localIp, bindPort, reusePort = testPort > 0)
         boundPort = if (fd >= 0) adapter.getLocalPort(fd) else 0
         if (fd >= 0) {
             adapter.setTtlAndCapture(fd, 64)

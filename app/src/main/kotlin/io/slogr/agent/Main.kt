@@ -65,7 +65,8 @@ fun run(args: Array<String>): Int {
             asnResolver         = asnResolver,
             agentId             = agentId,
             reflectorListenPort = config.defaultTwampPort,
-            startReflector      = needsReflector
+            startReflector      = needsReflector,
+            testPort            = config.testUdpPort
         )
     }
 

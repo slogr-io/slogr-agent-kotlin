@@ -20,6 +20,14 @@ interface NativeProbeAdapter {
      */
     fun createSocket(localIp: InetAddress, localPort: Int): Int
 
+    /**
+     * Create and bind a UDP socket with optional SO_REUSEPORT.
+     * When [reusePort] is true, multiple sockets can bind to the same port
+     * (used for fixed TWAMP test port — SLOGR_TEST_PORT).
+     */
+    fun createSocket(localIp: InetAddress, localPort: Int, reusePort: Boolean): Int =
+        createSocket(localIp, localPort)
+
     fun closeSocket(fd: Int)
 
     /**
