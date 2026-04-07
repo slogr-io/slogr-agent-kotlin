@@ -93,6 +93,7 @@ class TwampResponderSession(
         (TwampConstants.DEFAULT_SERVER_WAIT_SEC * 1000L / 10).coerceAtLeast(1000L)
 
     fun getSelectionKey(): SelectionKey = key
+    val clientIpAddress: String get() = clientIp.hostAddress
 
     /** Called by [TwampReflector] immediately after accept() to send ServerGreeting. */
     fun smStart() {

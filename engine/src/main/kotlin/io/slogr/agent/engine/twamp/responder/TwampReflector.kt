@@ -10,6 +10,8 @@ import java.nio.channels.SelectionKey
 import java.nio.channels.Selector
 import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * TWAMP responder — NIO Selector event loop.
@@ -43,7 +45,8 @@ class TwampReflector(
     private val bindIp: InetAddress = InetAddress.getByName("0.0.0.0"),
     private val allowlist: IpAllowlist = IpAllowlist(),
     private val sharedSecret: ByteArray? = null,
-    private val agentIdBytes: ByteArray? = null
+    private val agentIdBytes: ByteArray? = null,
+    val isMeshMode: Boolean = false
 ) : Runnable {
 
     private val log = LoggerFactory.getLogger(TwampReflector::class.java)
@@ -59,6 +62,12 @@ class TwampReflector(
     private lateinit var selectorThread: Thread
 
     private val readBuffer = ByteBuffer.allocateDirect(9216)
+
+    // L3: Connection limits
+    private val connectionsByIp = ConcurrentHashMap<String, AtomicInteger>()
+    private val totalConnections = AtomicInteger(0)
+    private val maxConnectionsPerIp = if (isMeshMode) 10 else 3
+    private val maxTotalConnections = if (isMeshMode) 200 else 100
 
     // ── Public API ───────────────────────────────────────────────────────────
 
@@ -121,6 +130,20 @@ class TwampReflector(
         val clientIp = (clientChan.remoteAddress as InetSocketAddress).address
         val localIp  = (clientChan.localAddress  as InetSocketAddress).address
 
+        // L3: Connection limits
+        if (totalConnections.get() >= maxTotalConnections) {
+            log.warn("Global connection limit reached ($maxTotalConnections) — rejecting $clientIp")
+            clientChan.close(); return
+        }
+        val ipKey = clientIp.hostAddress
+        val ipCount = connectionsByIp.getOrPut(ipKey) { AtomicInteger(0) }
+        if (ipCount.get() >= maxConnectionsPerIp) {
+            log.warn("Per-IP limit reached for $clientIp ($maxConnectionsPerIp) — rejecting")
+            clientChan.close(); return
+        }
+        ipCount.incrementAndGet()
+        totalConnections.incrementAndGet()
+
         val clientKey = clientChan.register(selector, SelectionKey.OP_READ)
         val session = TwampResponderSession(
             key          = clientKey,
@@ -158,7 +181,14 @@ class TwampReflector(
     }
 
     private fun closeSession(key: SelectionKey) {
-        sessionMap.remove(key)?.close()
+        val session = sessionMap.remove(key)
+        if (session != null) {
+            // L3: Release connection count
+            val ipKey = session.clientIpAddress
+            connectionsByIp[ipKey]?.decrementAndGet()
+            totalConnections.decrementAndGet()
+            session.close()
+        }
         try { key.channel().close() } catch (_: Exception) {}
         key.cancel()
     }
