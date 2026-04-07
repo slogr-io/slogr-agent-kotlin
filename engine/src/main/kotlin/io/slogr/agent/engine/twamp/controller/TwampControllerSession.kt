@@ -99,6 +99,7 @@ class TwampControllerSession(
     // Sender lifecycle
     private val activeSenders = mutableListOf<Thread>()
     private val senderResults = mutableListOf<SenderResult>()
+    @Volatile private var completed = false
 
     fun getSelectionKey(): SelectionKey = key
 
@@ -284,6 +285,7 @@ class TwampControllerSession(
                 synchronized(this) {
                     senderResults.add(result)
                     if (senderResults.size >= activeSenders.size) {
+                        completed = true
                         onComplete(mergeSenderResults())
                         close()
                     }
@@ -342,6 +344,19 @@ class TwampControllerSession(
         state = State.CLOSED
         try { key.channel().close() } catch (_: Exception) {}
         key.cancel()
+    }
+
+    /** Close and fire onComplete with an error result if not already completed. */
+    fun closeWithCallback() {
+        val needsCallback = !completed
+        close()
+        if (needsCallback) {
+            completed = true
+            onComplete(SenderResult(
+                packets = emptyList(), packetsSent = 0, packetsRecv = 0,
+                error = "session closed before completion (state=$state)"
+            ))
+        }
     }
 
     val isClosed: Boolean get() = state == State.CLOSED

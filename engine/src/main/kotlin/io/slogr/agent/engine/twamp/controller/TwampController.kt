@@ -73,17 +73,18 @@ class TwampController(
     }
 
     /**
-     * Request a connection to [reflectorIp]:[port] for a new measurement session.
+     * Request a connection to [reflectorIp]:[reflectorPort] for a new measurement session.
      * [onComplete] is called on the selector thread when all packets are exchanged.
      */
     fun connect(
         reflectorIp: InetAddress,
+        reflectorPort: Int = port,
         config: SenderConfig,
         modeChain: ModePreferenceChain = ModePreferenceChain().prefer(TwampMode.UNAUTHENTICATED),
         sharedSecret: ByteArray? = null,
         onComplete: (SenderResult) -> Unit
     ) {
-        connectQueue.add(ConnectRequest(reflectorIp, config, modeChain, sharedSecret, onComplete))
+        connectQueue.add(ConnectRequest(reflectorIp, reflectorPort, config, modeChain, sharedSecret, onComplete))
         selector.wakeup()
     }
 
@@ -124,7 +125,7 @@ class TwampController(
         try {
             val chan = SocketChannel.open()
             chan.configureBlocking(false)
-            chan.connect(InetSocketAddress(req.reflectorIp, port))
+            chan.connect(InetSocketAddress(req.reflectorIp, req.reflectorPort))
             val key = chan.register(selector, SelectionKey.OP_CONNECT)
             val session = TwampControllerSession(
                 key          = key,
@@ -139,7 +140,11 @@ class TwampController(
             )
             sessionMap[key] = session
         } catch (e: Exception) {
-            log.error("Failed to open connection to ${req.reflectorIp}: ${e.message}")
+            log.error("Failed to open connection to ${req.reflectorIp}:${req.reflectorPort}: ${e.message}")
+            req.onComplete(SenderResult(
+                packets = emptyList(), packetsSent = 0, packetsRecv = 0,
+                error = "connection failed: ${e.message}"
+            ))
         }
     }
 
@@ -177,13 +182,15 @@ class TwampController(
     }
 
     private fun closeSession(key: SelectionKey) {
-        sessionMap.remove(key)?.close()
+        val session = sessionMap.remove(key)
+        session?.closeWithCallback()
         try { key.channel().close() } catch (_: Exception) {}
         key.cancel()
     }
 
     private data class ConnectRequest(
         val reflectorIp:  InetAddress,
+        val reflectorPort: Int,
         val config:       SenderConfig,
         val modeChain:    ModePreferenceChain,
         val sharedSecret: ByteArray?,

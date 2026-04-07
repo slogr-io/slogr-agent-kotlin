@@ -166,12 +166,17 @@ class MeasurementEngineImpl(
         val timeoutMs  = config.count * config.intervalMs + config.waitTimeMs + 5000L
         val result: SenderResult = withTimeoutOrNull(timeoutMs) {
             suspendCancellableCoroutine { cont ->
+                cont.invokeOnCancellation {
+                    // Coroutine cancelled by withTimeoutOrNull — controller will
+                    // purge the dead session on its next selector iteration.
+                }
                 controller.connect(
-                    reflectorIp  = target,
-                    config       = config,
-                    modeChain    = modeChain,
-                    sharedSecret = secret,
-                    onComplete   = { r -> cont.resume(r) }
+                    reflectorIp   = target,
+                    reflectorPort = targetPort,
+                    config        = config,
+                    modeChain     = modeChain,
+                    sharedSecret  = secret,
+                    onComplete    = { r -> cont.resume(r) }
                 )
             }
         } ?: SenderResult(emptyList(), config.count, 0, error = "session timed out")
