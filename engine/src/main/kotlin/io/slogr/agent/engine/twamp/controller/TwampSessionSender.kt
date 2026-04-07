@@ -81,6 +81,8 @@ class TwampSessionSender(
         adapter.setTos(fd, (config.dscp shl 2).toShort())
         adapter.setTimeout(fd, config.recvTimeoutMs.toInt())
         adapter.connectSocket(fd, reflectorIp, reflectorPort)
+        val localPort = adapter.getLocalPort(fd)
+        log.info("Sender ready (fd=$fd, localPort=$localPort, target=$reflectorIp:$reflectorPort, packets=${config.count})")
 
         scheduleFirstSend()
 
@@ -147,7 +149,8 @@ class TwampSessionSender(
                 pkt.writeTo(buf)
                 data = buf.array()
             }
-            adapter.sendPacket(fd, reflectorIp, reflectorPort, data)
+            val sent = adapter.sendPacket(fd, reflectorIp, reflectorPort, data)
+            if (currentSeq < 3) log.info("Sent packet #$currentSeq to $reflectorIp:$reflectorPort ($sent bytes, fd=$fd)")
         } catch (e: Exception) {
             log.warn("sendPacket seq=$currentSeq failed: ${e.message}")
         }
