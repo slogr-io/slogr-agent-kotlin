@@ -7,9 +7,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.slogr.desktop.core.history.HistoryEntry
 import io.slogr.desktop.core.profiles.TrafficGrade
+import io.slogr.desktop.ui.theme.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
@@ -27,10 +29,9 @@ fun DashboardView(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 24.dp, vertical = 20.dp),
     ) {
         if (!hasServers) {
-            // Empty state
             Spacer(Modifier.height(48.dp))
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -38,30 +39,35 @@ fun DashboardView(
             ) {
                 Text(
                     "No servers configured",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = TextPrimary,
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
                     "Add a TWAMP server to start\nmonitoring your connection quality.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(20.dp))
-                Button(onClick = onGoToSettings) {
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = onGoToSettings,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SlogrGreen,
+                        contentColor = SlogrBackground,
+                    ),
+                ) {
                     Text("Go to Settings")
                 }
             }
             return
         }
 
-        // Traffic type cards (3 across or wrapping)
+        // Traffic type cards
         if (trafficGrades.isEmpty() && isMeasuring) {
             Text(
                 "Measuring...",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                 modifier = Modifier.padding(vertical = 24.dp),
             )
         } else if (trafficGrades.isNotEmpty()) {
@@ -78,7 +84,7 @@ fun DashboardView(
             }
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(24.dp))
 
         // Last test + Run Test Now
         Row(
@@ -96,24 +102,29 @@ fun DashboardView(
             Text(
                 timeLabel,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                 modifier = Modifier.weight(1f),
             )
             Button(
                 onClick = onRunTestNow,
                 enabled = !isMeasuring && hasServers,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SlogrGreen,
+                    contentColor = SlogrBackground,
+                    disabledContainerColor = SlogrGreen.copy(alpha = 0.3f),
+                    disabledContentColor = TextDisabled,
+                ),
             ) {
-                Text(if (isMeasuring) "Testing..." else "\u25B6 Run Test Now")
+                Text(if (isMeasuring) "Testing..." else "Run Test Now")
             }
         }
 
-        Spacer(Modifier.height(20.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outline)
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider(color = SlogrBorder)
+        Spacer(Modifier.height(16.dp))
 
         Text("Recent History (24h)", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         HistoryChart(entries = recentHistory, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
     }
 }

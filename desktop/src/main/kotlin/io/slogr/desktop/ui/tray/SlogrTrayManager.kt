@@ -8,7 +8,9 @@ import java.awt.event.MouseEvent
 import javax.swing.SwingUtilities
 
 /**
- * Raw AWT system tray — fixes Compose tray menu text overlap on Windows.
+ * Raw AWT system tray with plain-ASCII menu items (no emoji — AWT on Windows
+ * cannot render Unicode emoji reliably and produces overlapping text).
+ *
  * Two menu variants: normal (5 items) and no-servers (3 items).
  */
 class SlogrTrayManager(
@@ -47,13 +49,12 @@ class SlogrTrayManager(
         hasServers = serversExist
         isTesting = measuring
         lastTestLabel = lastTestText
-        val gradeChanged = grade != currentGrade
         currentGrade = grade
 
-        // Update icon
+        // Update icon color
         val color = when {
-            !serversExist -> androidx.compose.ui.graphics.Color(0xFF1A1A1A)       // black
-            grade == null -> androidx.compose.ui.graphics.Color(0xFF6B6B6B)       // grey/stale
+            !serversExist -> androidx.compose.ui.graphics.Color(0xFF1A1A1A)
+            grade == null -> androidx.compose.ui.graphics.Color(0xFF6B6B6B)
             grade == SlaGrade.GREEN -> SlogrGreen
             grade == SlaGrade.YELLOW -> SlogrYellow
             grade == SlaGrade.RED -> SlogrRed
@@ -62,13 +63,13 @@ class SlogrTrayManager(
         trayIcon?.image = TrayIconGenerator.createAwtImage(color, 16)
 
         val tooltip = when {
-            !serversExist -> "Slogr \u2014 No servers configured"
-            grade == null -> "Slogr \u2014 Measuring..."
-            else -> "Slogr \u2014 Connection quality: ${grade.name}"
+            !serversExist -> "Slogr - No servers configured"
+            grade == null -> "Slogr - Measuring..."
+            else -> "Slogr - Connection quality: ${grade.name}"
         }
         trayIcon?.toolTip = tooltip
 
-        if (gradeChanged || isTesting) rebuildMenu()
+        rebuildMenu()
     }
 
     fun remove() {
@@ -82,43 +83,56 @@ class SlogrTrayManager(
         val popup = PopupMenu()
 
         if (!hasServers) {
+            // No-servers variant: 3 items
             val noSrv = MenuItem("No servers configured")
             noSrv.isEnabled = false
             popup.add(noSrv)
+
             val hint = MenuItem("Add a server to start")
             hint.isEnabled = false
             popup.add(hint)
+
             popup.addSeparator()
+
             val open = MenuItem("Open Slogr")
             open.addActionListener { SwingUtilities.invokeLater { onOpenWindow() } }
             popup.add(open)
+
             popup.addSeparator()
+
             val quit = MenuItem("Quit")
             quit.addActionListener { onQuit() }
             popup.add(quit)
         } else {
-            val gradeLabel = when (currentGrade) {
-                SlaGrade.GREEN -> "GREEN"
-                SlaGrade.YELLOW -> "YELLOW"
-                SlaGrade.RED -> "RED"
-                null -> "No data"
+            // Normal variant: 5 items, plain ASCII only
+            val gradeText = when (currentGrade) {
+                SlaGrade.GREEN -> "Status: GREEN"
+                SlaGrade.YELLOW -> "Status: YELLOW"
+                SlaGrade.RED -> "Status: RED"
+                null -> "Status: No data"
             }
-            val gradeItem = MenuItem(gradeLabel)
+            val gradeItem = MenuItem(gradeText)
             gradeItem.isEnabled = false
             popup.add(gradeItem)
+
             val timeItem = MenuItem(lastTestLabel)
             timeItem.isEnabled = false
             popup.add(timeItem)
+
             popup.addSeparator()
+
             val runLabel = if (isTesting) "Testing..." else "Run Test Now"
             val runItem = MenuItem(runLabel)
             runItem.isEnabled = !isTesting
             runItem.addActionListener { SwingUtilities.invokeLater { onRunTest() } }
             popup.add(runItem)
+
             val openItem = MenuItem("Open Slogr")
             openItem.addActionListener { SwingUtilities.invokeLater { onOpenWindow() } }
             popup.add(openItem)
+
             popup.addSeparator()
+
             val quitItem = MenuItem("Quit")
             quitItem.addActionListener { onQuit() }
             popup.add(quitItem)

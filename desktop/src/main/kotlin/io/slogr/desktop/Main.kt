@@ -1,5 +1,6 @@
 package io.slogr.desktop
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -7,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -162,36 +164,37 @@ fun main() {
                             modifier = Modifier
                                 .width(140.dp)
                                 .fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.surface)
+                                .background(io.slogr.desktop.ui.theme.SlogrSidebarBg)
                                 .padding(vertical = 16.dp),
                         ) {
-                            // Logo placeholder (R6)
-                            Text(
-                                "SLOGR",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            // Real Slogr logo
+                            Image(
+                                painter = painterResource("slogr-logo.png"),
+                                contentDescription = "Slogr",
+                                modifier = Modifier
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                                    .width(100.dp),
                             )
 
-                            Spacer(Modifier.height(16.dp))
+                            Spacer(Modifier.height(20.dp))
 
                             listOf(MainView.DASHBOARD to "Dashboard", MainView.SETTINGS to "Settings").forEach { (view, label) ->
                                 val isSelected = view == activeView
                                 Text(
                                     text = label,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 14.sp,
+                                    color = if (isSelected) io.slogr.desktop.ui.theme.SlogrGreen
+                                    else io.slogr.desktop.ui.theme.TextSecondary,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clickable { activeView = view }
-                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
                                 )
                             }
                         }
 
-                        VerticalDivider(color = MaterialTheme.colorScheme.outline)
+                        VerticalDivider(color = io.slogr.desktop.ui.theme.SlogrBorder)
 
                         // Content area
                         Box(modifier = Modifier.fillMaxSize()) {

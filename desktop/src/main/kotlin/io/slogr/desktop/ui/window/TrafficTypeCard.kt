@@ -20,7 +20,7 @@ import io.slogr.desktop.ui.theme.*
 
 @Composable
 fun TrafficTypeCard(grade: TrafficGrade, modifier: Modifier = Modifier) {
-    val color = when (grade.grade) {
+    val gradeColor = when (grade.grade) {
         SlaGrade.GREEN -> SlogrGreen
         SlaGrade.YELLOW -> SlogrYellow
         SlaGrade.RED -> SlogrRed
@@ -29,49 +29,46 @@ fun TrafficTypeCard(grade: TrafficGrade, modifier: Modifier = Modifier) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(12.dp))
-            .padding(16.dp),
+            .background(SlogrCardBg, RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 16.dp),
     ) {
-        // Icon
         Text(
             grade.trafficType.icon,
             fontSize = 28.sp,
         )
-        Spacer(Modifier.height(4.dp))
-        // Label
+        Spacer(Modifier.height(6.dp))
         Text(
             grade.trafficType.displayName,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 12.sp,
+            color = TextSecondary,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(10.dp))
         // Grade dot
         Box(
             modifier = Modifier
                 .size(14.dp)
                 .clip(CircleShape)
-                .background(color),
+                .background(gradeColor),
         )
-        Spacer(Modifier.height(4.dp))
-        // RTT + loss
+        Spacer(Modifier.height(6.dp))
         if (grade.avgRttMs >= 0) {
             Text(
                 "${grade.avgRttMs.toInt()}ms",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
             )
             Text(
                 "%.1f%% loss".format(grade.lossPct),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                fontSize = 11.sp,
+                color = TextMuted,
             )
         } else {
             Text(
                 "N/A",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                fontSize = 14.sp,
+                color = TextDisabled,
             )
         }
     }
