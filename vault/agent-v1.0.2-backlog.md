@@ -1,9 +1,18 @@
 # Slogr Agent — v1.0.2 Backlog
 Date: April 7 2026
-Status: Scheduled — build after E2E #2 passes
-Branch: cut from master after v1.0.1 tag
+Status: RELEASED — commit 0b18a14, merged 134c3dd
+Branch: desktop-agent merged to master
 
-## What is in v1.0.1 (current)
+## What is in v1.0.2
+- B2 fix: reflector optional in MeasurementEngineImpl.
+  Commit 0b18a14. check command no longer hangs when
+  daemon is running on same machine.
+- RabbitMqPublisher wired into DaemonCommand (from v1.0.1)
+- 1A/1B hardening (from v1.0.1)
+- 648 tests passing, 0 failures
+- Docker: ghcr.io/slogr-io/agent:1.0.2
+
+## What is in v1.0.1
 - RabbitMqPublisher wired into DaemonCommand
   result callback. TWAMP/health/traceroute results
   publish to slogr.measurements exchange with
@@ -15,9 +24,10 @@ Branch: cut from master after v1.0.1 tag
 - Non-root Dockerfile
 - 571 tests passing
 
-## What goes into v1.0.2
+## Fixes delivered in v1.0.2
 
 ### FIX-1 [HIGH]: B2 — Reflector optional in MeasurementEngineImpl
+Status: RESOLVED — commit 0b18a14, April 7 2026
 
 File: engine/src/main/kotlin/io/slogr/agent/engine/MeasurementEngineImpl.kt
 
@@ -62,8 +72,9 @@ Fix:
     }
 
   Update call sites:
-    DaemonCommand.kt — keep default (startReflector = true)
-    CheckCommand.kt  — set startReflector = false
+    Main.kt — detect "check" command from args,
+    pass startReflector = false to MeasurementEngineImpl.
+    DaemonCommand.kt — unchanged (uses default = true)
 
   This avoids wasting a thread and port for
   client-only operations.
@@ -138,23 +149,15 @@ Acceptance test:
 
 ---
 
-## Build Order for v1.0.2
+## Remaining for v1.0.3
 
-1. FIX-1 first — most impactful, requires
-   touching MeasurementEngineImpl and two
-   call sites
-2. FIX-2 — wrapper script change, independent
-3. FIX-3 — one line deletion, trivial
+1. FIX-2 — wrapper script change, independent
+2. FIX-3 — one line deletion, trivial
 
-Run ./gradlew test after each fix.
-All 571+ tests must pass before tagging.
+## Release History
 
-## Tag and Release
-
-After all three fixes:
-  git tag v1.0.2
-  ./gradlew buildFatJar
-  docker build -t ghcr.io/slogr-io/agent:1.0.2
-  docker build -t ghcr.io/slogr-io/agent:latest
-  docker push ghcr.io/slogr-io/agent:1.0.2
-  docker push ghcr.io/slogr-io/agent:latest
+v1.0.2 released April 7 2026:
+  Commit: 0b18a14 (fix), 134c3dd (merge)
+  Docker: ghcr.io/slogr-io/agent:1.0.2
+  Tests: 648 passing, 0 failures
+  Smoke: daemon binds 862, check returns in <5s
