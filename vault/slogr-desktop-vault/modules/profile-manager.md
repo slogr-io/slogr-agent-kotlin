@@ -1,94 +1,56 @@
 ---
 status: locked
-version: 1.0
+version: 2.0
 depends-on:
   - architecture/system-overview
-  - slogr-agent-vault/modules/traceroute-asn-pathchange-sla
 ---
 
-# Profile Manager
+# Profile Manager (Traffic Types)
 
 ## Overview
 
-The desktop user selects which SLA profile to evaluate against. The server agent receives its profile via `set_schedule` command or config file. The desktop app puts this choice in the user's hands via the UI.
+The desktop user selects **exactly 3 traffic types** to monitor. Each measurement cycle evaluates the same TWAMP result against all 3 selected SLA profiles simultaneously. The dashboard shows 3 icons with per-profile grades.
 
-## Available Profiles
+## Available Traffic Types (8 total)
 
-From the R1 vault, the agent supports 27+ SLA profiles. The desktop app exposes a simplified subset:
-
-| Profile | Display Name | Free Tier | Thresholds (GREEN) |
+| Name | Display Name | Free Tier | GREEN Thresholds |
 |---|---|---|---|
-| `internet` | Internet | ✅ Always available | RTT < 100ms, Jitter < 30ms, Loss < 1% |
-| `gaming` | Gaming | ✅ Free pick (1 of 3) | RTT < 50ms, Jitter < 15ms, Loss < 0.5% |
-| `voip` | VoIP / Video | ✅ Free pick (1 of 3) | RTT < 150ms, Jitter < 20ms, Loss < 1% |
-| `streaming` | Streaming | ✅ Free pick (1 of 3) | RTT < 200ms, Jitter < 50ms, Loss < 2% |
-| `custom` | Custom | ❌ Paid only | User-defined thresholds |
+| `internet` | General Internet | Yes | RTT < 100ms, Jitter < 30ms, Loss < 1% |
+| `gaming` | Gaming | Yes | RTT < 50ms, Jitter < 15ms, Loss < 0.5% |
+| `voip` | VoIP / Video Calls | Yes | RTT < 150ms, Jitter < 20ms, Loss < 1% |
+| `streaming` | Streaming | Yes | RTT < 200ms, Jitter < 50ms, Loss < 2% |
+| `cloud` | Cloud / SaaS | Paid | RTT < 100ms, Jitter < 25ms, Loss < 0.5% |
+| `rdp` | Remote Desktop | Paid | RTT < 80ms, Jitter < 20ms, Loss < 0.5% |
+| `iot` | IoT / Telemetry | Paid | RTT < 500ms, Jitter < 100ms, Loss < 5% |
+| `trading` | Financial Trading | Paid | RTT < 10ms, Jitter < 2ms, Loss < 0.01% |
+
+## Selection Rules
+
+- User selects exactly 3 traffic types
+- Default selection: Gaming, VoIP, Streaming
+- When user checks a 4th, show "Uncheck one first" — do not auto-uncheck
+- Selection stored in `settings.json` as `activeProfiles: ["gaming", "voip", "streaming"]`
 
 ## Freemium Gating
 
-### Free users (ANONYMOUS or REGISTERED with `sk_free_*`)
-
-- `internet` profile: always available
-- One additional profile of their choice (Gaming, VoIP, or Streaming)
-- Custom profiles: locked with "Upgrade to Pro" prompt
-
-### Paid users (CONNECTED with `sk_live_*`)
-
-- All profiles available
-- Custom profile: user sets their own RTT/jitter/loss thresholds
-
-## Profile Selection in UI
-
-The profile selector appears in:
-1. **Main window** — prominent dropdown or segmented control at the top
-2. **Tray context menu** — submenu under "Monitoring Profile"
-3. **Settings** — full profile configuration page
-
-When the user changes profile, the current grade immediately recalculates against the new thresholds. No re-measurement needed — the last measurement result is re-evaluated.
-
-## Active Profile Storage
-
-```kotlin
-// Stored in settings file:
-// %APPDATA%\Slogr\settings.json (Windows)
-// ~/Library/Application Support/Slogr/settings.json (macOS)
-
-data class DesktopSettings(
-    val activeProfile: String = "internet",         // profile name
-    val secondFreeProfile: String? = null,          // user's chosen free pick
-    val customThresholds: CustomThresholds? = null, // paid only
-    val selectedReflectorIds: List<String> = emptyList(),
-    val testIntervalSeconds: Int = 300,
-    val autoStartEnabled: Boolean = true,
-    val apiKey: String? = null                       // stored encrypted
-)
-```
+- **Free users (ANONYMOUS/REGISTERED):** 4 types available (Internet, Gaming, VoIP, Streaming). Paid types locked with upgrade prompt.
+- **Paid users (CONNECTED):** All 8 types available.
 
 ## Profile Interaction with Measurement
 
-The profile does NOT change what gets measured. TWAMP sessions produce the same RTT/jitter/loss numbers regardless of profile. The profile only determines the **grade** — GREEN, YELLOW, or RED — by comparing the measurement against the profile's thresholds.
+The profile does NOT change what gets measured. One TWAMP session produces RTT/jitter/loss numbers. Those same numbers are evaluated against all 3 active profiles to produce 3 separate grades:
 
 ```kotlin
-// In the measurement pipeline:
-val result = twampController.runSession(reflector)      // same always
-val grade = slaEvaluator.evaluate(result, activeProfile) // profile determines grade
-localHistory.insert(result, reflector, activeProfile)
-uiState.update(reflector.id, result, grade)
-trayIcon.updateColor(worstGrade(allCurrentGrades))
+val result = engine.measure(target, profile = baseProfile)
+val grade1 = SlaEvaluator.evaluate(result, profileForTrafficType1)
+val grade2 = SlaEvaluator.evaluate(result, profileForTrafficType2)
+val grade3 = SlaEvaluator.evaluate(result, profileForTrafficType3)
+overallGrade = worstOf(grade1, grade2, grade3)
 ```
-
-## CONNECTED Mode: Profile vs Schedule
-
-When a desktop agent is CONNECTED and receives a `set_schedule` command from the SaaS, the command may include a profile for each target. In this case:
-
-- Server-pushed profiles take priority for server-pushed targets
-- The user's locally selected profile applies to locally configured reflectors and custom targets
-- The UI shows which profile is active per target and whether it was set by the user or by the SaaS admin
 
 ## Files
 
 | File | Action |
 |------|--------|
-| `desktop-core/profiles/ProfileManager.kt` | NEW — profile selection, freemium gating |
-| `desktop-core/profiles/FreemiumGate.kt` | NEW — enforces free/paid limits |
-| `desktop-core/profiles/DesktopSettings.kt` | NEW — settings persistence |
+| `desktop/core/profiles/ProfileManager.kt` | REWRITE — 8 types, 3 active, enforce-3 logic |
+| `desktop/core/profiles/DesktopProfile.kt` | NEW — traffic type metadata + SLA thresholds |

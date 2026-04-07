@@ -88,3 +88,24 @@ Extends R1 ADRs 001-020 and R2 ADRs 021-040. L1.1 adds ADR-050 through ADR-059.
 - **Traceroute:** Included in all tiers.
 - **Custom targets:** Paid only. Free users can only test against Slogr reflectors.
 **Consequence:** Freemium gating is client-side enforcement. The `GET /v1/reflectors` response includes a `tier` field. The `GET /v1/keys/validate` response could include plan limits. Server-side enforcement added later if needed.
+
+## ADR-060: Traffic-Centric Dashboard
+
+**Status:** Locked
+**Context:** The original main screen showed location cards (per-reflector results). Users care about "is my connection good for gaming?" not "what is my RTT to us-east-1?"
+**Decision:** Dashboard shows 3 user-selected traffic type icons with green/red indicators. One TWAMP measurement evaluated against 3 SLA profiles simultaneously. Server/location management moves to Settings view.
+**Consequence:** ProfileManager updated to support 3 concurrent active profiles. Main window redesigned with sidebar navigation.
+
+## ADR-061: Runtime Server Configuration (No Hardcoded Reflectors)
+
+**Status:** Locked
+**Context:** Slogr's public reflector infrastructure is not deployed yet. The GET /v1/reflectors API does not exist. Desktop users need to add their own TWAMP servers.
+**Decision:** The app ships with zero built-in servers. All servers are added by the user at runtime via Settings -> Servers -> "Add Server." Servers are stored in settings.json and persist across restarts. When Slogr deploys public reflectors, a future update will add auto-discovery via GET /v1/reflectors.
+**Consequence:** First-launch experience requires the user to add a server before seeing results. The empty state guides them to Settings.
+
+## ADR-062: Minimal Tray Menu
+
+**Status:** Locked
+**Context:** The original tray menu had 8+ items including profile submenus and settings. Too complex for a right-click menu. The window should be the single place for all interaction.
+**Decision:** Tray menu has exactly 5 items: grade label, timestamp label, Run Test Now, Open Slogr, Quit. When no servers configured: 3 items (no-servers label, Open Slogr, Quit). Everything else happens in the window.
+**Consequence:** Simpler tray, fewer AWT rendering issues, cleaner UX.

@@ -1,121 +1,85 @@
 ---
 status: locked
-version: 1.0
+version: 2.0
 depends-on:
   - architecture/compose-desktop
 ---
 
 # System Tray
 
-## Tray Icon
+## Tray Icon States
 
-The tray icon reflects the current overall grade (worst across all active reflectors):
-
-| State | Icon Color | Tooltip |
+| State | Icon Color | Condition |
 |---|---|---|
-| GREEN | Green circle/dot | "Slogr — Connection quality: GREEN" |
-| YELLOW | Yellow circle/dot | "Slogr — Connection quality: YELLOW" |
-| RED | Red circle/dot | "Slogr — Connection quality: RED" |
-| Measuring | Grey circle/dot | "Slogr — Measuring..." |
-| Error | Grey circle with X | "Slogr — No reflectors available" |
+| All profiles GREEN | Green circle | All 3 monitored traffic types pass SLA |
+| Any profile YELLOW | Yellow circle | At least one traffic type in YELLOW range |
+| Any profile RED | Red circle | At least one traffic type in RED range |
+| Results stale | Grey-tinted circle | No test completed in 2x configured interval |
+| Cannot test | Black circle | No servers configured, or all servers unreachable |
 
-Icon updates after each measurement cycle. On Windows, the icon sits in the system tray (notification area). On macOS, it sits in the menu bar.
+Icon updates after each measurement cycle.
 
-## Compose Desktop Tray Implementation
+## Launch Behavior
 
-```kotlin
-@Composable
-fun ApplicationScope.SlogrTray(
-    grade: SlaGrade,
-    onOpenWindow: () -> Unit,
-    onRunTest: () -> Unit,
-    onQuit: () -> Unit
-) {
-    val icon = when (grade) {
-        SlaGrade.GREEN -> painterResource("tray-green.png")
-        SlaGrade.YELLOW -> painterResource("tray-yellow.png")
-        SlaGrade.RED -> painterResource("tray-red.png")
-        else -> painterResource("tray-grey.png")
-    }
+On startup (including auto-start), the app starts in **tray-only mode**. The window is NOT shown. The tray icon appears. If servers are configured, measurement begins immediately. If no servers are configured, the tray icon is black.
 
-    Tray(
-        icon = icon,
-        tooltip = "Slogr — Connection quality: ${grade.name}",
-        onAction = onOpenWindow,    // double-click opens window
-        menu = {
-            // Menu items defined below
-        }
-    )
-}
-```
+The user opens the window by:
+- Double-clicking the tray icon
+- Right-click → "Open Slogr"
 
-## Tray Context Menu (Right-Click)
+There is no `--background` flag. Tray-only IS the default, always.
+
+## Tray Context Menu — Normal (servers configured)
+
+Built with raw `java.awt.PopupMenu` (not Compose menu API — fixes text overlap on Windows).
 
 ```
-┌───────────────────────────────┐
-│  Connection: GREEN            │  ← status (non-clickable label)
-│  Last test: 2 min ago         │  ← timestamp (non-clickable label)
-│─────────────────────────────│
-│  ▶ Monitoring Profile         │  ← submenu
-│    ● Internet                 │     radio buttons
-│    ○ Gaming                   │
-│    ○ VoIP / Video             │
-│    ○ Streaming                │
-│    ○ Custom... (Pro)          │     greyed if free
-│─────────────────────────────│
-│  Run Test Now                 │  ← triggers immediate test
-│  Open Window                  │  ← shows/focuses main window
-│  Open Dashboard               │  ← opens browser (CONNECTED only, hidden otherwise)
-│─────────────────────────────│
-│  Settings...                  │  ← opens settings window
-│─────────────────────────────│
-│  Quit                         │  ← exits the application
-└───────────────────────────────┘
++-------------------------------+
+|  GREEN                        |  non-clickable grade label
+|  Last test: 2 min ago         |  non-clickable timestamp
+|-------------------------------|
+|  Run Test Now                 |  triggers immediate measurement
+|  Open Slogr                  |  opens/focuses main window
+|-------------------------------|
+|  Quit                         |  exits the application
++-------------------------------+
 ```
 
-### Menu Behavior
+Exactly 5 items + 2 separators. Nothing else.
 
-- **Monitoring Profile submenu:** Radio buttons. Selecting a profile immediately recalculates grades. Free users see locked items with "(Pro)" suffix — clicking shows upgrade prompt.
-- **Run Test Now:** Triggers measurement against all active reflectors. Menu item text changes to "Testing..." while in progress.
-- **Open Window:** Brings the main window to focus. If window was minimized to tray, it becomes visible.
-- **Open Dashboard:** Only shown when agent state is CONNECTED. Opens `app.slogr.io/dashboard` in browser.
-- **Settings:** Opens the settings window (or brings it to focus if already open).
-- **Quit:** Runs the shutdown sequence (see `compose-desktop.md`), then exits.
+## Tray Context Menu — No Servers
+
+```
++-------------------------------+
+|  No servers configured        |  non-clickable
+|  Add a server to start        |  non-clickable
+|-------------------------------|
+|  Open Slogr                  |  opens window so user can add servers
+|-------------------------------|
+|  Quit                         |
++-------------------------------+
+```
+
+"Run Test Now" is hidden — nothing to test against.
 
 ## Desktop Notifications
 
-The app sends OS notifications when the grade changes:
+Grade-change notifications via AWT SystemTray:
 
-| Transition | Notification |
+| Transition | Message |
 |---|---|
-| GREEN → YELLOW | "Connection quality degraded — elevated latency detected" |
-| GREEN → RED | "Connection quality poor — significant degradation" |
-| YELLOW → RED | "Connection quality worsened" |
-| RED → GREEN | "Connection quality restored" |
-| YELLOW → GREEN | "Connection quality improved" |
+| GREEN to YELLOW | "Connection quality degraded" |
+| GREEN to RED | "Connection quality poor" |
+| YELLOW to RED | "Connection quality worsened" |
+| RED to GREEN | "Connection quality restored" |
+| YELLOW to GREEN | "Connection quality improved" |
 
-Notifications are sent via:
-- **Windows:** `java.awt.SystemTray.displayMessage()` or Windows toast notifications via JNA
-- **macOS:** `NSUserNotificationCenter` via JNA or `ProcessBuilder("osascript", "-e", "display notification...")`
-
-Notifications are enabled by default. User can disable in Settings.
-
-## macOS Menu Bar Conventions
-
-On macOS, the tray icon sits in the menu bar (right side, near the clock). macOS conventions:
-- Single click on menu bar icon shows the dropdown menu (same as right-click on Windows)
-- The menu bar icon should be a template image (monochrome) that adapts to light/dark mode
-- Use `NSImage.setTemplate(true)` equivalent in Compose Desktop
+Notifications respect the "Show notifications" setting toggle.
 
 ## Files
 
 | File | Action |
 |------|--------|
-| `desktop-ui/tray/SlogrTray.kt` | NEW — Compose `Tray` composable |
-| `desktop-ui/tray/TrayMenuBuilder.kt` | NEW — context menu construction |
-| `desktop-ui/tray/DesktopNotifier.kt` | NEW — OS notification bridge |
-| `resources/tray-green.png` | NEW — 16x16 and 32x32 green icon |
-| `resources/tray-yellow.png` | NEW — 16x16 and 32x32 yellow icon |
-| `resources/tray-red.png` | NEW — 16x16 and 32x32 red icon |
-| `resources/tray-grey.png` | NEW — 16x16 and 32x32 grey icon |
-| `resources/tray-template.png` | NEW — macOS menu bar template image |
+| `desktop/ui/tray/SlogrTray.kt` | REWRITE — AWT PopupMenu, 2 menu variants |
+| `desktop/ui/tray/TrayIconGenerator.kt` | UPDATED — add grey-tint and black icons |
+| `desktop/core/notifications/DesktopNotifier.kt` | KEEP |

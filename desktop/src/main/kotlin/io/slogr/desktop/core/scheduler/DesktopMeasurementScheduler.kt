@@ -1,22 +1,20 @@
 package io.slogr.desktop.core.scheduler
 
 import io.slogr.agent.contracts.SlaProfile
+import io.slogr.agent.contracts.TimingMode
 import io.slogr.agent.contracts.interfaces.MeasurementEngine
 import io.slogr.desktop.core.history.LocalHistoryStore
-import io.slogr.desktop.core.reflectors.Reflector
+import io.slogr.desktop.core.profiles.ProfileManager
+import io.slogr.desktop.core.settings.ServerEntry
 import io.slogr.desktop.core.viewmodel.DesktopAgentViewModel
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import java.net.InetAddress
 
-/**
- * Drives periodic measurement cycles against selected reflectors.
- *
- * All measurement work runs on [Dispatchers.IO] to never block the Compose UI thread.
- */
 class DesktopMeasurementScheduler(
     private val engine: MeasurementEngine,
     private val viewModel: DesktopAgentViewModel,
+    private val profileManager: ProfileManager,
     private val historyStore: LocalHistoryStore? = null,
 ) {
 
@@ -24,20 +22,21 @@ class DesktopMeasurementScheduler(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var schedulerJob: Job? = null
 
-    /**
-     * Start periodic measurement. Runs one cycle immediately, then repeats
-     * every [intervalSeconds].
-     */
-    fun start(
-        reflectors: List<Reflector>,
-        profile: SlaProfile,
-        intervalSeconds: Int,
-        tracerouteEnabled: Boolean,
-    ) {
+    /** Base profile used for the TWAMP session parameters. */
+    private val baseProfile = SlaProfile(
+        name = "desktop-base", nPackets = 10, intervalMs = 50, waitTimeMs = 2000,
+        dscp = 0, packetSize = 64, timingMode = TimingMode.FIXED,
+        rttGreenMs = 100f, rttRedMs = 200f,
+        jitterGreenMs = 30f, jitterRedMs = 50f,
+        lossGreenPct = 1f, lossRedPct = 5f,
+    )
+
+    fun start(servers: List<ServerEntry>, intervalSeconds: Int, tracerouteEnabled: Boolean) {
         stop()
+        if (servers.isEmpty()) return
         schedulerJob = scope.launch {
             while (isActive) {
-                runCycle(reflectors, profile, tracerouteEnabled)
+                runCycle(servers, tracerouteEnabled)
                 delay(intervalSeconds * 1000L)
             }
         }
@@ -48,18 +47,9 @@ class DesktopMeasurementScheduler(
         schedulerJob = null
     }
 
-    /**
-     * Run a single measurement cycle — one test per reflector, bounded concurrency.
-     */
-    suspend fun runOnce(
-        reflectors: List<Reflector>,
-        profile: SlaProfile,
-        tracerouteEnabled: Boolean,
-    ) {
-        runCycle(reflectors, profile, tracerouteEnabled)
+    suspend fun runOnce(servers: List<ServerEntry>, tracerouteEnabled: Boolean) {
+        runCycle(servers, tracerouteEnabled)
     }
-
-    fun isRunning(): Boolean = schedulerJob?.isActive == true
 
     fun shutdown() {
         stop()
@@ -67,23 +57,17 @@ class DesktopMeasurementScheduler(
         engine.shutdown()
     }
 
-    private suspend fun runCycle(
-        reflectors: List<Reflector>,
-        profile: SlaProfile,
-        tracerouteEnabled: Boolean,
-    ) {
-        if (reflectors.isEmpty()) return
+    private suspend fun runCycle(servers: List<ServerEntry>, tracerouteEnabled: Boolean) {
+        if (servers.isEmpty()) return
         viewModel.setMeasuring(true)
-
         try {
-            // Run measurements concurrently with bounded parallelism
             val semaphore = kotlinx.coroutines.sync.Semaphore(3)
             coroutineScope {
-                reflectors.forEach { reflector ->
+                servers.forEach { server ->
                     launch {
                         semaphore.acquire()
                         try {
-                            measureReflector(reflector, profile, tracerouteEnabled)
+                            measureServer(server, tracerouteEnabled)
                         } finally {
                             semaphore.release()
                         }
@@ -95,35 +79,36 @@ class DesktopMeasurementScheduler(
         }
     }
 
-    private suspend fun measureReflector(
-        reflector: Reflector,
-        profile: SlaProfile,
-        tracerouteEnabled: Boolean,
-    ) {
+    private suspend fun measureServer(server: ServerEntry, tracerouteEnabled: Boolean) {
         try {
-            val target = InetAddress.getByName(reflector.host)
+            val target = InetAddress.getByName(server.host)
             val bundle = engine.measure(
                 target = target,
-                targetPort = reflector.port,
-                profile = profile,
+                targetPort = server.port,
+                profile = baseProfile,
                 traceroute = tracerouteEnabled,
             )
-            viewModel.updateResult(reflector.id, reflector.displayName, bundle)
+            viewModel.updateResult(server.id, server.displayLabel, bundle, profileManager)
             try {
-                historyStore?.insert(bundle.twamp, reflector, bundle.grade)
+                historyStore?.insert(bundle.twamp, makeReflector(server), bundle.grade)
             } catch (e: Exception) {
-                log.warn("Failed to write history for {}: {}", reflector.displayName, e.message)
+                log.warn("Failed to write history for {}: {}", server.displayLabel, e.message)
             }
-            log.info(
-                "Measurement to {} ({}): RTT={}ms loss={}% grade={}",
-                reflector.displayName, reflector.host,
-                bundle.twamp.fwdAvgRttMs, bundle.twamp.fwdLossPct, bundle.grade,
-            )
+            log.info("Measurement to {}: RTT={}ms loss={}% grade={}",
+                server.displayLabel, bundle.twamp.fwdAvgRttMs, bundle.twamp.fwdLossPct, bundle.grade)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            log.warn("Measurement to {} ({}) failed: {}", reflector.displayName, reflector.host, e.message)
-            viewModel.recordFailure(reflector.id, reflector.displayName)
+            log.warn("Measurement to {} failed: {}", server.displayLabel, e.message)
+            viewModel.recordFailure(server.id, server.displayLabel)
         }
     }
+
+    /** Adapter: create a lightweight Reflector-like object for history insertion. */
+    private fun makeReflector(server: ServerEntry) =
+        io.slogr.desktop.core.reflectors.Reflector(
+            id = server.id, region = server.label.ifBlank { "user" },
+            cloud = "user", host = server.host, port = server.port,
+            latitude = 0.0, longitude = 0.0, tier = "free",
+        )
 }

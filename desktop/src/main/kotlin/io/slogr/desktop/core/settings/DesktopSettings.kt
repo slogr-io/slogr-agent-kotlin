@@ -4,17 +4,26 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class ServerEntry(
+    val id: String,
+    val host: String,
+    val port: Int = 862,
+    val label: String = "",
+) {
+    val displayLabel: String get() = label.ifBlank { "$host:$port" }
+}
+
+@Serializable
 data class DesktopSettings(
-    @SerialName("active_profile") val activeProfile: String = "internet",
-    @SerialName("second_free_profile") val secondFreeProfile: String? = null,
+    @SerialName("active_profiles") val activeProfiles: List<String> = listOf("gaming", "voip", "streaming"),
     @SerialName("test_interval_seconds") val testIntervalSeconds: Int = 300,
     @SerialName("traceroute_enabled") val tracerouteEnabled: Boolean = true,
-    @SerialName("selected_reflector_ids") val selectedReflectorIds: List<String> = emptyList(),
+    val servers: List<ServerEntry> = emptyList(),
     @SerialName("auto_start_enabled") val autoStartEnabled: Boolean = true,
     @SerialName("notifications_enabled") val notificationsEnabled: Boolean = true,
-    @SerialName("minimize_to_tray_on_close") val minimizeToTrayOnClose: Boolean = true,
 ) {
     companion object {
+        const val MAX_ACTIVE_PROFILES = 3
         val TEST_INTERVALS = listOf(60, 120, 300, 600, 900, 1800)
 
         fun intervalLabel(seconds: Int): String = when {
