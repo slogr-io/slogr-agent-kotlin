@@ -85,6 +85,7 @@ class TwampSessionReflector(
         val bindPort = if (testPort > 0) testPort else 0
         fd = adapter.createSocket(localIp, bindPort, reusePort = testPort > 0)
         boundPort = if (fd >= 0) adapter.getLocalPort(fd) else 0
+        log.info("Reflector socket created (fd=$fd, bindPort=$bindPort, boundPort=$boundPort, testPort=$testPort)")
         if (fd >= 0) {
             adapter.setTtlAndCapture(fd, 64)
             adapter.enableTimestamping(fd)
@@ -100,11 +101,13 @@ class TwampSessionReflector(
             log.error("Failed to create reflector UDP socket — fd=$fd")
             return
         }
+        log.info("Reflector started (sid=$sessionId, udpPort=$boundPort, sender=$senderIp:$senderPort)")
         threadPool.registerSession(ReflectorSession(sessionId, InetSocketAddress(senderIp, senderPort)))
         try {
             startInactivityTimer()
             reflectLoop()
         } finally {
+            log.info("Reflector exiting (sid=$sessionId, isAlive=$isAlive, reflected=$seqNo packets)")
             threadPool.unregisterSession(sessionId)
             threadPool.bufferPool.returnBuffer(recvBuf)
             closeSocket()
@@ -153,6 +156,7 @@ class TwampSessionReflector(
             try {
                 reflect(recvBytes, recv.bytesRead, recvSenderIp, recv.srcPort,
                         recv.ttl.toByte(), receiveTimeNtp)
+                if (seqNo <= 3) log.info("Reflected packet #$seqNo from $recvSenderIp:${recv.srcPort}")
             } catch (e: Exception) {
                 log.debug("Failed to parse/reflect sender packet: ${e.message}")
             }
