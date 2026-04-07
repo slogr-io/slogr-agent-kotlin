@@ -132,6 +132,22 @@ class TwampSessionReflector(
 
             val recvSenderIp = recv.srcIp ?: continue
 
+            // L2: Only reflect to the IP that established the TCP control session
+            if (recvSenderIp.hostAddress != senderIp.hostAddress) {
+                log.debug("Dropping UDP from ${recvSenderIp} — expected ${senderIp} (TCP source)")
+                continue
+            }
+
+            // L7: Packet validation before parsing
+            if (recv.bytesRead < MIN_SENDER_PACKET_SIZE) {
+                log.debug("Dropping undersized packet: ${recv.bytesRead} bytes (min=$MIN_SENDER_PACKET_SIZE)")
+                continue
+            }
+            if (recv.bytesRead > MAX_PACKET_SIZE) {
+                log.debug("Dropping oversized packet: ${recv.bytesRead} bytes (max=$MAX_PACKET_SIZE)")
+                continue
+            }
+
             try {
                 reflect(recvBytes, recv.bytesRead, recvSenderIp, recv.srcPort,
                         recv.ttl.toByte(), receiveTimeNtp)
@@ -180,6 +196,12 @@ class TwampSessionReflector(
             replyData = buf.array()
         }
 
+        // L1: Anti-amplification — log if response exceeds request (inherent in TWAMP
+        // protocol: reflector base=41 vs sender base=14). Padding is already negotiated
+        // to match. Do NOT truncate the base header — that corrupts the packet.
+        if (replyData.size > len) {
+            log.debug("Reflector response (${replyData.size}B) > request (${len}B) — protocol inherent, padding matched")
+        }
         adapter.sendPacket(fd, recvSenderIp, recvSenderPort, replyData)
     }
 
@@ -200,5 +222,12 @@ class TwampSessionReflector(
         inactivityTask?.cancel(false)
         try { adapter.closeSocket(fd) } catch (_: Exception) {}
         fd = -1
+    }
+
+    companion object {
+        /** Minimum valid TWAMP sender packet (SenderUPacket.BASE_SIZE = 14). */
+        private const val MIN_SENDER_PACKET_SIZE = 14
+        /** Maximum sane packet size (jumbo frame). */
+        private const val MAX_PACKET_SIZE = 9000
     }
 }
