@@ -149,10 +149,18 @@ Acceptance test:
 
 ---
 
-## Remaining for v1.0.3
+## Remaining — moved to v1.0.3
 
-1. FIX-2 — wrapper script change, independent
-2. FIX-3 — one line deletion, trivial
+See: vault/agent-v1.0.3-backlog.md
+
+Carried forward:
+1. FIX-2 → v1.0.3 FIX-4 (SLOGR_SCHEDULE_PATH)
+2. FIX-3 → v1.0.3 FIX-5 (stale comment)
+
+New bugs found during GCP E2E testing:
+3. BUG-1 [HIGH] — onComplete never fires on connection failure
+4. BUG-2 [HIGH] — --port flag ignored (targetPort not passed)
+5. BUG-3 [LOW]  — no invokeOnCancellation (resource leak)
 
 ## Release History
 
