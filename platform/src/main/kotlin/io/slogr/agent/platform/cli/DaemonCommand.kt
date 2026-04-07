@@ -5,9 +5,17 @@ import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import io.slogr.agent.contracts.Schedule
+import io.slogr.agent.platform.buffer.WriteAheadLog
 import io.slogr.agent.platform.config.AgentState
+import io.slogr.agent.platform.rabbitmq.RabbitMqConnection
+import io.slogr.agent.platform.rabbitmq.RabbitMqPublisher
 import io.slogr.agent.platform.registration.ApiKeyRegistrar
 import io.slogr.agent.platform.scheduler.TestScheduler
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
@@ -70,6 +78,25 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
             }
         }
 
+        // ── RabbitMQ wiring — CONNECTED mode only ────────────────────────────
+        var publisher: RabbitMqPublisher? = null
+        var rabbitConn: RabbitMqConnection? = null
+        val publishScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+        if (state == AgentState.CONNECTED) {
+            val cred = ctx.credentialStore.load()
+            if (cred != null) {
+                val wal = WriteAheadLog(ctx.config.dataDir)
+                rabbitConn = RabbitMqConnection(cred)
+                runCatching { rabbitConn.connect() }.onFailure { e ->
+                    log.warn("RabbitMQ initial connect failed: ${e.message} — will retry via reconnect loop")
+                }
+                rabbitConn.reconnectLoop(publishScope) { null }
+                publisher = RabbitMqPublisher(cred, wal, rabbitConn)
+                log.info("RabbitMQ publisher wired for agent ${cred.agentId}")
+            }
+        }
+
         // ── Issue 1 fix: force reflector to bind 0.0.0.0:862 immediately ────
         ctx.engine.start()
 
@@ -106,6 +133,16 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
             onResult = { cfg, bundle ->
                 ctx.otlpExporter.record(bundle, cfg.profile.name)
                 log.info("Session ${cfg.pathId} → grade=${bundle.grade}")
+                publisher?.let { pub ->
+                    publishScope.launch {
+                        try {
+                            pub.publishMeasurement(bundle.twamp)
+                            bundle.traceroute?.let { tr -> pub.publishTraceroute(tr) }
+                        } catch (e: Exception) {
+                            log.warn("RabbitMQ publish failed for session ${cfg.pathId}: ${e.message}")
+                        }
+                    }
+                }
             }
         )
         scheduler.start(schedule)
@@ -113,6 +150,9 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
         val shutdownHook = Thread {
             log.info("Shutting down daemon...")
             scheduler.stop()
+            runBlocking { publisher?.flush() }
+            rabbitConn?.close()
+            publishScope.cancel()
             ctx.otlpExporter.flush()
             ctx.otlpExporter.shutdown()
             ctx.engine.shutdown()

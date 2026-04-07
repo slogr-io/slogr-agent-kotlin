@@ -2,8 +2,8 @@ apiVersion: v2
 name: slogr-agent
 description: Network path quality monitoring agent
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 1.0.1
+appVersion: "1.0.1"
 home: https://slogr.io
 sources:
   - https://github.com/slogr/agent-kotlin
