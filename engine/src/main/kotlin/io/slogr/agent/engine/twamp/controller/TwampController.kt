@@ -157,6 +157,7 @@ class TwampController(
             }
         } catch (e: Exception) {
             log.error("Connect failed: ${e.message}")
+            sessionMap[key]?.setCloseReason("TCP connect failed: ${e.message}")
             closeSession(key)
         }
     }
@@ -173,6 +174,7 @@ class TwampController(
             -1
         }
         if (bytesRead < 0) {
+            session.setCloseReason("remote closed connection (EOF)")
             closeSession(key)
             return
         }

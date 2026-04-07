@@ -23,6 +23,7 @@ import io.slogr.agent.engine.twamp.controller.TimingMode
 import io.slogr.agent.engine.twamp.controller.TwampController
 import io.slogr.agent.engine.twamp.responder.TwampReflector
 import io.slogr.agent.native.NativeProbeAdapter
+import org.slf4j.LoggerFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -55,6 +56,7 @@ class MeasurementEngineImpl(
     private val startReflector: Boolean = true
 ) : MeasurementEngine {
 
+    private val log = LoggerFactory.getLogger(MeasurementEngineImpl::class.java)
     private val reflector              = TwampReflector(adapter = adapter, listenPort = reflectorListenPort, bindIp = localIp)
     // Controller port is wired to the reflector's actual port after binding so that loopback
     // tests can use an ephemeral port (reflectorListenPort=0) without needing privileged ports.
@@ -180,6 +182,10 @@ class MeasurementEngineImpl(
                 )
             }
         } ?: SenderResult(emptyList(), config.count, 0, error = "session timed out")
+
+        if (result.error != null) {
+            log.warn("TWAMP to $target:$targetPort failed: ${result.error}")
+        }
 
         MeasurementAssembler.assemble(
             result        = result,
