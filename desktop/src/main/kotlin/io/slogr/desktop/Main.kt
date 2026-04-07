@@ -1,294 +1,221 @@
 package io.slogr.desktop
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import io.slogr.agent.contracts.SlaGrade
 import io.slogr.agent.engine.MeasurementEngineImpl
 import io.slogr.agent.engine.asn.NullAsnResolver
-import io.slogr.agent.engine.sla.ProfileRegistry
 import io.slogr.agent.native.JavaUdpTransport
-import io.slogr.agent.platform.config.AgentState
 import io.slogr.desktop.core.DataDirectory
 import io.slogr.desktop.core.autostart.AutoStartManager
 import io.slogr.desktop.core.history.HistoryPruner
 import io.slogr.desktop.core.history.LocalHistoryStore
 import io.slogr.desktop.core.notifications.DesktopNotifier
 import io.slogr.desktop.core.profiles.ProfileManager
-import io.slogr.desktop.core.reflectors.NearestSelector
-import io.slogr.desktop.core.reflectors.ReflectorCache
-import io.slogr.desktop.core.reflectors.ReflectorDiscoveryClient
 import io.slogr.desktop.core.scheduler.DesktopMeasurementScheduler
 import io.slogr.desktop.core.settings.DesktopSettingsStore
 import io.slogr.desktop.core.settings.EncryptedKeyStore
 import io.slogr.desktop.core.state.DesktopStateManager
 import io.slogr.desktop.core.viewmodel.DesktopAgentViewModel
-import io.slogr.desktop.ui.settings.SettingsWindow
 import io.slogr.desktop.ui.theme.SlogrTheme
-import io.slogr.desktop.ui.tray.TrayIconGenerator
-import io.slogr.desktop.ui.window.MainContent
+import io.slogr.desktop.ui.tray.SlogrTrayManager
+import io.slogr.desktop.ui.window.DashboardView
+import io.slogr.desktop.ui.window.SettingsView
 import kotlinx.coroutines.launch
-import java.awt.Desktop
-import java.net.URI
 import java.util.UUID
 
-/** Entry point. Pass `--background` to start hidden (tray-only). */
-fun main(args: Array<String>) {
-    val startBackground = "--background" in args
+enum class MainView { DASHBOARD, SETTINGS }
+
+fun main() {
+    val dataDir = DataDirectory.resolve()
+    val settingsStore = DesktopSettingsStore(dataDir)
+    val keyStore = EncryptedKeyStore(dataDir)
+    val stateManager = DesktopStateManager(keyStore)
+    val profileManager = ProfileManager(settingsStore, stateManager)
+    val viewModel = DesktopAgentViewModel()
+    val historyStore = LocalHistoryStore(dataDir)
+    val historyPruner = HistoryPruner(historyStore)
+    val engine = MeasurementEngineImpl(
+        adapter = JavaUdpTransport(),
+        asnResolver = NullAsnResolver(),
+        agentId = UUID.randomUUID(),
+    )
+    val scheduler = DesktopMeasurementScheduler(engine, viewModel, profileManager, historyStore)
+
+    // Initialize synchronous state
+    settingsStore.load()
+    stateManager.initialize()
+    profileManager.initialize(settingsStore.settings.value)
 
     application {
-        val dataDir = remember { DataDirectory.resolve() }
-        val settingsStore = remember { DesktopSettingsStore(dataDir) }
-        val keyStore = remember { EncryptedKeyStore(dataDir) }
-        val stateManager = remember { DesktopStateManager(keyStore) }
-        val profileManager = remember { ProfileManager(settingsStore, stateManager) }
-        val reflectorCache = remember { ReflectorCache(dataDir) }
-        val discoveryClient = remember { ReflectorDiscoveryClient(reflectorCache, stateManager) }
-        val viewModel = remember { DesktopAgentViewModel() }
-        val historyStore = remember { LocalHistoryStore(dataDir) }
-        val historyPruner = remember { HistoryPruner(historyStore) }
+        // Tray-only: window hidden by default (B2)
+        var isWindowVisible by remember { mutableStateOf(false) }
+        var activeView by remember { mutableStateOf(MainView.DASHBOARD) }
+        val windowState = rememberWindowState(size = DpSize(620.dp, 520.dp))
+        val scope = rememberCoroutineScope()
 
-        // Engine: pure-Java mode (no JNI)
-        val engine = remember {
-            MeasurementEngineImpl(
-                adapter = JavaUdpTransport(),
-                asnResolver = NullAsnResolver(),
-                agentId = UUID.randomUUID(),
+        val settings by settingsStore.settings.collectAsState()
+        val overallGrade by viewModel.overallGrade.collectAsState()
+        val isMeasuring by viewModel.isMeasuring.collectAsState()
+        val trafficGrades by viewModel.trafficGrades.collectAsState()
+        val lastTestTime by viewModel.lastTestTime.collectAsState()
+        val recentHistory by viewModel.recentHistory.collectAsState()
+
+        val hasServers = settings.servers.isNotEmpty()
+
+        // AWT tray manager (B1 + R7)
+        val trayManager = remember {
+            SlogrTrayManager(
+                onOpenWindow = { isWindowVisible = true },
+                onRunTest = {
+                    scope.launch {
+                        scheduler.runOnce(settings.servers, settings.tracerouteEnabled)
+                        viewModel.refreshHistory(historyStore)
+                    }
+                },
+                onQuit = { exitApplication() },
             )
         }
-        val scheduler = remember { DesktopMeasurementScheduler(engine, viewModel, historyStore) }
 
-        // Initialize
+        // Install tray on first composition
         LaunchedEffect(Unit) {
-            settingsStore.load()
-            stateManager.initialize()
-            profileManager.initialize(settingsStore.settings.value)
+            trayManager.install()
             historyStore.initialize()
             historyPruner.start()
             viewModel.refreshHistory(historyStore)
-            discoveryClient.discover()
-
-            // Auto-select nearest reflectors if none selected
-            val s = settingsStore.settings.value
-            if (s.selectedReflectorIds.isEmpty()) {
-                val accessible = discoveryClient.filterByTier(discoveryClient.reflectors.value)
-                if (accessible.isNotEmpty()) {
-                    val nearest = NearestSelector.selectNearest(accessible, 24.8607, 67.0011, maxCount = 3)
-                    settingsStore.update { it.copy(selectedReflectorIds = nearest.map { r -> r.id }) }
-                }
-            }
         }
 
-        // Collect state
-        val settings by settingsStore.settings.collectAsState()
-        val agentState by stateManager.state.collectAsState()
-        val allReflectors by discoveryClient.reflectors.collectAsState()
-        val overallGrade by viewModel.overallGrade.collectAsState()
-        val isMeasuring by viewModel.isMeasuring.collectAsState()
-        val results by viewModel.results.collectAsState()
-        val lastTestTime by viewModel.lastTestTime.collectAsState()
-        val recentHistory by viewModel.recentHistory.collectAsState()
-        val activeProfileName by profileManager.activeProfileName.collectAsState()
-
-        // Start/restart scheduler when config changes
-        LaunchedEffect(settings.selectedReflectorIds, activeProfileName, settings.testIntervalSeconds) {
-            val selectedReflectors = allReflectors.filter { it.id in settings.selectedReflectorIds }
-            val profile = ProfileRegistry.get(activeProfileName) ?: return@LaunchedEffect
-            if (selectedReflectors.isNotEmpty()) {
-                scheduler.start(
-                    selectedReflectors, profile,
-                    settings.testIntervalSeconds, settings.tracerouteEnabled,
-                )
-            }
+        // Update tray after each state change
+        LaunchedEffect(overallGrade, hasServers, isMeasuring, lastTestTime) {
+            val timeText = if (lastTestTime != null) {
+                val mins = (kotlinx.datetime.Clock.System.now() - lastTestTime!!).inWholeMinutes
+                if (mins < 1) "Last test: just now" else "Last test: $mins min ago"
+            } else "No tests yet"
+            trayManager.update(overallGrade, hasServers, isMeasuring, timeText)
         }
 
-        // Grade-change notifications
+        // Notifications
         LaunchedEffect(overallGrade) {
             DesktopNotifier.onGradeUpdate(overallGrade, settings.notificationsEnabled)
         }
 
-        // Sync auto-start with settings
+        // Auto-start sync
         LaunchedEffect(settings.autoStartEnabled) {
             if (settings.autoStartEnabled) AutoStartManager.enable()
             else AutoStartManager.disable()
         }
 
-        // Cleanup on exit
+        // Start/restart scheduler when servers or interval change
+        LaunchedEffect(settings.servers, settings.testIntervalSeconds, settings.tracerouteEnabled) {
+            if (settings.servers.isNotEmpty()) {
+                scheduler.start(settings.servers, settings.testIntervalSeconds, settings.tracerouteEnabled)
+            } else {
+                scheduler.stop()
+            }
+        }
+
+        // Cleanup
         DisposableEffect(Unit) {
             onDispose {
                 scheduler.shutdown()
                 historyPruner.stop()
                 historyStore.close()
+                trayManager.remove()
             }
         }
 
-        // --background: start with window hidden
-        var isWindowVisible by remember { mutableStateOf(!startBackground) }
-        var isSettingsOpen by remember { mutableStateOf(false) }
-        val windowState = rememberWindowState(size = DpSize(480.dp, 640.dp))
-        val scope = rememberCoroutineScope()
-
-        // Helper: run test now
+        // Run test helper
         val runTestNow: () -> Unit = {
             scope.launch {
-                val selected = allReflectors.filter { it.id in settings.selectedReflectorIds }
-                val profile = ProfileRegistry.get(activeProfileName) ?: return@launch
-                scheduler.runOnce(selected, profile, settings.tracerouteEnabled)
+                scheduler.runOnce(settings.servers, settings.tracerouteEnabled)
                 viewModel.refreshHistory(historyStore)
             }
         }
 
-        // Dynamic tray icon
-        val trayIcon = remember(overallGrade) {
-            when (overallGrade) {
-                SlaGrade.GREEN -> TrayIconGenerator.greenIcon()
-                SlaGrade.YELLOW -> TrayIconGenerator.yellowIcon()
-                SlaGrade.RED -> TrayIconGenerator.redIcon()
-                null -> TrayIconGenerator.greyIcon()
-            }
-        }
-        val trayTooltip = when (overallGrade) {
-            SlaGrade.GREEN -> "Slogr \u2014 Connection quality: GREEN"
-            SlaGrade.YELLOW -> "Slogr \u2014 Connection quality: YELLOW"
-            SlaGrade.RED -> "Slogr \u2014 Connection quality: RED"
-            null -> if (isMeasuring) "Slogr \u2014 Measuring..." else "Slogr"
-        }
+        // Window
+        if (isWindowVisible) {
+            Window(
+                onCloseRequest = { isWindowVisible = false },
+                title = "Slogr",
+                state = windowState,
+            ) {
+                window.minimumSize = java.awt.Dimension(500, 400)
 
-        // Tray with full context menu
-        Tray(
-            icon = trayIcon,
-            tooltip = trayTooltip,
-            onAction = { isWindowVisible = true },
-            menu = {
-                // Status labels
-                val gradeLabel = overallGrade?.name ?: "No data"
-                Item("Connection: $gradeLabel", enabled = false, onClick = {})
-                val timeLabel = if (lastTestTime != null) {
-                    val mins = (kotlinx.datetime.Clock.System.now() - lastTestTime!!).inWholeMinutes
-                    if (mins < 1) "Last test: just now" else "Last test: $mins min ago"
-                } else "No tests yet"
-                Item(timeLabel, enabled = false, onClick = {})
-
-                Separator()
-
-                // Monitoring Profile submenu
-                Menu("Monitoring Profile") {
-                    ProfileManager.DESKTOP_PROFILES.forEach { dp ->
-                        val available = profileManager.isProfileAvailable(dp.name)
-                        val prefix = if (dp.name == activeProfileName) "\u25CF " else "\u25CB "
-                        val suffix = if (!available) " (Pro)" else ""
-                        Item("$prefix${dp.displayName}$suffix", enabled = available, onClick = {
-                            profileManager.selectProfile(dp.name)
-                        })
-                    }
-                }
-
-                Separator()
-
-                Item(
-                    if (isMeasuring) "Testing..." else "Run Test Now",
-                    enabled = !isMeasuring,
-                    onClick = runTestNow,
-                )
-                Item("Open Window", onClick = { isWindowVisible = true })
-
-                // Open Dashboard — CONNECTED only
-                if (agentState == AgentState.CONNECTED) {
-                    Item("Open Dashboard", onClick = {
-                        try {
-                            Desktop.getDesktop().browse(URI("https://app.slogr.io/dashboard"))
-                        } catch (_: Exception) { }
-                    })
-                }
-
-                Separator()
-                Item("Settings...", onClick = { isSettingsOpen = true })
-                Separator()
-                Item("Quit", onClick = ::exitApplication)
-            },
-        )
-
-        Window(
-            onCloseRequest = {
-                if (settings.minimizeToTrayOnClose) isWindowVisible = false
-                else exitApplication()
-            },
-            visible = isWindowVisible,
-            title = "Slogr",
-            state = windowState,
-        ) {
-            window.minimumSize = java.awt.Dimension(400, 500)
-
-            SlogrTheme {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background),
-                ) {
-                    Box(modifier = Modifier.weight(1f)) {
-                        MainContent(
-                            overallGrade = overallGrade,
-                            isMeasuring = isMeasuring,
-                            results = results,
-                            lastTestTime = lastTestTime,
-                            recentHistory = recentHistory,
-                            onRunTestNow = runTestNow,
-                        )
-                    }
-
-                    // Footer
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline)
+                SlogrTheme {
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
                     ) {
-                        val stateLabel = when (agentState) {
-                            AgentState.ANONYMOUS -> "Not signed in"
-                            AgentState.REGISTERED -> "Free"
-                            AgentState.CONNECTED -> "Pro"
-                        }
-                        Text(
-                            stateLabel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        )
+                        // Sidebar
+                        Column(
+                            modifier = Modifier
+                                .width(140.dp)
+                                .fillMaxHeight()
+                                .background(MaterialTheme.colorScheme.surface)
+                                .padding(vertical = 16.dp),
+                        ) {
+                            // Logo placeholder (R6)
+                            Text(
+                                "SLOGR",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (agentState == AgentState.CONNECTED) {
-                                TextButton(onClick = {
-                                    try {
-                                        Desktop.getDesktop().browse(URI("https://app.slogr.io/dashboard"))
-                                    } catch (_: Exception) { }
-                                }) {
-                                    Text("Dashboard")
-                                }
+                            Spacer(Modifier.height(16.dp))
+
+                            listOf(MainView.DASHBOARD to "Dashboard", MainView.SETTINGS to "Settings").forEach { (view, label) ->
+                                val isSelected = view == activeView
+                                Text(
+                                    text = label,
+                                    color = if (isSelected) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { activeView = view }
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                )
                             }
-                            TextButton(onClick = { isSettingsOpen = true }) {
-                                Text("\u2699 Settings")
+                        }
+
+                        VerticalDivider(color = MaterialTheme.colorScheme.outline)
+
+                        // Content area
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            when (activeView) {
+                                MainView.DASHBOARD -> DashboardView(
+                                    trafficGrades = trafficGrades,
+                                    isMeasuring = isMeasuring,
+                                    lastTestTime = lastTestTime,
+                                    recentHistory = recentHistory,
+                                    hasServers = hasServers,
+                                    onRunTestNow = runTestNow,
+                                    onGoToSettings = { activeView = MainView.SETTINGS },
+                                )
+                                MainView.SETTINGS -> SettingsView(
+                                    settings = settings,
+                                    settingsStore = settingsStore,
+                                    profileManager = profileManager,
+                                    viewModel = viewModel,
+                                )
                             }
                         }
                     }
                 }
             }
-        }
-
-        if (isSettingsOpen) {
-            SettingsWindow(
-                onClose = { isSettingsOpen = false },
-                stateManager = stateManager,
-                settingsStore = settingsStore,
-                profileManager = profileManager,
-                discoveryClient = discoveryClient,
-            )
         }
     }
 }

@@ -16,17 +16,18 @@ object TrayIconGenerator {
     private const val ICON_SIZE = 16
 
     fun greyIcon(): Painter = createIcon(SlogrGrey)
-
     fun greenIcon(): Painter = createIcon(SlogrGreen)
-
     fun yellowIcon(): Painter = createIcon(SlogrYellow)
-
     fun redIcon(): Painter = createIcon(SlogrRed)
+    fun staleIcon(): Painter = createIcon(Color(0xFF6B6B6B)) // grey-tint
+    fun blackIcon(): Painter = createIcon(Color(0xFF1A1A1A)) // near-black
 
     fun createIcon(color: Color): Painter {
         val image = createIconImage(color)
         return BitmapPainter(image.toComposeImageBitmap())
     }
+
+    fun createAwtImage(color: Color, size: Int = ICON_SIZE): BufferedImage = createIconImage(color, size)
 
     internal fun createIconImage(color: Color, size: Int = ICON_SIZE): BufferedImage {
         val image = BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)

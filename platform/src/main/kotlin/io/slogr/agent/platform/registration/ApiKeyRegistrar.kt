@@ -37,7 +37,7 @@ import java.util.UUID
 class ApiKeyRegistrar(
     private val credentialStore: CredentialStore,
     val apiBaseUrl: String = System.getenv("SLOGR_API_URL") ?: "https://api.slogr.io",
-    private val agentVersion: String = "1.0.1"
+    private val agentVersion: String = "1.0.2"
 ) {
     private val log    = LoggerFactory.getLogger(ApiKeyRegistrar::class.java)
     private val json   = Json { ignoreUnknownKeys = true }

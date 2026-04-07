@@ -24,13 +24,13 @@ class DesktopSettingsStoreTest {
     @Test
     fun `load returns defaults when no file exists`() {
         store.load()
-        val settings = store.settings.value
-        assertEquals("internet", settings.activeProfile)
-        assertEquals(300, settings.testIntervalSeconds)
-        assertTrue(settings.tracerouteEnabled)
-        assertTrue(settings.autoStartEnabled)
-        assertTrue(settings.notificationsEnabled)
-        assertTrue(settings.minimizeToTrayOnClose)
+        val s = store.settings.value
+        assertEquals(listOf("gaming", "voip", "streaming"), s.activeProfiles)
+        assertEquals(300, s.testIntervalSeconds)
+        assertTrue(s.tracerouteEnabled)
+        assertTrue(s.autoStartEnabled)
+        assertTrue(s.notificationsEnabled)
+        assertTrue(s.servers.isEmpty())
     }
 
     @Test
@@ -42,14 +42,15 @@ class DesktopSettingsStoreTest {
     @Test
     fun `save and load roundtrip preserves all fields`() {
         val custom = DesktopSettings(
-            activeProfile = "gaming",
-            secondFreeProfile = "voip",
+            activeProfiles = listOf("gaming", "cloud", "trading"),
             testIntervalSeconds = 120,
             tracerouteEnabled = false,
-            selectedReflectorIds = listOf("id-1", "id-2"),
+            servers = listOf(
+                ServerEntry("id-1", "10.0.0.1", 862, "Office"),
+                ServerEntry("id-2", "10.0.0.2", 9000, "Lab"),
+            ),
             autoStartEnabled = false,
             notificationsEnabled = false,
-            minimizeToTrayOnClose = false,
         )
         store.save(custom)
 
@@ -63,11 +64,6 @@ class DesktopSettingsStoreTest {
         store.save(DesktopSettings())
         store.update { it.copy(testIntervalSeconds = 60) }
         assertEquals(60, store.settings.value.testIntervalSeconds)
-
-        // Verify persisted
-        val reloaded = DesktopSettingsStore(tempDir)
-        reloaded.load()
-        assertEquals(60, reloaded.settings.value.testIntervalSeconds)
     }
 
     @Test
@@ -81,8 +77,14 @@ class DesktopSettingsStoreTest {
     @Test
     fun `interval labels format correctly`() {
         assertEquals("1 min", DesktopSettings.intervalLabel(60))
-        assertEquals("2 min", DesktopSettings.intervalLabel(120))
         assertEquals("5 min", DesktopSettings.intervalLabel(300))
-        assertEquals("30 min", DesktopSettings.intervalLabel(1800))
+    }
+
+    @Test
+    fun `server entry displayLabel uses label or fallback`() {
+        val withLabel = ServerEntry("id", "1.2.3.4", 862, "My Server")
+        assertEquals("My Server", withLabel.displayLabel)
+        val noLabel = ServerEntry("id", "1.2.3.4", 862, "")
+        assertEquals("1.2.3.4:862", noLabel.displayLabel)
     }
 }

@@ -4,32 +4,31 @@ import io.slogr.agent.contracts.MeasurementBundle
 import io.slogr.agent.contracts.SlaGrade
 import io.slogr.desktop.core.history.HistoryEntry
 import io.slogr.desktop.core.history.LocalHistoryStore
+import io.slogr.desktop.core.profiles.ProfileManager
+import io.slogr.desktop.core.profiles.TrafficGrade
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 
-/**
- * Per-reflector measurement result for UI display.
- */
-data class ReflectorResult(
-    val reflectorId: String,
-    val regionName: String,
+data class ServerResult(
+    val serverId: String,
+    val label: String,
     val avgRttMs: Float,
     val lossPct: Float,
-    val jitterMs: Float,
     val grade: SlaGrade,
     val timestamp: Instant,
+    val reachable: Boolean,
 )
 
-/**
- * Holds all measurement state and emits UI-ready StateFlows.
- */
 class DesktopAgentViewModel {
 
-    private val _results = MutableStateFlow<Map<String, ReflectorResult>>(emptyMap())
-    val results: StateFlow<Map<String, ReflectorResult>> = _results.asStateFlow()
+    private val _serverResults = MutableStateFlow<Map<String, ServerResult>>(emptyMap())
+    val serverResults: StateFlow<Map<String, ServerResult>> = _serverResults.asStateFlow()
+
+    private val _trafficGrades = MutableStateFlow<List<TrafficGrade>>(emptyList())
+    val trafficGrades: StateFlow<List<TrafficGrade>> = _trafficGrades.asStateFlow()
 
     private val _overallGrade = MutableStateFlow<SlaGrade?>(null)
     val overallGrade: StateFlow<SlaGrade?> = _overallGrade.asStateFlow()
@@ -47,54 +46,37 @@ class DesktopAgentViewModel {
         _isMeasuring.value = active
     }
 
-    fun updateResult(reflectorId: String, regionName: String, bundle: MeasurementBundle) {
-        val result = ReflectorResult(
-            reflectorId = reflectorId,
-            regionName = regionName,
-            avgRttMs = bundle.twamp.fwdAvgRttMs,
-            lossPct = bundle.twamp.fwdLossPct,
-            jitterMs = bundle.twamp.fwdJitterMs,
-            grade = bundle.grade,
-            timestamp = Clock.System.now(),
-        )
+    fun updateResult(
+        serverId: String,
+        label: String,
+        bundle: MeasurementBundle,
+        profileManager: ProfileManager,
+    ) {
+        val now = Clock.System.now()
 
-        val updated = _results.value.toMutableMap()
-        updated[reflectorId] = result
-        _results.value = updated
+        // Per-server result
+        val sr = ServerResult(serverId, label, bundle.twamp.fwdAvgRttMs, bundle.twamp.fwdLossPct, bundle.grade, now, true)
+        val updated = _serverResults.value.toMutableMap()
+        updated[serverId] = sr
+        _serverResults.value = updated
 
-        _lastTestTime.value = result.timestamp
-        _overallGrade.value = worstGrade(updated.values)
+        // Evaluate against all 3 active profiles
+        val grades = profileManager.evaluateAll(bundle.twamp)
+        _trafficGrades.value = grades
+        _overallGrade.value = profileManager.worstGrade(grades)
+        _lastTestTime.value = now
     }
 
-    fun recordFailure(reflectorId: String, regionName: String) {
-        val result = ReflectorResult(
-            reflectorId = reflectorId,
-            regionName = regionName,
-            avgRttMs = -1f,
-            lossPct = 100f,
-            jitterMs = -1f,
-            grade = SlaGrade.RED,
-            timestamp = Clock.System.now(),
-        )
-
-        val updated = _results.value.toMutableMap()
-        updated[reflectorId] = result
-        _results.value = updated
-
-        _lastTestTime.value = result.timestamp
-        _overallGrade.value = worstGrade(updated.values)
+    fun recordFailure(serverId: String, label: String) {
+        val now = Clock.System.now()
+        val sr = ServerResult(serverId, label, -1f, 100f, SlaGrade.RED, now, false)
+        val updated = _serverResults.value.toMutableMap()
+        updated[serverId] = sr
+        _serverResults.value = updated
+        _lastTestTime.value = now
     }
 
     suspend fun refreshHistory(store: LocalHistoryStore) {
         _recentHistory.value = store.getRecentResults(limit = 200)
-    }
-
-    private fun worstGrade(results: Collection<ReflectorResult>): SlaGrade? {
-        if (results.isEmpty()) return null
-        return when {
-            results.any { it.grade == SlaGrade.RED } -> SlaGrade.RED
-            results.any { it.grade == SlaGrade.YELLOW } -> SlaGrade.YELLOW
-            else -> SlaGrade.GREEN
-        }
     }
 }

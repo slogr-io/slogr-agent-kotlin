@@ -1,7 +1,10 @@
 package io.slogr.desktop.core.profiles
 
+import io.slogr.agent.contracts.SlaGrade
 import io.slogr.agent.contracts.SlaProfile
-import io.slogr.agent.engine.sla.ProfileRegistry
+import io.slogr.agent.contracts.TimingMode
+import io.slogr.agent.engine.sla.SlaEvaluator
+import io.slogr.agent.contracts.MeasurementResult
 import io.slogr.agent.platform.config.AgentState
 import io.slogr.desktop.core.settings.DesktopSettings
 import io.slogr.desktop.core.settings.DesktopSettingsStore
@@ -10,24 +13,28 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * Desktop profile metadata — maps engine profile names to desktop display names
- * with freemium tier information.
- */
-data class DesktopProfile(
+data class TrafficType(
     val name: String,
     val displayName: String,
-    val tier: ProfileTier,
+    val icon: String,
+    val free: Boolean,
+    val rttGreenMs: Float,
+    val rttRedMs: Float,
+    val jitterGreenMs: Float,
+    val jitterRedMs: Float,
+    val lossGreenPct: Float,
+    val lossRedPct: Float,
 )
 
-enum class ProfileTier {
-    /** Always available to all users. */
-    FREE_ALWAYS,
-    /** Free users can pick one of these as their second profile. */
-    FREE_PICK,
-    /** Paid users only. */
-    PAID_ONLY,
-}
+/**
+ * Per-traffic-type grade result for the dashboard.
+ */
+data class TrafficGrade(
+    val trafficType: TrafficType,
+    val grade: SlaGrade,
+    val avgRttMs: Float,
+    val lossPct: Float,
+)
 
 class ProfileManager(
     private val settingsStore: DesktopSettingsStore,
@@ -35,54 +42,80 @@ class ProfileManager(
 ) {
 
     companion object {
-        val DESKTOP_PROFILES = listOf(
-            DesktopProfile("internet", "Internet", ProfileTier.FREE_ALWAYS),
-            DesktopProfile("gaming", "Gaming", ProfileTier.FREE_PICK),
-            DesktopProfile("voip", "VoIP / Video", ProfileTier.FREE_PICK),
-            DesktopProfile("streaming", "Streaming", ProfileTier.FREE_PICK),
+        val ALL_TRAFFIC_TYPES = listOf(
+            TrafficType("internet", "General Internet", "\uD83C\uDF10", true, 100f, 200f, 30f, 50f, 1f, 5f),
+            TrafficType("gaming", "Gaming", "\uD83C\uDFAE", true, 50f, 100f, 15f, 30f, 0.5f, 2f),
+            TrafficType("voip", "VoIP / Video Calls", "\uD83D\uDCDE", true, 150f, 300f, 20f, 40f, 1f, 3f),
+            TrafficType("streaming", "Streaming", "\uD83C\uDFAC", true, 200f, 400f, 50f, 80f, 2f, 5f),
+            TrafficType("cloud", "Cloud / SaaS", "\u2601\uFE0F", false, 100f, 200f, 25f, 50f, 0.5f, 2f),
+            TrafficType("rdp", "Remote Desktop", "\uD83D\uDDA5\uFE0F", false, 80f, 150f, 20f, 40f, 0.5f, 2f),
+            TrafficType("iot", "IoT / Telemetry", "\uD83D\uDCE1", false, 500f, 1000f, 100f, 200f, 5f, 10f),
+            TrafficType("trading", "Financial Trading", "\uD83D\uDCC8", false, 10f, 30f, 2f, 5f, 0.01f, 0.1f),
         )
     }
 
-    private val _activeProfileName = MutableStateFlow("internet")
-    val activeProfileName: StateFlow<String> = _activeProfileName.asStateFlow()
+    private val _activeProfiles = MutableStateFlow(listOf("gaming", "voip", "streaming"))
+    val activeProfiles: StateFlow<List<String>> = _activeProfiles.asStateFlow()
 
     fun initialize(settings: DesktopSettings) {
-        _activeProfileName.value = settings.activeProfile
+        _activeProfiles.value = settings.activeProfiles.take(DesktopSettings.MAX_ACTIVE_PROFILES)
     }
 
-    fun selectProfile(name: String) {
-        val settings = settingsStore.settings.value
-        if (!isProfileAvailable(name, settings)) return
-
-        _activeProfileName.value = name
-        settingsStore.update { it.copy(activeProfile = name) }
+    fun toggleProfile(name: String): String? {
+        val current = _activeProfiles.value.toMutableList()
+        if (name in current) {
+            if (current.size <= 1) return null // must have at least 1
+            current.remove(name)
+            _activeProfiles.value = current
+            settingsStore.update { it.copy(activeProfiles = current) }
+            return null
+        }
+        if (current.size >= DesktopSettings.MAX_ACTIVE_PROFILES) {
+            return "Uncheck one first (max ${DesktopSettings.MAX_ACTIVE_PROFILES})"
+        }
+        if (!isAvailable(name)) return "Upgrade to Pro to unlock this traffic type"
+        current.add(name)
+        _activeProfiles.value = current
+        settingsStore.update { it.copy(activeProfiles = current) }
+        return null
     }
 
-    fun setSecondFreeProfile(name: String) {
-        settingsStore.update { it.copy(secondFreeProfile = name) }
+    fun isAvailable(name: String): Boolean {
+        if (stateManager.state.value == AgentState.CONNECTED) return true
+        val tt = ALL_TRAFFIC_TYPES.find { it.name == name } ?: return false
+        return tt.free
     }
 
-    fun getActiveProfile(): SlaProfile? = ProfileRegistry.get(_activeProfileName.value)
+    fun getActiveTypes(): List<TrafficType> =
+        _activeProfiles.value.mapNotNull { name -> ALL_TRAFFIC_TYPES.find { it.name == name } }
 
     /**
-     * Checks if a profile is available given the current state and settings.
-     * - Paid users: all profiles available
-     * - Free users: "internet" always + one chosen free pick
+     * Evaluate a single TWAMP result against all active profiles.
+     * Returns one TrafficGrade per active profile.
      */
-    fun isProfileAvailable(name: String, settings: DesktopSettings = settingsStore.settings.value): Boolean {
-        if (stateManager.state.value == AgentState.CONNECTED) return true
-
-        val profile = DESKTOP_PROFILES.find { it.name == name } ?: return false
-        return when (profile.tier) {
-            ProfileTier.FREE_ALWAYS -> true
-            ProfileTier.FREE_PICK -> name == settings.secondFreeProfile
-            ProfileTier.PAID_ONLY -> false
+    fun evaluateAll(result: MeasurementResult): List<TrafficGrade> {
+        return getActiveTypes().map { tt ->
+            val profile = toSlaProfile(tt)
+            val grade = SlaEvaluator.evaluate(result, profile)
+            TrafficGrade(tt, grade, result.fwdAvgRttMs, result.fwdLossPct)
         }
     }
 
-    fun maxFreeReflectors(): Int =
-        if (stateManager.state.value == AgentState.CONNECTED) Int.MAX_VALUE else 3
+    fun worstGrade(grades: List<TrafficGrade>): SlaGrade? {
+        if (grades.isEmpty()) return null
+        return when {
+            grades.any { it.grade == SlaGrade.RED } -> SlaGrade.RED
+            grades.any { it.grade == SlaGrade.YELLOW } -> SlaGrade.YELLOW
+            else -> SlaGrade.GREEN
+        }
+    }
 
-    fun canAddCustomTarget(): Boolean =
-        stateManager.state.value == AgentState.CONNECTED
+    private fun toSlaProfile(tt: TrafficType): SlaProfile = SlaProfile(
+        name = tt.name,
+        nPackets = 10, intervalMs = 50, waitTimeMs = 2000, dscp = 0, packetSize = 64,
+        timingMode = TimingMode.FIXED,
+        rttGreenMs = tt.rttGreenMs, rttRedMs = tt.rttRedMs,
+        jitterGreenMs = tt.jitterGreenMs, jitterRedMs = tt.jitterRedMs,
+        lossGreenPct = tt.lossGreenPct, lossRedPct = tt.lossRedPct,
+    )
 }

@@ -37,7 +37,7 @@ class OtlpExporter(
     private val cloudProvider: String = "unknown",
     private val cloudRegion: String = "unknown",
     /** Agent version for resource attributes. */
-    private val agentVersion: String = "1.0.1",
+    private val agentVersion: String = "1.0.2",
     /** Flush interval for daemon mode; check mode always flushes immediately. */
     intervalSeconds: Long = 10L
 ) {

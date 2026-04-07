@@ -208,15 +208,14 @@ slogr-desktop-vault/
 │   └── compose-desktop.md             ← UI architecture, threading, lifecycle
 ├── modules/
 │   ├── local-history.md                ← SQLite schema, 24h retention, query API
-│   ├── reflector-discovery.md          ← GET /v1/reflectors, nearest selection
-│   └── profile-manager.md             ← profile selection, freemium gating logic
+│   ├── reflector-discovery.md          ← runtime server config (user-added, no hardcoded)
+│   └── profile-manager.md             ← 8 traffic types, select 3, freemium gating
 ├── integration/
 │   ├── desktop-registration.md         ← three-state model applied to desktop UX
 │   └── desktop-oauth.md               ← sign-in flow, token exchange, key storage
 ├── ui/
-│   ├── main-window.md                  ← window layout, views, navigation
-│   ├── system-tray.md                  ← tray icon, context menu, badge colors
-│   └── settings.md                     ← settings screen spec
+│   ├── main-window.md                  ← sidebar layout, Dashboard + Settings views
+│   └── system-tray.md                  ← minimal tray menu, icon states, AWT PopupMenu
 ├── packaging/
 │   └── desktop-packaging.md            ← MSI, DMG, jpackage, Conveyor, auto-start
 └── build-guide/

@@ -55,12 +55,17 @@ fun run(args: Array<String>): Int {
         ?.let { MaxMindAsnResolver(File(it)).takeIf { r -> r.isAvailable() } }
         ?: NullAsnResolver()
 
+    // Client-only commands (check) don't need the reflector — skip binding port 862
+    // so the check command works alongside a running daemon on the same machine.
+    val needsReflector = args.firstOrNull() != "check"
+
     val engineLazy = lazy {
         MeasurementEngineImpl(
             adapter             = adapter,
             asnResolver         = asnResolver,
             agentId             = agentId,
-            reflectorListenPort = config.defaultTwampPort
+            reflectorListenPort = config.defaultTwampPort,
+            startReflector      = needsReflector
         )
     }
 

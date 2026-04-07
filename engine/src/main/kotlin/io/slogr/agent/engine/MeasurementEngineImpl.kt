@@ -51,7 +51,8 @@ class MeasurementEngineImpl(
     private val agentId: UUID = UUID.randomUUID(),
     private val localIp: InetAddress = InetAddress.getByName("0.0.0.0"),
     private val keyStore: Map<String, ByteArray> = emptyMap(),
-    reflectorListenPort: Int = 862
+    reflectorListenPort: Int = 862,
+    private val startReflector: Boolean = true
 ) : MeasurementEngine {
 
     private val reflector              = TwampReflector(adapter = adapter, listenPort = reflectorListenPort, bindIp = localIp)
@@ -65,13 +66,20 @@ class MeasurementEngineImpl(
     val reflectorActualPort: Int get() = reflector.actualPort
 
     init {
-        reflector.start()
-        // Wait up to 3 s for the reflector to bind its port (needed when listenPort=0)
-        val deadline = System.currentTimeMillis() + 3_000L
-        while (reflector.actualPort == 0 && System.currentTimeMillis() < deadline) {
-            Thread.sleep(5)
+        if (startReflector) {
+            reflector.start()
+            // Wait up to 3 s for the reflector to bind its port (needed when listenPort=0)
+            val deadline = System.currentTimeMillis() + 3_000L
+            while (reflector.actualPort == 0 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(5)
+            }
+            controller = TwampController(adapter = adapter, port = reflector.actualPort, localIp = localIp)
+        } else {
+            // Client-only mode: no reflector needed.
+            // Wire controller directly to reflectorListenPort (default 862).
+            // The remote agent's daemon is the reflector.
+            controller = TwampController(adapter = adapter, port = reflectorListenPort, localIp = localIp)
         }
-        controller = TwampController(adapter = adapter, port = reflector.actualPort, localIp = localIp)
         controller.start()
     }
 

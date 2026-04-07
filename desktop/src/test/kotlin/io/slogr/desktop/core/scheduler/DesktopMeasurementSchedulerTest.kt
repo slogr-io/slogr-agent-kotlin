@@ -2,7 +2,11 @@ package io.slogr.desktop.core.scheduler
 
 import io.slogr.agent.contracts.*
 import io.slogr.agent.contracts.interfaces.MeasurementEngine
-import io.slogr.desktop.core.reflectors.Reflector
+import io.slogr.desktop.core.profiles.ProfileManager
+import io.slogr.desktop.core.settings.DesktopSettingsStore
+import io.slogr.desktop.core.settings.EncryptedKeyStore
+import io.slogr.desktop.core.settings.ServerEntry
+import io.slogr.desktop.core.state.DesktopStateManager
 import io.slogr.desktop.core.viewmodel.DesktopAgentViewModel
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -12,128 +16,73 @@ import kotlin.test.*
 
 class DesktopMeasurementSchedulerTest {
 
-    private val internetProfile = SlaProfile(
-        name = "internet", nPackets = 10, intervalMs = 50, waitTimeMs = 2000,
-        dscp = 0, packetSize = 64,
-        rttGreenMs = 100f, rttRedMs = 200f,
-        jitterGreenMs = 30f, jitterRedMs = 50f,
-        lossGreenPct = 1f, lossRedPct = 5f,
-    )
+    private val testServer = ServerEntry("srv-1", "127.0.0.1", 862, "Local")
 
-    private val testReflector = Reflector(
-        id = "test-1", region = "local", cloud = "dev",
-        host = "127.0.0.1", port = 862,
-        latitude = 0.0, longitude = 0.0, tier = "free",
-    )
-
-    /** A mock engine that returns a canned result without network I/O. */
     private class MockEngine : MeasurementEngine {
-        var measureCallCount = 0
+        var callCount = 0
         var shouldFail = false
 
         override suspend fun measure(
-            target: InetAddress,
-            targetPort: Int,
-            profile: SlaProfile,
-            traceroute: Boolean,
-            authMode: TwampAuthMode,
-            keyId: String?,
+            target: InetAddress, targetPort: Int, profile: SlaProfile,
+            traceroute: Boolean, authMode: TwampAuthMode, keyId: String?,
         ): MeasurementBundle {
-            measureCallCount++
-            if (shouldFail) throw RuntimeException("Simulated failure")
-            val result = MeasurementResult(
-                sessionId = UUID.randomUUID(),
-                pathId = UUID.randomUUID(),
-                sourceAgentId = UUID.randomUUID(),
-                destAgentId = UUID.randomUUID(),
-                srcCloud = "residential", srcRegion = "local",
-                dstCloud = "dev", dstRegion = "local",
-                windowTs = Clock.System.now(),
-                profile = profile,
+            callCount++
+            if (shouldFail) throw RuntimeException("fail")
+            val r = MeasurementResult(
+                sessionId = UUID.randomUUID(), pathId = UUID.randomUUID(),
+                sourceAgentId = UUID.randomUUID(), destAgentId = UUID.randomUUID(),
+                srcCloud = "res", srcRegion = "local", dstCloud = "dev", dstRegion = "local",
+                windowTs = Clock.System.now(), profile = profile,
                 fwdMinRttMs = 5f, fwdAvgRttMs = 10f, fwdMaxRttMs = 15f,
                 fwdJitterMs = 2f, fwdLossPct = 0f,
                 packetsSent = profile.nPackets, packetsRecv = profile.nPackets,
             )
-            return MeasurementBundle(twamp = result, grade = SlaGrade.GREEN)
+            return MeasurementBundle(twamp = r, grade = SlaGrade.GREEN)
         }
 
-        override suspend fun twamp(
-            target: InetAddress, targetPort: Int, profile: SlaProfile,
-            authMode: TwampAuthMode, keyId: String?,
-        ): MeasurementResult = throw UnsupportedOperationException()
-
-        override suspend fun traceroute(
-            target: InetAddress, maxHops: Int, probesPerHop: Int,
-            timeoutMs: Int, mode: TracerouteMode?,
-        ): TracerouteResult = throw UnsupportedOperationException()
-
+        override suspend fun twamp(target: InetAddress, targetPort: Int, profile: SlaProfile,
+            authMode: TwampAuthMode, keyId: String?) = throw UnsupportedOperationException()
+        override suspend fun traceroute(target: InetAddress, maxHops: Int, probesPerHop: Int,
+            timeoutMs: Int, mode: TracerouteMode?) = throw UnsupportedOperationException()
         override fun shutdown() {}
+    }
+
+    private fun makePM(): ProfileManager {
+        val tmp = java.nio.file.Files.createTempDirectory("slogr-sched")
+        val ss = DesktopSettingsStore(tmp); ss.load()
+        val sm = DesktopStateManager(EncryptedKeyStore(tmp)); sm.initialize()
+        val pm = ProfileManager(ss, sm); pm.initialize(ss.settings.value)
+        return pm
     }
 
     @Test
     fun `runOnce calls engine and updates viewModel`() = runBlocking {
-        val engine = MockEngine()
-        val viewModel = DesktopAgentViewModel()
-        val scheduler = DesktopMeasurementScheduler(engine, viewModel)
-
-        scheduler.runOnce(listOf(testReflector), internetProfile, tracerouteEnabled = false)
-
-        assertEquals(1, engine.measureCallCount)
-        assertEquals(1, viewModel.results.value.size)
-        assertEquals(SlaGrade.GREEN, viewModel.overallGrade.value)
-        assertFalse(viewModel.isMeasuring.value) // should be false after cycle
+        val eng = MockEngine()
+        val vm = DesktopAgentViewModel()
+        val pm = makePM()
+        val sched = DesktopMeasurementScheduler(eng, vm, pm)
+        sched.runOnce(listOf(testServer), tracerouteEnabled = false)
+        assertEquals(1, eng.callCount)
+        assertEquals(1, vm.serverResults.value.size)
+        assertEquals(3, vm.trafficGrades.value.size)
     }
 
     @Test
-    fun `runOnce with multiple reflectors measures all`() = runBlocking {
-        val engine = MockEngine()
-        val viewModel = DesktopAgentViewModel()
-        val scheduler = DesktopMeasurementScheduler(engine, viewModel)
-
-        val reflectors = listOf(
-            testReflector,
-            testReflector.copy(id = "test-2", region = "us-east"),
-            testReflector.copy(id = "test-3", region = "eu-west"),
-        )
-
-        scheduler.runOnce(reflectors, internetProfile, tracerouteEnabled = false)
-
-        assertEquals(3, engine.measureCallCount)
-        assertEquals(3, viewModel.results.value.size)
+    fun `runOnce with empty servers does nothing`() = runBlocking {
+        val eng = MockEngine()
+        val vm = DesktopAgentViewModel()
+        val sched = DesktopMeasurementScheduler(eng, vm, makePM())
+        sched.runOnce(emptyList(), tracerouteEnabled = false)
+        assertEquals(0, eng.callCount)
     }
 
     @Test
-    fun `runOnce with engine failure records failure in viewModel`() = runBlocking {
-        val engine = MockEngine().apply { shouldFail = true }
-        val viewModel = DesktopAgentViewModel()
-        val scheduler = DesktopMeasurementScheduler(engine, viewModel)
-
-        scheduler.runOnce(listOf(testReflector), internetProfile, tracerouteEnabled = false)
-
-        assertEquals(1, viewModel.results.value.size)
-        assertEquals(SlaGrade.RED, viewModel.overallGrade.value)
-    }
-
-    @Test
-    fun `runOnce with empty reflectors does nothing`() = runBlocking {
-        val engine = MockEngine()
-        val viewModel = DesktopAgentViewModel()
-        val scheduler = DesktopMeasurementScheduler(engine, viewModel)
-
-        scheduler.runOnce(emptyList(), internetProfile, tracerouteEnabled = false)
-
-        assertEquals(0, engine.measureCallCount)
-        assertTrue(viewModel.results.value.isEmpty())
-    }
-
-    @Test
-    fun `isMeasuring is true during cycle and false after`() = runBlocking {
-        val engine = MockEngine()
-        val viewModel = DesktopAgentViewModel()
-        val scheduler = DesktopMeasurementScheduler(engine, viewModel)
-
-        assertFalse(viewModel.isMeasuring.value)
-        scheduler.runOnce(listOf(testReflector), internetProfile, tracerouteEnabled = false)
-        assertFalse(viewModel.isMeasuring.value)
+    fun `engine failure records failure in viewModel`() = runBlocking {
+        val eng = MockEngine().apply { shouldFail = true }
+        val vm = DesktopAgentViewModel()
+        val sched = DesktopMeasurementScheduler(eng, vm, makePM())
+        sched.runOnce(listOf(testServer), tracerouteEnabled = false)
+        val sr = vm.serverResults.value["srv-1"]!!
+        assertFalse(sr.reachable)
     }
 }

@@ -1,6 +1,6 @@
 ---
 status: locked
-version: 1.0
+version: 2.0
 depends-on:
   - architecture/compose-desktop
 ---
@@ -12,122 +12,129 @@ depends-on:
 | Property | Value |
 |---|---|
 | Title | "Slogr" |
-| Default size | 480 × 640 px |
-| Minimum size | 400 × 500 px |
+| Default size | 600 x 500 px |
+| Minimum size | 500 x 400 px |
 | Resizable | Yes |
 | Close behavior | Minimize to tray (ADR-055) |
-| Initial state | Visible on first launch. Hidden (tray-only) on auto-start. |
+| Initial state | Hidden (tray-only). User opens via tray. |
 
 ## Layout
 
-```
-┌──────────────────────────────────────────┐
-│  Slogr                    [─] [□] [X]    │  ← title bar (OS native)
-├──────────────────────────────────────────┤
-│                                          │
-│  ● Connection Quality                    │  ← overall grade badge
-│  ■■■ GREEN                               │     (green/yellow/red, large)
-│                                          │
-│  Profile: [Internet      ▼]             │  ← profile selector dropdown
-│                                          │
-├──────────────────────────────────────────┤
-│  Locations                               │
-│                                          │
-│  🟢 US East      18ms   0.0% loss       │  ← per-reflector results
-│  🟢 EU West      42ms   0.0% loss       │
-│  🟡 AP Southeast 89ms   0.5% loss       │
-│                                          │
-│  Last test: 2 minutes ago                │
-│  [▶ Run Test Now]                        │  ← manual test button
-│                                          │
-├──────────────────────────────────────────┤
-│  Recent History (24h)                    │
-│                                          │
-│  ▂▃▂▂▅▂▂▂▂▂▇▂▂▂▂▂▂▂▃▂▂▂▂▂             │  ← sparkline or mini chart
-│  12:00  14:00  16:00  18:00  20:00       │     showing RTT over time
-│                                          │
-├──────────────────────────────────────────┤
-│  [Sign In]              [⚙ Settings]    │  ← footer (ANONYMOUS)
-│  -- or --                                │
-│  nasim@slogr.io (Free)  [⚙ Settings]    │  ← footer (REGISTERED)
-│  -- or --                                │
-│  nasim@slogr.io (Pro)   [Dashboard]      │  ← footer (CONNECTED)
-│  [⚙ Settings]                            │
-└──────────────────────────────────────────┘
-```
+The window has a **left sidebar** with two items and a **content area** on the right.
 
-## Sections
+### Sidebar
 
-### 1. Grade Badge (Top)
+- Width: ~140px
+- Items: "Dashboard" (default, selected on open) and "Settings"
+- Dark background matching theme surface color
+- Selected item highlighted with primary color
+- Slogr logo at the top of the sidebar or in the header bar
 
-Large, prominent indicator of overall connection quality.
-
-- **GREEN:** All reflectors meet profile thresholds. Text: "Connection Quality: GREEN"
-- **YELLOW:** One or more reflectors in YELLOW range. Text: "Connection Quality: YELLOW — elevated latency/jitter detected"
-- **RED:** One or more reflectors in RED range. Text: "Connection Quality: RED — significant degradation detected"
-- **GREY:** No measurements yet (first launch, measuring...). Text: "Measuring..."
-
-The overall grade is the **worst** grade across all active reflectors.
-
-### 2. Profile Selector
-
-Dropdown with available profiles. Free users see Internet + their chosen additional profile + locked options with upgrade prompts. Paid users see all profiles.
-
-Changing the profile immediately recalculates all grades without re-measuring.
-
-### 3. Location Cards
-
-One card per active reflector. Each shows:
-- Grade indicator (colored dot)
-- Region name (human-readable, e.g., "US East" not "us-east-1")
-- Average RTT in milliseconds
-- Loss percentage
-- Clicking a card could expand to show jitter, min/max RTT, and traceroute (future enhancement)
-
-### 4. Run Test Now Button
-
-Triggers an immediate measurement cycle against all active reflectors. Button shows progress indicator while tests run. Disabled while a test is in progress.
-
-### 5. Recent History
-
-A sparkline or mini bar chart showing RTT over the last 24 hours, sourced from the local SQLite history. Gives the user a sense of whether their connection quality has been stable or volatile.
-
-For ANONYMOUS/REGISTERED users, this is the only history available.
-
-For CONNECTED users, a "View Full History" link opens the SaaS dashboard in the browser.
-
-### 6. Footer
-
-State-dependent:
-- **ANONYMOUS:** "Sign In" button + Settings gear icon
-- **REGISTERED:** User email + plan badge ("Free") + Settings gear icon
-- **CONNECTED:** User email + plan badge ("Pro") + "Open Dashboard" button (opens browser) + Settings gear icon
-
-## "Open Dashboard" Button (CONNECTED Only)
-
-Opens `https://app.slogr.io/dashboard` in the system browser. The URL includes a pre-auth token so the user doesn't have to sign in again:
+### Dashboard View (default)
 
 ```
-https://app.slogr.io/dashboard?token=<short-lived-jwt>
++------------------------------------------+
+|  Slogr                   [SLOGR LOGO]    |
++---------------+--------------------------+
+|               |                          |
+|  Dashboard    |     Gaming     VoIP      |
+|               |      GREEN     GREEN     |
+|  Settings     |    12ms 0.0% 18ms 0.0%  |
+|               |                          |
+|               |       Streaming          |
+|               |         RED              |
+|               |      18ms 2.1%          |
+|               |                          |
+|               |  Last test: 2 min ago    |
+|               |  [Run Test Now]          |
+|               |                          |
+|               |  Recent History (24h)    |
+|               |  [sparkline chart]       |
+|               |  12:00  16:00  20:00     |
+|               |                          |
++---------------+--------------------------+
 ```
 
-The BFF validates the token and establishes a browser session.
+Shows 3 traffic type cards with per-profile grade (green/yellow/red), RTT, and loss.
+Below: last test time, Run Test Now button, 24h sparkline chart.
 
-## Upgrade Prompts
+### Dashboard — Empty State (no servers configured)
 
-Appear contextually, not intrusively:
-- Locked profile: "Unlock Gaming profile — Upgrade to Pro"
-- Locked reflector: "3 of 8 locations available — Upgrade for all"
-- History section (ANONYMOUS): "Sign in for free to unlock OTLP export"
-- History section (REGISTERED): "Upgrade to Pro for unlimited history and root cause analysis"
+```
++------------------------------------------+
+|  Slogr                   [SLOGR LOGO]    |
++---------------+--------------------------+
+|               |                          |
+|  Dashboard    |                          |
+|               |   No servers configured  |
+|  Settings     |                          |
+|               |   Add a TWAMP server to  |
+|               |   start monitoring your  |
+|               |   connection quality.    |
+|               |                          |
+|               |   [Go to Settings]       |
+|               |                          |
++---------------+--------------------------+
+```
+
+Clicking "Go to Settings" switches to the Settings view.
+
+### Settings View
+
+```
++------------------------------------------+
+|  Slogr                   [SLOGR LOGO]    |
++---------------+--------------------------+
+|               |                          |
+|  Dashboard    |  Traffic Types           |
+|               |  Select up to 3:         |
+|  Settings     |  [ ] Gaming              |
+|               |  [ ] VoIP / Video Calls  |
+|               |  [ ] Streaming           |
+|               |  [ ] General Internet    |
+|               |  [ ] Cloud / SaaS        |
+|               |  [ ] Remote Desktop      |
+|               |  [ ] IoT / Telemetry     |
+|               |  [ ] Financial Trading   |
+|               |                          |
+|               |  Test Interval: [5 min]  |
+|               |  [ ] Include traceroute  |
+|               |  ------------------------|
+|               |  Servers                 |
+|               |  (no servers yet)        |
+|               |  [+ Add Server]          |
+|               |  ------------------------|
+|               |  Application             |
+|               |  [ ] Start on login      |
+|               |  [ ] Show notifications  |
+|               |  Data: %APPDATA%\Slogr   |
+|               |  ------------------------|
+|               |  About                   |
+|               |  Slogr Desktop v1.1.0    |
+|               |  [Run Diagnostics]       |
++---------------+--------------------------+
+```
+
+Single scrollable view. NOT tabs. Sections separated by dividers.
+
+## Key Design Decisions
+
+- No separate settings window. Everything inside the main window.
+- Profile dropdown selector REMOVED. The 3 traffic type cards on Dashboard replace it.
+- Location cards REMOVED from Dashboard. Server management is in Settings → Servers.
+- All servers are user-added at runtime. No hardcoded servers.
+- The "Add Server" form is inline (IP, port, optional label).
+- Each server has a remove button. Slogr auto-discovery servers (future) will not be removable.
 
 ## Files
 
 | File | Action |
 |------|--------|
-| `desktop-ui/window/MainWindow.kt` | NEW — top-level window composable |
-| `desktop-ui/window/GradeBadge.kt` | NEW — large grade indicator |
-| `desktop-ui/window/ProfileSelector.kt` | NEW — dropdown with freemium gating |
-| `desktop-ui/window/LocationCard.kt` | NEW — per-reflector result card |
-| `desktop-ui/window/HistoryChart.kt` | NEW — sparkline from SQLite data |
-| `desktop-ui/window/FooterBar.kt` | NEW — state-dependent footer |
+| `desktop/ui/window/MainWindow.kt` | REWRITE — sidebar + 2 views |
+| `desktop/ui/window/DashboardView.kt` | NEW — traffic cards + history |
+| `desktop/ui/window/SettingsView.kt` | NEW — single scrollable settings |
+| `desktop/ui/window/TrafficTypeCard.kt` | NEW — per-profile grade card |
+| `desktop/ui/window/HistoryChart.kt` | KEEP — sparkline chart |
+| `desktop/ui/window/GradeBadge.kt` | REMOVED — replaced by traffic cards |
+| `desktop/ui/window/LocationCard.kt` | REMOVED |
+| `desktop/ui/settings/SettingsWindow.kt` | REMOVED — settings are inline now |
