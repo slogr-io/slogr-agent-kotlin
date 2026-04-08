@@ -62,9 +62,17 @@ fun main() {
     )
     val scheduler = DesktopMeasurementScheduler(engine, viewModel, profileManager, historyStore)
 
+    val autoUpdater = io.slogr.desktop.core.update.AutoUpdater(dataDir)
+
     settingsStore.load()
     stateManager.initialize()
     profileManager.initialize(settingsStore.settings.value)
+
+    // Apply pending update from previous session (downloaded MSI)
+    if (autoUpdater.applyPendingUpdate()) {
+        // Installer launched — exit so it can replace files
+        return
+    }
 
     application {
         var isWindowVisible by remember { mutableStateOf(false) }
@@ -124,6 +132,7 @@ fun main() {
             }
             historyStore.initialize()
             historyPruner.start()
+            autoUpdater.start()
             viewModel.refreshHistory(historyStore)
         }
 
@@ -154,7 +163,7 @@ fun main() {
 
         DisposableEffect(Unit) {
             onDispose {
-                scheduler.shutdown(); historyPruner.stop(); historyStore.close()
+                scheduler.shutdown(); historyPruner.stop(); autoUpdater.stop(); historyStore.close()
                 trayIconRef[0]?.let { try { SystemTray.getSystemTray().remove(it) } catch (_: Exception) {} }
             }
         }
@@ -238,7 +247,8 @@ fun main() {
                                     onRunTestNow = runTestNow, onGoToSettings = { activeView = MainView.SETTINGS })
                                 MainView.SETTINGS -> SettingsView(
                                     settings = settings, settingsStore = settingsStore,
-                                    profileManager = profileManager, viewModel = viewModel)
+                                    profileManager = profileManager, viewModel = viewModel,
+                                    historyStore = historyStore)
                             }
                         }
                     }
