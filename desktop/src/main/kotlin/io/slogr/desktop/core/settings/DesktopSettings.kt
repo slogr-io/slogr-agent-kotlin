@@ -17,8 +17,9 @@ data class ServerEntry(
 data class DesktopSettings(
     @SerialName("active_profiles") val activeProfiles: List<String> = listOf("gaming", "voip", "streaming"),
     @SerialName("test_interval_seconds") val testIntervalSeconds: Int = 300,
-    @SerialName("traceroute_enabled") val tracerouteEnabled: Boolean = true,
+    @SerialName("traceroute_enabled") val tracerouteEnabled: Boolean = false,
     val servers: List<ServerEntry> = emptyList(),
+    @SerialName("active_server_id") val activeServerId: String? = null,
     @SerialName("auto_start_enabled") val autoStartEnabled: Boolean = true,
     @SerialName("notifications_enabled") val notificationsEnabled: Boolean = true,
 ) {

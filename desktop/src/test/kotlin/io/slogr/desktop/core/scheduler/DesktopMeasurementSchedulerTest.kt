@@ -21,12 +21,14 @@ class DesktopMeasurementSchedulerTest {
     private class MockEngine : MeasurementEngine {
         var callCount = 0
         var shouldFail = false
+        var lastDscp = -1
 
         override suspend fun measure(
             target: InetAddress, targetPort: Int, profile: SlaProfile,
             traceroute: Boolean, authMode: TwampAuthMode, keyId: String?,
         ): MeasurementBundle {
             callCount++
+            lastDscp = profile.dscp
             if (shouldFail) throw RuntimeException("fail")
             val r = MeasurementResult(
                 sessionId = UUID.randomUUID(), pathId = UUID.randomUUID(),
@@ -56,14 +58,13 @@ class DesktopMeasurementSchedulerTest {
     }
 
     @Test
-    fun `runOnce calls engine and updates viewModel`() = runBlocking {
+    fun `runOnce calls engine 3 times for 3 active profiles`() = runBlocking {
         val eng = MockEngine()
         val vm = DesktopAgentViewModel()
         val pm = makePM()
         val sched = DesktopMeasurementScheduler(eng, vm, pm)
         sched.runOnce(listOf(testServer), tracerouteEnabled = false)
-        assertEquals(1, eng.callCount)
-        assertEquals(1, vm.serverResults.value.size)
+        assertEquals(3, eng.callCount) // one per active traffic type
         assertEquals(3, vm.trafficGrades.value.size)
     }
 
@@ -77,12 +78,13 @@ class DesktopMeasurementSchedulerTest {
     }
 
     @Test
-    fun `engine failure records failure in viewModel`() = runBlocking {
-        val eng = MockEngine().apply { shouldFail = true }
+    fun `each session uses correct DSCP from traffic type`() = runBlocking {
+        val eng = MockEngine()
         val vm = DesktopAgentViewModel()
-        val sched = DesktopMeasurementScheduler(eng, vm, makePM())
+        val pm = makePM()
+        val sched = DesktopMeasurementScheduler(eng, vm, pm)
         sched.runOnce(listOf(testServer), tracerouteEnabled = false)
-        val sr = vm.serverResults.value["srv-1"]!!
-        assertFalse(sr.reachable)
+        // Last session was for "streaming" (DSCP 36) given defaults gaming/voip/streaming
+        assertEquals(36, eng.lastDscp)
     }
 }

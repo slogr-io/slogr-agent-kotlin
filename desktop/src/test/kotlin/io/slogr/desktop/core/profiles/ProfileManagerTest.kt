@@ -43,10 +43,9 @@ class ProfileManagerTest {
     }
 
     @Test
-    fun `free users can access internet gaming voip streaming`() {
-        val free = ProfileManager.ALL_TRAFFIC_TYPES.filter { pm.isAvailable(it.name) }
-        assertEquals(4, free.size)
-        assertTrue(free.map { it.name }.containsAll(listOf("internet", "gaming", "voip", "streaming")))
+    fun `all 8 traffic types available to all users`() {
+        val available = ProfileManager.ALL_TRAFFIC_TYPES.filter { pm.isAvailable(it.name) }
+        assertEquals(8, available.size)
     }
 
     @Test
@@ -92,7 +91,7 @@ class ProfileManagerTest {
     }
 
     @Test
-    fun `evaluateAll returns 3 grades`() {
+    fun `evaluate returns GREEN for good results`() {
         val result = MeasurementResult(
             sessionId = UUID.randomUUID(), pathId = UUID.randomUUID(),
             sourceAgentId = UUID.randomUUID(), destAgentId = UUID.randomUUID(),
@@ -104,10 +103,9 @@ class ProfileManagerTest {
             fwdJitterMs = 5f, fwdLossPct = 0f,
             packetsSent = 10, packetsRecv = 10,
         )
-        val grades = pm.evaluateAll(result)
-        assertEquals(3, grades.size)
-        // 25ms RTT, 5ms jitter, 0% loss — should be GREEN for all 3 default profiles
-        assertTrue(grades.all { it.grade == SlaGrade.GREEN })
+        val tt = ProfileManager.ALL_TRAFFIC_TYPES.first { it.name == "gaming" }
+        val grade = pm.evaluate(result, tt)
+        assertEquals(SlaGrade.GREEN, grade.grade)
     }
 
     @Test

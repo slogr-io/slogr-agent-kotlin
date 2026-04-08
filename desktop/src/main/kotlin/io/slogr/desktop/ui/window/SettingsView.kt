@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.slogr.desktop.core.DataDirectory
 import io.slogr.desktop.core.diagnostics.DiagnosticResult
@@ -49,8 +50,8 @@ fun SettingsView(
         unfocusedBorderColor = FieldBorder,
         focusedLabelColor = SlogrGreen,
         unfocusedLabelColor = TextSecondary,
-        focusedContainerColor = FieldBg,
-        unfocusedContainerColor = FieldBg,
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
     )
 
     Column(
@@ -146,7 +147,11 @@ fun SettingsView(
                 ),
             )
             Spacer(Modifier.width(4.dp))
-            Text("Include traceroute", style = MaterialTheme.typography.bodyMedium)
+            Column {
+                Text("Include traceroute", style = MaterialTheme.typography.bodyMedium)
+                Text("Adds path trace to each test (increases test time significantly)",
+                    style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            }
         }
 
         Spacer(Modifier.height(24.dp))
@@ -161,7 +166,7 @@ fun SettingsView(
             Text(
                 "No servers added yet",
                 style = MaterialTheme.typography.bodyMedium,
-                color = TextMuted,
+                color = TextSecondary,
             )
         } else {
             settings.servers.forEach { server ->

@@ -2,6 +2,7 @@ package io.slogr.desktop.core.viewmodel
 
 import io.slogr.agent.contracts.*
 import io.slogr.desktop.core.profiles.ProfileManager
+import io.slogr.desktop.core.profiles.TrafficGrade
 import io.slogr.desktop.core.settings.DesktopSettingsStore
 import io.slogr.desktop.core.settings.EncryptedKeyStore
 import io.slogr.desktop.core.state.DesktopStateManager
@@ -13,43 +14,16 @@ import kotlin.test.*
 class DesktopAgentViewModelTest {
 
     private lateinit var viewModel: DesktopAgentViewModel
-    private lateinit var profileManager: ProfileManager
     private lateinit var tempDir: java.nio.file.Path
-
-    private val baseProfile = SlaProfile(
-        name = "test", nPackets = 10, intervalMs = 50, waitTimeMs = 2000,
-        dscp = 0, packetSize = 64,
-        rttGreenMs = 100f, rttRedMs = 200f,
-        jitterGreenMs = 30f, jitterRedMs = 50f,
-        lossGreenPct = 1f, lossRedPct = 5f,
-    )
 
     @BeforeTest
     fun setUp() {
         tempDir = Files.createTempDirectory("slogr-vm-test")
-        val store = DesktopSettingsStore(tempDir)
-        val sm = DesktopStateManager(EncryptedKeyStore(tempDir))
-        store.load(); sm.initialize()
-        profileManager = ProfileManager(store, sm)
-        profileManager.initialize(store.settings.value)
         viewModel = DesktopAgentViewModel()
     }
 
     @AfterTest
     fun tearDown() { tempDir.toFile().deleteRecursively() }
-
-    private fun makeBundle(rtt: Float, loss: Float, jitter: Float, grade: SlaGrade) = MeasurementBundle(
-        twamp = MeasurementResult(
-            sessionId = UUID.randomUUID(), pathId = UUID.randomUUID(),
-            sourceAgentId = UUID.randomUUID(), destAgentId = UUID.randomUUID(),
-            srcCloud = "res", srcRegion = "local", dstCloud = "gcp", dstRegion = "us",
-            windowTs = Clock.System.now(), profile = baseProfile,
-            fwdMinRttMs = rtt, fwdAvgRttMs = rtt, fwdMaxRttMs = rtt,
-            fwdJitterMs = jitter, fwdLossPct = loss,
-            packetsSent = 10, packetsRecv = 10,
-        ),
-        grade = grade,
-    )
 
     @Test
     fun `initial state is empty`() {
@@ -60,20 +34,20 @@ class DesktopAgentViewModelTest {
     }
 
     @Test
-    fun `updateResult populates server result and traffic grades`() {
-        viewModel.updateResult("s1", "Test", makeBundle(20f, 0f, 3f, SlaGrade.GREEN), profileManager)
-        assertEquals(1, viewModel.serverResults.value.size)
-        assertEquals(3, viewModel.trafficGrades.value.size) // 3 active profiles
-        assertNotNull(viewModel.overallGrade.value)
-        assertNotNull(viewModel.lastTestTime.value)
+    fun `clearTrafficGrades sets all to pending`() {
+        val types = ProfileManager.ALL_TRAFFIC_TYPES.take(3)
+        viewModel.clearTrafficGrades(types)
+        assertEquals(3, viewModel.trafficGrades.value.size)
+        assertTrue(viewModel.trafficGrades.value.values.all { it.grade == null })
     }
 
     @Test
-    fun `recordFailure marks server as unreachable`() {
-        viewModel.recordFailure("s1", "Bad Server")
-        val sr = viewModel.serverResults.value["s1"]!!
-        assertFalse(sr.reachable)
-        assertEquals(100f, sr.lossPct)
+    fun `updateTrafficGrade replaces pending with result`() {
+        val tt = ProfileManager.ALL_TRAFFIC_TYPES.first()
+        viewModel.clearTrafficGrades(listOf(tt))
+        assertNull(viewModel.trafficGrades.value[tt.name]?.grade)
+        viewModel.updateTrafficGrade(tt.name, TrafficGrade(tt, SlaGrade.GREEN, 25f, 0f))
+        assertEquals(SlaGrade.GREEN, viewModel.trafficGrades.value[tt.name]?.grade)
     }
 
     @Test

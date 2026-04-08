@@ -4,10 +4,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.DpSize
@@ -29,12 +30,19 @@ import io.slogr.desktop.core.settings.DesktopSettingsStore
 import io.slogr.desktop.core.settings.EncryptedKeyStore
 import io.slogr.desktop.core.state.DesktopStateManager
 import io.slogr.desktop.core.viewmodel.DesktopAgentViewModel
-import io.slogr.desktop.ui.theme.SlogrTheme
-import io.slogr.desktop.ui.tray.SlogrTrayManager
+import io.slogr.desktop.ui.theme.*
+import io.slogr.desktop.ui.tray.TrayIconGenerator
 import io.slogr.desktop.ui.window.DashboardView
 import io.slogr.desktop.ui.window.SettingsView
 import kotlinx.coroutines.launch
+import java.awt.SystemTray
+import java.awt.TrayIcon
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
+import java.awt.event.WindowEvent
+import java.awt.event.WindowFocusListener
 import java.util.UUID
+import javax.swing.SwingUtilities
 
 enum class MainView { DASHBOARD, SETTINGS }
 
@@ -54,13 +62,11 @@ fun main() {
     )
     val scheduler = DesktopMeasurementScheduler(engine, viewModel, profileManager, historyStore)
 
-    // Initialize synchronous state
     settingsStore.load()
     stateManager.initialize()
     profileManager.initialize(settingsStore.settings.value)
 
     application {
-        // Tray-only: window hidden by default (B2)
         var isWindowVisible by remember { mutableStateOf(false) }
         var activeView by remember { mutableStateOf(MainView.DASHBOARD) }
         val windowState = rememberWindowState(size = DpSize(620.dp, 520.dp))
@@ -74,146 +80,165 @@ fun main() {
         val recentHistory by viewModel.recentHistory.collectAsState()
 
         val hasServers = settings.servers.isNotEmpty()
+        val activeServer = settings.servers.find { it.id == settings.activeServerId } ?: settings.servers.firstOrNull()
+        val activeServerList = listOfNotNull(activeServer)
 
-        // AWT tray manager (B1 + R7)
-        val trayManager = remember {
-            SlogrTrayManager(
-                onOpenWindow = { isWindowVisible = true },
-                onRunTest = {
-                    scope.launch {
-                        scheduler.runOnce(settings.servers, settings.tracerouteEnabled)
-                        viewModel.refreshHistory(historyStore)
-                    }
-                },
-                onQuit = { exitApplication() },
-            )
+        // Compose tray popup
+        var showTrayPopup by remember { mutableStateOf(false) }
+        var popupX by remember { mutableStateOf(0) }
+        var popupY by remember { mutableStateOf(0) }
+
+        val trayIconRef = remember { arrayOfNulls<TrayIcon>(1) }
+
+        val runTestNow: () -> Unit = {
+            scope.launch {
+                scheduler.runOnce(activeServerList, settings.tracerouteEnabled)
+                viewModel.refreshHistory(historyStore)
+            }
         }
 
-        // Install tray on first composition
+        // Install AWT tray icon (icon only, no PopupMenu)
         LaunchedEffect(Unit) {
-            trayManager.install()
+            if (SystemTray.isSupported()) {
+                val img = TrayIconGenerator.createAwtImage(Color(0xFF212121), 16)
+                val ti = TrayIcon(img, "Slogr").apply {
+                    isImageAutoSize = false
+                    addMouseListener(object : MouseAdapter() {
+                        override fun mouseReleased(e: MouseEvent) {
+                            if (SwingUtilities.isRightMouseButton(e) || e.isPopupTrigger) {
+                                popupX = e.xOnScreen; popupY = e.yOnScreen; showTrayPopup = true
+                            }
+                        }
+                        override fun mousePressed(e: MouseEvent) {
+                            if (e.isPopupTrigger) {
+                                popupX = e.xOnScreen; popupY = e.yOnScreen; showTrayPopup = true
+                            }
+                        }
+                        override fun mouseClicked(e: MouseEvent) {
+                            if (SwingUtilities.isLeftMouseButton(e) && e.clickCount == 2) isWindowVisible = true
+                        }
+                    })
+                }
+                try { SystemTray.getSystemTray().add(ti) } catch (_: Exception) {}
+                trayIconRef[0] = ti
+            }
             historyStore.initialize()
             historyPruner.start()
             viewModel.refreshHistory(historyStore)
         }
 
-        // Update tray after each state change
-        LaunchedEffect(overallGrade, hasServers, isMeasuring, lastTestTime) {
-            val timeText = if (lastTestTime != null) {
-                val mins = (kotlinx.datetime.Clock.System.now() - lastTestTime!!).inWholeMinutes
-                if (mins < 1) "Last test: just now" else "Last test: $mins min ago"
-            } else "No tests yet"
-            trayManager.update(overallGrade, hasServers, isMeasuring, timeText)
-        }
-
-        // Notifications
-        LaunchedEffect(overallGrade) {
-            DesktopNotifier.onGradeUpdate(overallGrade, settings.notificationsEnabled)
-        }
-
-        // Auto-start sync
-        LaunchedEffect(settings.autoStartEnabled) {
-            if (settings.autoStartEnabled) AutoStartManager.enable()
-            else AutoStartManager.disable()
-        }
-
-        // Start/restart scheduler when servers or interval change
-        LaunchedEffect(settings.servers, settings.testIntervalSeconds, settings.tracerouteEnabled) {
-            if (settings.servers.isNotEmpty()) {
-                scheduler.start(settings.servers, settings.testIntervalSeconds, settings.tracerouteEnabled)
-            } else {
-                scheduler.stop()
+        // Update tray icon color
+        LaunchedEffect(overallGrade, hasServers) {
+            val color = when {
+                !hasServers -> Color(0xFF212121)
+                overallGrade == SlaGrade.GREEN -> SlogrGreen
+                overallGrade == SlaGrade.YELLOW -> SlogrYellow
+                overallGrade == SlaGrade.RED -> SlogrRed
+                else -> SlogrGrey
+            }
+            trayIconRef[0]?.image = TrayIconGenerator.createAwtImage(color, 16)
+            trayIconRef[0]?.toolTip = when {
+                !hasServers -> "Slogr - No servers"
+                overallGrade != null -> "Slogr - ${overallGrade!!.name}"
+                else -> "Slogr"
             }
         }
 
-        // Cleanup
+        LaunchedEffect(overallGrade) { DesktopNotifier.onGradeUpdate(overallGrade, settings.notificationsEnabled) }
+        LaunchedEffect(settings.autoStartEnabled) { if (settings.autoStartEnabled) AutoStartManager.enable() else AutoStartManager.disable() }
+
+        LaunchedEffect(activeServer, settings.testIntervalSeconds, settings.tracerouteEnabled) {
+            if (activeServer != null) scheduler.start(listOf(activeServer), settings.testIntervalSeconds, settings.tracerouteEnabled)
+            else scheduler.stop()
+        }
+
         DisposableEffect(Unit) {
             onDispose {
-                scheduler.shutdown()
-                historyPruner.stop()
-                historyStore.close()
-                trayManager.remove()
+                scheduler.shutdown(); historyPruner.stop(); historyStore.close()
+                trayIconRef[0]?.let { try { SystemTray.getSystemTray().remove(it) } catch (_: Exception) {} }
             }
         }
 
-        // Run test helper
-        val runTestNow: () -> Unit = {
-            scope.launch {
-                scheduler.runOnce(settings.servers, settings.tracerouteEnabled)
-                viewModel.refreshHistory(historyStore)
-            }
-        }
+        // ── Compose tray popup window ──
+        if (showTrayPopup) {
+            val timeText = if (lastTestTime != null) {
+                val mins = (kotlinx.datetime.Clock.System.now() - lastTestTime!!).inWholeMinutes
+                if (mins < 1) "just now" else "$mins min ago"
+            } else "never"
 
-        // Window
-        if (isWindowVisible) {
             Window(
-                onCloseRequest = { isWindowVisible = false },
-                title = "Slogr",
-                state = windowState,
+                onCloseRequest = { showTrayPopup = false },
+                state = rememberWindowState(
+                    position = WindowPosition((popupX - 200).coerceAtLeast(0).dp, (popupY - 230).coerceAtLeast(0).dp),
+                    size = DpSize(220.dp, if (hasServers) 230.dp else 180.dp),
+                ),
+                undecorated = true, transparent = false, resizable = false, focusable = true, alwaysOnTop = true, title = "",
+            ) {
+                LaunchedEffect(Unit) {
+                    window.addWindowFocusListener(object : WindowFocusListener {
+                        override fun windowLostFocus(e: WindowEvent?) { showTrayPopup = false }
+                        override fun windowGainedFocus(e: WindowEvent?) {}
+                    })
+                }
+                Surface(shape = RoundedCornerShape(8.dp), shadowElevation = 8.dp, color = Color.White) {
+                    Column(Modifier.padding(vertical = 4.dp)) {
+                        if (hasServers) {
+                            TrayMenuItem("Status: ${overallGrade?.name ?: "Unknown"}", enabled = false)
+                            TrayMenuItem("Last test: $timeText", enabled = false)
+                            HorizontalDivider(color = SlogrBorder, modifier = Modifier.padding(vertical = 4.dp))
+                            TrayMenuItem(if (isMeasuring) "Testing..." else "Run Test Now", enabled = !isMeasuring) { runTestNow(); showTrayPopup = false }
+                            TrayMenuItem("Open Slogr") { isWindowVisible = true; showTrayPopup = false }
+                            HorizontalDivider(color = SlogrBorder, modifier = Modifier.padding(vertical = 4.dp))
+                            TrayMenuItem("Quit") { exitApplication() }
+                        } else {
+                            TrayMenuItem("No servers configured", enabled = false)
+                            TrayMenuItem("Add a server to start", enabled = false)
+                            HorizontalDivider(color = SlogrBorder, modifier = Modifier.padding(vertical = 4.dp))
+                            TrayMenuItem("Open Slogr") { isWindowVisible = true; showTrayPopup = false }
+                            HorizontalDivider(color = SlogrBorder, modifier = Modifier.padding(vertical = 4.dp))
+                            TrayMenuItem("Quit") { exitApplication() }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Main window ──
+        if (isWindowVisible) {
+            Window(onCloseRequest = { isWindowVisible = false }, title = "Slogr", state = windowState,
+                icon = painterResource("slogr-icon.png"),
             ) {
                 window.minimumSize = java.awt.Dimension(500, 400)
-
                 SlogrTheme {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background),
-                    ) {
-                        // Sidebar
-                        Column(
-                            modifier = Modifier
-                                .width(140.dp)
-                                .fillMaxHeight()
-                                .background(io.slogr.desktop.ui.theme.SlogrSidebarBg)
-                                .padding(vertical = 16.dp),
-                        ) {
-                            // Real Slogr logo
-                            Image(
-                                painter = painterResource("slogr-logo.png"),
-                                contentDescription = "Slogr",
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                                    .width(100.dp),
-                            )
-
-                            Spacer(Modifier.height(20.dp))
-
+                    Row(Modifier.fillMaxSize().background(SlogrBackground)) {
+                        Column(Modifier.width(140.dp).fillMaxHeight().background(SlogrSidebarBg).padding(vertical = 12.dp)) {
+                            Image(painter = painterResource("slogr-logo.png"), contentDescription = "Slogr",
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp).width(100.dp))
+                            Spacer(Modifier.height(16.dp))
                             listOf(MainView.DASHBOARD to "Dashboard", MainView.SETTINGS to "Settings").forEach { (view, label) ->
-                                val isSelected = view == activeView
-                                Text(
-                                    text = label,
-                                    fontSize = 14.sp,
-                                    color = if (isSelected) io.slogr.desktop.ui.theme.SlogrGreen
-                                    else io.slogr.desktop.ui.theme.TextSecondary,
-                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
+                                val sel = view == activeView
+                                Text(label, fontSize = 14.sp,
+                                    color = if (sel) SlogrDarkGreen else TextSecondary,
+                                    fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal,
+                                    modifier = Modifier.fillMaxWidth()
+                                        .then(if (sel) Modifier.background(SlogrSidebarSelected) else Modifier)
                                         .clickable { activeView = view }
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                )
+                                        .padding(horizontal = 16.dp, vertical = 12.dp))
                             }
+                            Spacer(Modifier.weight(1f))
+                            Text("Quit", fontSize = 13.sp, color = TextSecondary,
+                                modifier = Modifier.fillMaxWidth().clickable { exitApplication() }.padding(horizontal = 16.dp, vertical = 10.dp))
                         }
-
-                        VerticalDivider(color = io.slogr.desktop.ui.theme.SlogrBorder)
-
-                        // Content area
-                        Box(modifier = Modifier.fillMaxSize()) {
+                        VerticalDivider(color = SlogrBorder)
+                        Box(Modifier.fillMaxSize().background(SlogrBackground)) {
                             when (activeView) {
                                 MainView.DASHBOARD -> DashboardView(
-                                    trafficGrades = trafficGrades,
-                                    isMeasuring = isMeasuring,
-                                    lastTestTime = lastTestTime,
-                                    recentHistory = recentHistory,
-                                    hasServers = hasServers,
-                                    onRunTestNow = runTestNow,
-                                    onGoToSettings = { activeView = MainView.SETTINGS },
-                                )
+                                    trafficGrades = trafficGrades, isMeasuring = isMeasuring, lastTestTime = lastTestTime,
+                                    recentHistory = recentHistory, hasServers = hasServers,
+                                    onRunTestNow = runTestNow, onGoToSettings = { activeView = MainView.SETTINGS })
                                 MainView.SETTINGS -> SettingsView(
-                                    settings = settings,
-                                    settingsStore = settingsStore,
-                                    profileManager = profileManager,
-                                    viewModel = viewModel,
-                                )
+                                    settings = settings, settingsStore = settingsStore,
+                                    profileManager = profileManager, viewModel = viewModel)
                             }
                         }
                     }
@@ -221,4 +246,12 @@ fun main() {
             }
         }
     }
+}
+
+@Composable
+private fun TrayMenuItem(text: String, enabled: Boolean = true, onClick: () -> Unit = {}) {
+    Text(text, modifier = Modifier.fillMaxWidth()
+        .then(if (enabled) Modifier.clickable { onClick() } else Modifier)
+        .padding(horizontal = 16.dp, vertical = 10.dp),
+        color = if (enabled) TextPrimary else TextSecondary, fontSize = 14.sp)
 }

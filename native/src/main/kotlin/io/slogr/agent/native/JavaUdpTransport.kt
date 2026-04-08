@@ -65,9 +65,11 @@ class JavaUdpTransport(
     /** SO_TIMESTAMPING is not available via [DatagramSocket]; silently accepted. */
     override fun enableTimestamping(fd: Int): Boolean = sockets.containsKey(fd)
 
-    /** TOS is not supported via [DatagramSocket]; silently accepted. */
-    override fun setTos(fd: Int, tos: Short, ipv6: Boolean): Boolean =
-        sockets.containsKey(fd)
+    /** Set IP TOS byte (includes DSCP) via DatagramSocket.setTrafficClass(). */
+    override fun setTos(fd: Int, tos: Short, ipv6: Boolean): Boolean {
+        val s = sockets[fd] ?: return false
+        return try { s.trafficClass = tos.toInt() and 0xFF; true } catch (_: Exception) { false }
+    }
 
     override fun setTimeout(fd: Int, timeoutMs: Int): Boolean {
         val s = sockets[fd] ?: return false

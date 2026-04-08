@@ -6,6 +6,7 @@ import io.slogr.desktop.core.history.HistoryEntry
 import io.slogr.desktop.core.history.LocalHistoryStore
 import io.slogr.desktop.core.profiles.ProfileManager
 import io.slogr.desktop.core.profiles.TrafficGrade
+import io.slogr.desktop.core.profiles.TrafficType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,8 +28,9 @@ class DesktopAgentViewModel {
     private val _serverResults = MutableStateFlow<Map<String, ServerResult>>(emptyMap())
     val serverResults: StateFlow<Map<String, ServerResult>> = _serverResults.asStateFlow()
 
-    private val _trafficGrades = MutableStateFlow<List<TrafficGrade>>(emptyList())
-    val trafficGrades: StateFlow<List<TrafficGrade>> = _trafficGrades.asStateFlow()
+    /** Per-traffic-type grades. Null grade = testing/pending (shown as grey). */
+    private val _trafficGrades = MutableStateFlow<Map<String, TrafficGrade>>(emptyMap())
+    val trafficGrades: StateFlow<Map<String, TrafficGrade>> = _trafficGrades.asStateFlow()
 
     private val _overallGrade = MutableStateFlow<SlaGrade?>(null)
     val overallGrade: StateFlow<SlaGrade?> = _overallGrade.asStateFlow()
@@ -44,36 +46,57 @@ class DesktopAgentViewModel {
 
     fun setMeasuring(active: Boolean) {
         _isMeasuring.value = active
+        if (!active) {
+            // Recalculate overall grade from all resolved traffic grades
+            val resolved = _trafficGrades.value.values.mapNotNull { it.grade }
+            _overallGrade.value = when {
+                resolved.isEmpty() -> null
+                resolved.any { it == SlaGrade.RED } -> SlaGrade.RED
+                resolved.any { it == SlaGrade.YELLOW } -> SlaGrade.YELLOW
+                else -> SlaGrade.GREEN
+            }
+        }
     }
 
-    fun updateResult(
-        serverId: String,
-        label: String,
-        bundle: MeasurementBundle,
-        profileManager: ProfileManager,
-    ) {
-        val now = Clock.System.now()
+    /** Set all active types to pending (null grade) at start of cycle. */
+    fun clearTrafficGrades(activeTypes: List<TrafficType>) {
+        val pending = activeTypes.associate { tt ->
+            tt.name to TrafficGrade(tt, null, -1f, -1f)
+        }
+        _trafficGrades.value = pending
+    }
 
-        // Per-server result
-        val sr = ServerResult(serverId, label, bundle.twamp.fwdAvgRttMs, bundle.twamp.fwdLossPct, bundle.grade, now, true)
+    /** Update a single traffic type's grade as its session completes. */
+    fun updateTrafficGrade(name: String, grade: TrafficGrade) {
+        val updated = _trafficGrades.value.toMutableMap()
+        updated[name] = grade
+        _trafficGrades.value = updated
+        _lastTestTime.value = Clock.System.now()
+
+        // Update overall grade progressively
+        val resolved = updated.values.mapNotNull { it.grade }
+        _overallGrade.value = when {
+            resolved.isEmpty() -> null
+            resolved.any { it == SlaGrade.RED } -> SlaGrade.RED
+            resolved.any { it == SlaGrade.YELLOW } -> SlaGrade.YELLOW
+            else -> SlaGrade.GREEN
+        }
+    }
+
+    fun updateServerResult(serverId: String, label: String, bundle: MeasurementBundle?, reachable: Boolean) {
+        val now = Clock.System.now()
+        val sr = if (bundle != null) {
+            ServerResult(serverId, label, bundle.twamp.fwdAvgRttMs, bundle.twamp.fwdLossPct, bundle.grade, now, reachable)
+        } else {
+            ServerResult(serverId, label, -1f, 100f, SlaGrade.RED, now, false)
+        }
         val updated = _serverResults.value.toMutableMap()
         updated[serverId] = sr
         _serverResults.value = updated
-
-        // Evaluate against all 3 active profiles
-        val grades = profileManager.evaluateAll(bundle.twamp)
-        _trafficGrades.value = grades
-        _overallGrade.value = profileManager.worstGrade(grades)
-        _lastTestTime.value = now
     }
 
     fun recordFailure(serverId: String, label: String) {
-        val now = Clock.System.now()
-        val sr = ServerResult(serverId, label, -1f, 100f, SlaGrade.RED, now, false)
-        val updated = _serverResults.value.toMutableMap()
-        updated[serverId] = sr
-        _serverResults.value = updated
-        _lastTestTime.value = now
+        updateServerResult(serverId, label, null, false)
     }
 
     suspend fun refreshHistory(store: LocalHistoryStore) {

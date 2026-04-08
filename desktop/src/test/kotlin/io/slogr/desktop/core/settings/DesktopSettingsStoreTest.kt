@@ -27,7 +27,7 @@ class DesktopSettingsStoreTest {
         val s = store.settings.value
         assertEquals(listOf("gaming", "voip", "streaming"), s.activeProfiles)
         assertEquals(300, s.testIntervalSeconds)
-        assertTrue(s.tracerouteEnabled)
+        assertFalse(s.tracerouteEnabled)
         assertTrue(s.autoStartEnabled)
         assertTrue(s.notificationsEnabled)
         assertTrue(s.servers.isEmpty())
