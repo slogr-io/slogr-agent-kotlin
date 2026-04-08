@@ -1,7 +1,7 @@
 # Slogr Agent — v1.0.3 Backlog
 Date: April 7 2026
-Status: Scheduled
-Branch: cut from master after v1.0.2
+Status: COMPLETE — commits bd66da8, 55c2664 on master
+Branch: master (committed directly)
 
 ## Bugs found during GCP E2E testing (April 7 2026)
 
@@ -243,8 +243,30 @@ removed. The comment itself is stale.
    TwampController.connect(), ConnectRequest,
    and MeasurementEngineImpl.runTwamp().
 3. BUG-3 — invokeOnCancellation. Single file change.
-4. FIX-4 — wrapper script. Independent.
-5. FIX-5 — stale comment removal. Trivial.
+4. FIX-4 — carried forward to v1.0.4.
+5. FIX-5 — carried forward to v1.0.4.
 
 Run ./gradlew test after each fix.
 All 648+ tests must pass before tagging.
+
+---
+
+## Resolution
+
+BUG-1, BUG-2, BUG-3 fixed in two commits:
+  bd66da8 — onComplete on failure, targetPort passthrough,
+            invokeOnCancellation
+  55c2664 — partial read accumulation (per-session accumBuf),
+            closeReason captured before state resets to CLOSED,
+            engine logs WARN on TWAMP failure with reason,
+            check command prints failure reason to stderr
+
+Additional v1.0.3 fix: accumulation buffer in
+TwampControllerSession.read() — TCP partial reads
+no longer silently dropped. Per-session ByteBuffer
+accumulates bytes across reads.
+
+FIX-4 (wrapper.sh) and FIX-5 (stale comment) carried
+forward to v1.0.4 backlog.
+
+All engine and platform tests pass.
