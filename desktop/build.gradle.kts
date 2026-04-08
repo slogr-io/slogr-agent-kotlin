@@ -69,14 +69,13 @@ compose.desktop {
             }
 
             windows {
+                iconFile.set(project.file("src/main/resources/slogr.ico"))
                 menuGroup = "Slogr"
                 upgradeUuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 shortcut = true
                 dirChooser = true
                 perUserInstall = true
-                // Menu shortcut in Start Menu
                 menu = true
-                // Console launcher not needed (GUI app)
                 console = false
                 // MSI custom properties: SLOGR_API_KEY, AUTOSTART
                 // Handled by the installer post-install script
