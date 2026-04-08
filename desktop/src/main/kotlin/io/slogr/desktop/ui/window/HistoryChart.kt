@@ -6,18 +6,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import io.slogr.agent.contracts.SlaGrade
 import io.slogr.desktop.core.history.HistoryEntry
 import io.slogr.desktop.core.history.LocalHistoryStore
 import io.slogr.desktop.core.profiles.ProfileManager
 import io.slogr.desktop.ui.theme.*
-import kotlinx.coroutines.launch
+import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlin.time.Duration.Companion.hours
 
 /**
- * History section: dropdown to select a traffic type, colored dots showing grade over time.
- * If the selected type has no direct history, falls back to baseline results re-evaluated
- * against that type's SLA thresholds.
+ * History section: dropdown to select traffic type, time-positioned colored dots.
+ * Dots are spaced proportionally on a fixed 24h timeline.
+ * If the type was never tested, falls back to baseline results.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,21 +32,21 @@ fun HistorySection(
     var selectedType by remember { mutableStateOf(ProfileManager.ALL_TRAFFIC_TYPES.first().name) }
     var entries by remember { mutableStateOf<List<HistoryEntry>>(emptyList()) }
     var dropdownExpanded by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+
+    val now = Clock.System.now()
+    val timelineStart = now - 24.hours
 
     // Load history when type changes
     LaunchedEffect(selectedType) {
         if (historyStore == null) return@LaunchedEffect
-        // Try direct history first
-        val direct = historyStore.getResultsForProfile(selectedType, limit = 200)
+        val direct = historyStore.getResultsForProfile(selectedType, limit = 500)
         if (direct.isNotEmpty()) {
-            entries = direct.reversed() // oldest first for left-to-right display
+            entries = direct.filter { it.measuredAt >= timelineStart }.sortedBy { it.measuredAt }
         } else {
-            // Fall back to baseline re-evaluated against this type's SLA
             val tt = ProfileManager.ALL_TRAFFIC_TYPES.find { it.name == selectedType }
             if (tt != null) {
-                val baseline = historyStore.getBaselineAsProfile(profileManager.toSlaProfile(tt), limit = 200)
-                entries = baseline.reversed()
+                val baseline = historyStore.getBaselineAsProfile(profileManager.toSlaProfile(tt), limit = 500)
+                entries = baseline.filter { it.measuredAt >= timelineStart }.sortedBy { it.measuredAt }
             } else {
                 entries = emptyList()
             }
@@ -51,7 +54,7 @@ fun HistorySection(
     }
 
     Column(modifier = modifier) {
-        // Dropdown to select traffic type
+        // Header row: title + dropdown
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -62,27 +65,21 @@ fun HistorySection(
             ExposedDropdownMenuBox(expanded = dropdownExpanded, onExpandedChange = { dropdownExpanded = it }) {
                 val displayName = ProfileManager.ALL_TRAFFIC_TYPES.find { it.name == selectedType }?.displayName ?: selectedType
                 OutlinedTextField(
-                    value = displayName,
-                    onValueChange = {},
-                    readOnly = true,
+                    value = displayName, onValueChange = {}, readOnly = true,
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dropdownExpanded) },
                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).width(180.dp),
                     textStyle = MaterialTheme.typography.bodySmall,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = SlogrGreen, unfocusedBorderColor = FieldBorder,
                         focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary,
-                        focusedContainerColor = androidx.compose.ui.graphics.Color.White,
-                        unfocusedContainerColor = androidx.compose.ui.graphics.Color.White,
+                        focusedContainerColor = Color.White, unfocusedContainerColor = Color.White,
                     ),
                 )
                 ExposedDropdownMenu(expanded = dropdownExpanded, onDismissRequest = { dropdownExpanded = false }) {
                     ProfileManager.ALL_TRAFFIC_TYPES.forEach { tt ->
                         DropdownMenuItem(
                             text = { Text("${tt.icon} ${tt.displayName}", color = TextPrimary) },
-                            onClick = {
-                                selectedType = tt.name
-                                dropdownExpanded = false
-                            },
+                            onClick = { selectedType = tt.name; dropdownExpanded = false },
                         )
                     }
                 }
@@ -94,52 +91,54 @@ fun HistorySection(
         if (entries.isEmpty()) {
             Text("No history for this traffic type", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         } else {
-            // Colored dots — one per measurement
-            Canvas(modifier = Modifier.fillMaxWidth().height(24.dp)) {
-                val dotSize = 8.dp.toPx()
-                val gap = 3.dp.toPx()
-                val maxDots = ((size.width + gap) / (dotSize + gap)).toInt()
-                val displayEntries = entries.takeLast(maxDots)
+            // Time-positioned dots on a 24h fixed timeline
+            val timelineMs = 24.hours.inWholeMilliseconds.toFloat()
+            val startMs = timelineStart.toEpochMilliseconds().toFloat()
 
-                displayEntries.forEachIndexed { i, entry ->
+            Canvas(modifier = Modifier.fillMaxWidth().height(28.dp)) {
+                val dotRadius = 5.dp.toPx()
+
+                // Draw timeline background line
+                drawLine(
+                    color = SlogrBorder,
+                    start = Offset(0f, size.height / 2),
+                    end = Offset(size.width, size.height / 2),
+                    strokeWidth = 1.dp.toPx(),
+                )
+
+                entries.forEach { entry ->
+                    val entryMs = entry.measuredAt.toEpochMilliseconds().toFloat()
+                    val fraction = ((entryMs - startMs) / timelineMs).coerceIn(0f, 1f)
+                    val x = fraction * size.width
+
                     val color = when (entry.grade) {
                         SlaGrade.GREEN -> SlogrGreen
                         SlaGrade.YELLOW -> SlogrYellow
                         SlaGrade.RED -> SlogrRed
                     }
-                    drawCircle(
-                        color = color,
-                        radius = dotSize / 2,
-                        center = Offset(
-                            x = i * (dotSize + gap) + dotSize / 2,
-                            y = size.height / 2,
-                        ),
-                    )
+                    drawCircle(color = color, radius = dotRadius, center = Offset(x, size.height / 2))
                 }
             }
 
-            // Time labels
+            // Time axis labels: 6 evenly spaced
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                val oldest = entries.firstOrNull()?.measuredAt
-                val newest = entries.lastOrNull()?.measuredAt
-                Text(oldest?.let { formatTime(it) } ?: "", style = MaterialTheme.typography.labelSmall)
-                Text(newest?.let { formatTime(it) } ?: "", style = MaterialTheme.typography.labelSmall)
+                for (i in 0..5) {
+                    val labelTime = timelineStart + (24.hours * i / 5)
+                    Text(formatTime(labelTime), style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                }
             }
         }
     }
 }
 
-private fun formatTime(instant: kotlinx.datetime.Instant): String {
+private fun formatTime(instant: Instant): String {
     val str = instant.toString()
     return if (str.length >= 16) str.substring(11, 16) else str
 }
 
-// Keep old HistoryChart for backward compat (unused but tests may reference)
+// Backward compat stub
 @Composable
 fun HistoryChart(entries: List<HistoryEntry>, modifier: Modifier = Modifier) {
-    // Deprecated — use HistorySection instead
-    if (entries.isEmpty()) {
-        Text("No history yet", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-    }
+    if (entries.isEmpty()) Text("No history yet", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
 }

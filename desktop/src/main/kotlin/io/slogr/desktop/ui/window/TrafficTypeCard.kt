@@ -50,8 +50,9 @@ fun TrafficTypeCard(grade: TrafficGrade, modifier: Modifier = Modifier) {
         } else if (grade.avgRttMs >= 0) {
             // Total RTT
             Text("${grade.avgRttMs.toInt()}ms", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-            // Uplink / Downlink split
-            if (grade.fwdRttMs > 0 || grade.revRttMs > 0) {
+            // Uplink / Downlink split — only show if rev differs from fwd (clock sync worked)
+            val showSplit = grade.revRttMs > 0f && kotlin.math.abs(grade.fwdRttMs - grade.revRttMs) > 0.5f
+            if (showSplit) {
                 Spacer(Modifier.height(2.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("\u2191${grade.fwdRttMs.toInt()}ms", fontSize = 11.sp, color = TextSecondary)
