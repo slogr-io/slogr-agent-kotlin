@@ -16,6 +16,8 @@ data class HistoryEntry(
     val maxRttMs: Float,
     val jitterMs: Float,
     val lossPct: Float,
+    val revAvgRttMs: Float = 0f,
+    val revJitterMs: Float = 0f,
     val packetsSent: Int,
     val packetsRecv: Int,
     val grade: SlaGrade,

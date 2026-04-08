@@ -64,7 +64,7 @@ class DesktopMeasurementSchedulerTest {
         val pm = makePM()
         val sched = DesktopMeasurementScheduler(eng, vm, pm)
         sched.runOnce(listOf(testServer), tracerouteEnabled = false)
-        assertEquals(3, eng.callCount) // one per active traffic type
+        assertEquals(4, eng.callCount) // 3 traffic types + 1 baseline
         assertEquals(3, vm.trafficGrades.value.size)
     }
 
@@ -84,7 +84,8 @@ class DesktopMeasurementSchedulerTest {
         val pm = makePM()
         val sched = DesktopMeasurementScheduler(eng, vm, pm)
         sched.runOnce(listOf(testServer), tracerouteEnabled = false)
-        // Last session was for "streaming" (DSCP 36) given defaults gaming/voip/streaming
-        assertEquals(36, eng.lastDscp)
+        // Last session is baseline (DSCP 0). 4th call = baseline after 3 traffic types
+        assertEquals(0, eng.lastDscp)
+        assertEquals(4, eng.callCount)
     }
 }

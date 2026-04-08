@@ -35,6 +35,8 @@ data class TrafficGrade(
     val grade: SlaGrade?,       // null = testing/pending
     val avgRttMs: Float,
     val lossPct: Float,
+    val fwdRttMs: Float = 0f,   // uplink (sender → reflector)
+    val revRttMs: Float = 0f,   // downlink (reflector → sender)
 )
 
 class ProfileManager(
@@ -103,7 +105,8 @@ class ProfileManager(
     /** Evaluate a TWAMP result against a single traffic type. */
     fun evaluate(result: MeasurementResult, tt: TrafficType): TrafficGrade {
         val grade = SlaEvaluator.evaluate(result, toSlaProfile(tt))
-        return TrafficGrade(tt, grade, result.fwdAvgRttMs, result.fwdLossPct)
+        return TrafficGrade(tt, grade, result.fwdAvgRttMs, result.fwdLossPct,
+            fwdRttMs = result.fwdAvgRttMs, revRttMs = result.revAvgRttMs ?: 0f)
     }
 
     fun worstGrade(grades: List<TrafficGrade>): SlaGrade? {

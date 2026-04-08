@@ -100,6 +100,23 @@ class DesktopMeasurementScheduler(
                     viewModel.updateServerResult(server.id, server.displayLabel, null, false)
                 }
             }
+            // Background baseline test (best effort, DSCP 0) — no UI impact
+            try {
+                val baselineProfile = io.slogr.agent.contracts.SlaProfile(
+                    name = "baseline", nPackets = 50, intervalMs = 50, waitTimeMs = 2000,
+                    dscp = 0, packetSize = 1500, timingMode = io.slogr.agent.contracts.TimingMode.FIXED,
+                    rttGreenMs = 100f, rttRedMs = 200f, jitterGreenMs = 30f, jitterRedMs = 50f,
+                    lossGreenPct = 1f, lossRedPct = 5f,
+                )
+                val baseBundle = engine.measure(target = target, targetPort = server.port,
+                    profile = baselineProfile, traceroute = false)
+                historyStore?.insert(baseBundle.twamp, makeReflector(server), baseBundle.grade)
+                log.info("Baseline: RTT={}ms loss={}%", baseBundle.twamp.fwdAvgRttMs, baseBundle.twamp.fwdLossPct)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                log.debug("Baseline test failed: {}", e.message)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

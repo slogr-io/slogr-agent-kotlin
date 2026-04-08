@@ -243,7 +243,7 @@ fun main() {
                             when (activeView) {
                                 MainView.DASHBOARD -> DashboardView(
                                     trafficGrades = trafficGrades, isMeasuring = isMeasuring, lastTestTime = lastTestTime,
-                                    recentHistory = recentHistory, hasServers = hasServers,
+                                    hasServers = hasServers, historyStore = historyStore, profileManager = profileManager,
                                     onRunTestNow = runTestNow, onGoToSettings = { activeView = MainView.SETTINGS })
                                 MainView.SETTINGS -> SettingsView(
                                     settings = settings, settingsStore = settingsStore,

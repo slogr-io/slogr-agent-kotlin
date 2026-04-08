@@ -2,6 +2,8 @@ package io.slogr.desktop.core.history
 
 import io.slogr.agent.contracts.MeasurementResult
 import io.slogr.agent.contracts.SlaGrade
+import io.slogr.agent.contracts.SlaProfile
+import io.slogr.agent.engine.sla.SlaEvaluator
 import io.slogr.desktop.core.reflectors.Reflector
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -28,6 +30,10 @@ class LocalHistoryStore(private val dataDir: Path) {
         conn.createStatement().use { it.execute(CREATE_TABLE) }
         conn.createStatement().use { it.execute(INDEX_MEASURED_AT) }
         conn.createStatement().use { it.execute(INDEX_REFLECTOR) }
+        conn.createStatement().use { it.execute(INDEX_PROFILE) }
+        // Migration: add rev columns if missing (upgrade from older schema)
+        try { conn.createStatement().use { it.execute("ALTER TABLE measurement_history ADD COLUMN rev_avg_rtt_ms REAL DEFAULT 0") } } catch (_: Exception) {}
+        try { conn.createStatement().use { it.execute("ALTER TABLE measurement_history ADD COLUMN rev_jitter_ms REAL DEFAULT 0") } } catch (_: Exception) {}
         connection = conn
     }
 
@@ -47,9 +53,11 @@ class LocalHistoryStore(private val dataDir: Path) {
                 ps.setFloat(9, result.fwdMaxRttMs)
                 ps.setFloat(10, result.fwdJitterMs)
                 ps.setFloat(11, result.fwdLossPct)
-                ps.setInt(12, result.packetsSent)
-                ps.setInt(13, result.packetsRecv)
-                ps.setString(14, grade.name)
+                ps.setFloat(12, result.revAvgRttMs ?: 0f)
+                ps.setFloat(13, result.revJitterMs ?: 0f)
+                ps.setInt(14, result.packetsSent)
+                ps.setInt(15, result.packetsRecv)
+                ps.setString(16, grade.name)
                 ps.executeUpdate()
                 ps.close()
             }
@@ -59,15 +67,63 @@ class LocalHistoryStore(private val dataDir: Path) {
         withContext(Dispatchers.IO) {
             mutex.withLock {
                 val conn = connection ?: return@withContext emptyList()
-                val ps = conn.prepareStatement(
-                    "SELECT * FROM measurement_history ORDER BY measured_at DESC LIMIT ?",
-                )
-                ps.setInt(1, limit)
-                val rs = ps.executeQuery()
-                val entries = mutableListOf<HistoryEntry>()
-                while (rs.next()) entries.add(rowToEntry(rs))
-                ps.close()
-                entries
+                conn.prepareStatement("SELECT * FROM measurement_history ORDER BY measured_at DESC LIMIT ?").use { ps ->
+                    ps.setInt(1, limit)
+                    val rs = ps.executeQuery()
+                    val entries = mutableListOf<HistoryEntry>()
+                    while (rs.next()) entries.add(rowToEntry(rs))
+                    entries
+                }
+            }
+        }
+
+    /** Get history for a specific traffic type profile. */
+    suspend fun getResultsForProfile(profile: String, limit: Int = 200): List<HistoryEntry> =
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val conn = connection ?: return@withContext emptyList()
+                conn.prepareStatement("SELECT * FROM measurement_history WHERE profile = ? ORDER BY measured_at DESC LIMIT ?").use { ps ->
+                    ps.setString(1, profile)
+                    ps.setInt(2, limit)
+                    val rs = ps.executeQuery()
+                    val entries = mutableListOf<HistoryEntry>()
+                    while (rs.next()) entries.add(rowToEntry(rs))
+                    entries
+                }
+            }
+        }
+
+    /**
+     * Get history for a type that was never tested — uses baseline results
+     * re-evaluated against the requested type's SLA thresholds.
+     */
+    suspend fun getBaselineAsProfile(targetProfile: SlaProfile, limit: Int = 200): List<HistoryEntry> =
+        withContext(Dispatchers.IO) {
+            mutex.withLock {
+                val conn = connection ?: return@withContext emptyList()
+                conn.prepareStatement("SELECT * FROM measurement_history WHERE profile = 'baseline' ORDER BY measured_at DESC LIMIT ?").use { ps ->
+                    ps.setInt(1, limit)
+                    val rs = ps.executeQuery()
+                    val entries = mutableListOf<HistoryEntry>()
+                    while (rs.next()) {
+                        val base = rowToEntry(rs)
+                        // Re-evaluate baseline metrics against the target profile's thresholds
+                        val fakeResult = MeasurementResult(
+                            sessionId = java.util.UUID.randomUUID(),
+                            pathId = java.util.UUID.randomUUID(),
+                            sourceAgentId = java.util.UUID.randomUUID(),
+                            destAgentId = java.util.UUID.randomUUID(),
+                            srcCloud = "local", srcRegion = "local", dstCloud = "local", dstRegion = "local",
+                            windowTs = base.measuredAt, profile = targetProfile,
+                            fwdMinRttMs = base.minRttMs, fwdAvgRttMs = base.avgRttMs, fwdMaxRttMs = base.maxRttMs,
+                            fwdJitterMs = base.jitterMs, fwdLossPct = base.lossPct,
+                            packetsSent = base.packetsSent, packetsRecv = base.packetsRecv,
+                        )
+                        val grade = SlaEvaluator.evaluate(fakeResult, targetProfile)
+                        entries.add(base.copy(profile = targetProfile.name, grade = grade))
+                    }
+                    entries
+                }
             }
         }
 
@@ -75,16 +131,14 @@ class LocalHistoryStore(private val dataDir: Path) {
         withContext(Dispatchers.IO) {
             mutex.withLock {
                 val conn = connection ?: return@withContext emptyList()
-                val ps = conn.prepareStatement(
-                    "SELECT * FROM measurement_history WHERE reflector_id = ? ORDER BY measured_at DESC LIMIT ?",
-                )
-                ps.setString(1, reflectorId)
-                ps.setInt(2, limit)
-                val rs = ps.executeQuery()
-                val entries = mutableListOf<HistoryEntry>()
-                while (rs.next()) entries.add(rowToEntry(rs))
-                ps.close()
-                entries
+                conn.prepareStatement("SELECT * FROM measurement_history WHERE reflector_id = ? ORDER BY measured_at DESC LIMIT ?").use { ps ->
+                    ps.setString(1, reflectorId)
+                    ps.setInt(2, limit)
+                    val rs = ps.executeQuery()
+                    val entries = mutableListOf<HistoryEntry>()
+                    while (rs.next()) entries.add(rowToEntry(rs))
+                    entries
+                }
             }
         }
 
@@ -93,15 +147,9 @@ class LocalHistoryStore(private val dataDir: Path) {
             mutex.withLock {
                 val conn = connection ?: return@withContext emptyMap()
                 conn.createStatement().use { st ->
-                    val rs = st.executeQuery(
-                        "SELECT grade, COUNT(*) as cnt FROM measurement_history GROUP BY grade",
-                    )
+                    val rs = st.executeQuery("SELECT grade, COUNT(*) as cnt FROM measurement_history GROUP BY grade")
                     val map = mutableMapOf<SlaGrade, Int>()
-                    while (rs.next()) {
-                        try {
-                            map[SlaGrade.valueOf(rs.getString("grade"))] = rs.getInt("cnt")
-                        } catch (_: Exception) { /* skip invalid */ }
-                    }
+                    while (rs.next()) { try { map[SlaGrade.valueOf(rs.getString("grade"))] = rs.getInt("cnt") } catch (_: Exception) {} }
                     map
                 }
             }
@@ -111,13 +159,10 @@ class LocalHistoryStore(private val dataDir: Path) {
         withContext(Dispatchers.IO) {
             mutex.withLock {
                 val conn = connection ?: return@withContext 0
-                val ps = conn.prepareStatement(
-                    "DELETE FROM measurement_history WHERE measured_at < ?",
-                )
-                ps.setString(1, cutoff.toString())
-                val deleted = ps.executeUpdate()
-                ps.close()
-                deleted
+                conn.prepareStatement("DELETE FROM measurement_history WHERE measured_at < ?").use { ps ->
+                    ps.setString(1, cutoff.toString())
+                    ps.executeUpdate()
+                }
             }
         }
 
@@ -131,26 +176,19 @@ class LocalHistoryStore(private val dataDir: Path) {
         }
     }
 
-    fun close() {
-        connection?.close()
-        connection = null
-    }
+    fun close() { connection?.close(); connection = null }
 
     private fun rowToEntry(rs: java.sql.ResultSet): HistoryEntry = HistoryEntry(
-        id = rs.getLong("id"),
-        sessionId = rs.getString("session_id"),
-        reflectorId = rs.getString("reflector_id"),
-        reflectorHost = rs.getString("reflector_host"),
-        reflectorRegion = rs.getString("reflector_region"),
-        profile = rs.getString("profile"),
+        id = rs.getLong("id"), sessionId = rs.getString("session_id"),
+        reflectorId = rs.getString("reflector_id"), reflectorHost = rs.getString("reflector_host"),
+        reflectorRegion = rs.getString("reflector_region"), profile = rs.getString("profile"),
         measuredAt = Instant.parse(rs.getString("measured_at")),
-        avgRttMs = rs.getFloat("fwd_avg_rtt_ms"),
-        minRttMs = rs.getFloat("fwd_min_rtt_ms"),
-        maxRttMs = rs.getFloat("fwd_max_rtt_ms"),
-        jitterMs = rs.getFloat("fwd_jitter_ms"),
+        avgRttMs = rs.getFloat("fwd_avg_rtt_ms"), minRttMs = rs.getFloat("fwd_min_rtt_ms"),
+        maxRttMs = rs.getFloat("fwd_max_rtt_ms"), jitterMs = rs.getFloat("fwd_jitter_ms"),
         lossPct = rs.getFloat("fwd_loss_pct"),
-        packetsSent = rs.getInt("packets_sent"),
-        packetsRecv = rs.getInt("packets_recv"),
+        revAvgRttMs = try { rs.getFloat("rev_avg_rtt_ms") } catch (_: Exception) { 0f },
+        revJitterMs = try { rs.getFloat("rev_jitter_ms") } catch (_: Exception) { 0f },
+        packetsSent = rs.getInt("packets_sent"), packetsRecv = rs.getInt("packets_recv"),
         grade = SlaGrade.valueOf(rs.getString("grade")),
     )
 
@@ -169,21 +207,23 @@ class LocalHistoryStore(private val dataDir: Path) {
                 fwd_max_rtt_ms   REAL,
                 fwd_jitter_ms    REAL,
                 fwd_loss_pct     REAL,
+                rev_avg_rtt_ms   REAL DEFAULT 0,
+                rev_jitter_ms    REAL DEFAULT 0,
                 packets_sent     INTEGER,
                 packets_recv     INTEGER,
                 grade            TEXT
             )
         """
-        private const val INDEX_MEASURED_AT =
-            "CREATE INDEX IF NOT EXISTS idx_history_measured_at ON measurement_history(measured_at)"
-        private const val INDEX_REFLECTOR =
-            "CREATE INDEX IF NOT EXISTS idx_history_reflector ON measurement_history(reflector_id, measured_at)"
+        private const val INDEX_MEASURED_AT = "CREATE INDEX IF NOT EXISTS idx_history_measured_at ON measurement_history(measured_at)"
+        private const val INDEX_REFLECTOR = "CREATE INDEX IF NOT EXISTS idx_history_reflector ON measurement_history(reflector_id, measured_at)"
+        private const val INDEX_PROFILE = "CREATE INDEX IF NOT EXISTS idx_history_profile ON measurement_history(profile, measured_at)"
         private const val INSERT_SQL = """
             INSERT INTO measurement_history (
                 session_id, reflector_id, reflector_host, reflector_region, profile,
                 measured_at, fwd_avg_rtt_ms, fwd_min_rtt_ms, fwd_max_rtt_ms,
-                fwd_jitter_ms, fwd_loss_pct, packets_sent, packets_recv, grade
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                fwd_jitter_ms, fwd_loss_pct, rev_avg_rtt_ms, rev_jitter_ms,
+                packets_sent, packets_recv, grade
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
     }
 }
