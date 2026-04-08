@@ -1,201 +1,224 @@
 # Slogr Desktop Agent — Layer 1.1 Vault
 
-**Version:** 1.1
-**Date:** April 6, 2026
-**Status:** Locked — any changes require team sign-off
-**Repo:** github.com/nasimkz/slogr-agent-kotlin (same repo as L1, separate branch)
-**Branch:** `desktop-agent`
-**Relationship to L1 vault:** This vault is a branch of the L1 agent. It reuses the R1 `contracts/` and `engine/` modules and the R2 three-state model, API key registration, and operational hardening. Where this vault says "inherits," the L1 R1/R2 spec is authoritative. Where it says "new," this vault defines something that does not exist in L1.
+**Version:** 1.1.0 (build 11)
+**Date:** April 8, 2026
+**Status:** Shipped — standalone mode functional. Enterprise/SaaS connectivity pending.
+**Repo:** github.com/slogr-io/slogr-agent-kotlin (branch: `desktop-agent`)
 
 ---
 
-## Repository Setup
+## Current Build State
 
-The desktop agent lives in the same repo as the server agent, on a separate branch, as a separate Gradle subproject. This shares engine code without duplicating it.
-
-### Step 1: Clone and Branch
-
-```bash
-git clone https://github.com/nasimkz/slogr-agent-kotlin.git
-cd slogr-agent-kotlin
-git checkout master
-git pull origin master
-git checkout -b desktop-agent
-```
-
-**All desktop work happens on the `desktop-agent` branch.** Never commit desktop code to `master`.
-
-### Step 2: Create the Desktop Subproject
-
-```
-slogr-agent-kotlin/
-├── app/                        ← EXISTING: CLI agent (DO NOT MODIFY)
-├── contracts/                  ← EXISTING: shared data classes (DO NOT MODIFY)
-├── engine/                     ← EXISTING: measurement engine (DO NOT MODIFY)
-├── platform/                   ← EXISTING: RabbitMQ, Pub/Sub, OTLP (DO NOT MODIFY)
-├── native/                     ← EXISTING: JNI C library (desktop does NOT use this)
-├── desktop/                    ← NEW: your Compose Desktop subproject
-│   ├── build.gradle.kts
-│   └── src/main/kotlin/io/slogr/desktop/
-│       ├── Main.kt
-│       ├── ui/
-│       ├── core/
-│       └── scheduler/
-├── vault/
-│   └── slogr-desktop-vault/    ← NEW: copy this vault here
-└── settings.gradle.kts         ← MODIFY: add include("desktop")
-```
-
-### Step 3: Add to settings.gradle.kts
-
-Add this single line to the existing `settings.gradle.kts`:
-
-```kotlin
-include("desktop")
-```
-
-### Step 4: Create desktop/build.gradle.kts
-
-```kotlin
-plugins {
-    kotlin("jvm")
-    id("org.jetbrains.compose") version "1.6.0"
-    kotlin("plugin.serialization")
-}
-
-dependencies {
-    // Reuse L1 modules — this is why we're in the same repo
-    implementation(project(":contracts"))
-    implementation(project(":engine"))
-    implementation(project(":platform"))
-
-    // Compose Desktop
-    implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
-
-    // SQLite (local history)
-    implementation("org.xerial:sqlite-jdbc:3.45.1.0")
-
-    // HTTP client (reflector discovery, OAuth)
-    implementation("io.ktor:ktor-client-core:2.3.8")
-    implementation("io.ktor:ktor-client-cio:2.3.8")
-    implementation("io.ktor:ktor-client-content-negotiation:2.3.8")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.8")
-
-    // Testing
-    testImplementation(kotlin("test"))
-}
-
-compose.desktop {
-    application {
-        mainClass = "io.slogr.desktop.MainKt"
-        nativeDistributions {
-            targetFormats(
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
-                org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg
-            )
-            packageName = "Slogr"
-            packageVersion = "1.1.0"
-            description = "Slogr Network Quality Monitor"
-            vendor = "Slogr"
-            windows {
-                menuGroup = "Slogr"
-                upgradeUuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-                shortcut = true
-                dirChooser = true
-            }
-            macOS {
-                bundleID = "io.slogr.desktop"
-                appCategory = "public.app-category.utilities"
-            }
-        }
-    }
-}
-```
-
-### Step 5: Verify Shared Modules Compile
-
-```bash
-./gradlew :desktop:compileKotlin
-```
-
-This MUST succeed before writing any desktop code. If it fails, fix the dependency declarations — do not modify the existing modules.
-
-### Step 6: Verify L1R2 Tests Still Pass
-
-```bash
-./gradlew :app:test
-```
-
-This must still pass. If the desktop subproject breaks existing tests, something is wrong with the Gradle configuration.
-
-### Git Discipline
-
-- One commit per logical unit of work
-- Push after every completed phase: `git push origin desktop-agent`
-- Report after each phase: "Phase N complete — X tests passing"
-- Never merge into `master` until reviewed
-- Periodically rebase on `master` to pick up L1R2 updates: `git checkout desktop-agent && git rebase master`
-
-### Critical Rule: DO NOT MODIFY FILES OUTSIDE `desktop/`
-
-The `app/`, `contracts/`, `engine/`, `platform/`, and `native/` directories belong to L1R2. Import them, depend on them — never edit them. If you need a change in an engine module, flag it. Do not make the change yourself.
+| Feature | Status |
+|---------|--------|
+| Light theme UI (sidebar + dashboard + settings) | Shipped |
+| Per-traffic-type TWAMP with real DSCP marking | Shipped |
+| 8 traffic types with traffic signatures | Shipped |
+| Progressive dashboard (grey → green/yellow/red) | Shipped |
+| Accordion settings (Traffic Types, Servers, Application, About) | Shipped |
+| Collapsible traffic type selection (3 active, expandable) | Shipped |
+| Active server dropdown (one server tested at a time) | Shipped |
+| User-added servers (runtime, no hardcoded) | Shipped |
+| Compose tray popup (replaces broken AWT PopupMenu) | Shipped |
+| SQLite 24h local history | Shipped |
+| History sparkline chart | Shipped |
+| Share Results (zip export: last 20 tests + diagnostics + system info) | Shipped |
+| Auto-updater (checks slogr.io/desktop/update.json, silent fail) | Shipped |
+| Traceroute (off by default, opt-in with disclaimer) | Shipped |
+| Auto-start on login (Windows registry) | Shipped |
+| Desktop notifications (grade changes) | Shipped |
+| AES-256-GCM encrypted key storage | Shipped |
+| Diagnostics (DNS, HTTPS, TWAMP port checks) | Shipped |
+| MSI installer with Slogr icon | Shipped |
+| Window + tray icon (Slogr "S" favicon) | Shipped |
+| Enterprise/SaaS connectivity (API key, RabbitMQ, registration) | **Not wired** |
+| OAuth sign-in flow | **Not built** |
+| Auto-discovery of Slogr mesh reflectors | **Not built** |
 
 ---
 
 ## What Layer 1.1 Is
 
-A desktop application for Windows and macOS that runs the Slogr measurement engine with a graphical user interface. Same TWAMP engine, same traceroute, same SLA evaluation — wrapped in a Compose Desktop window with a system tray icon.
+A desktop application for Windows (and future macOS) that runs the Slogr TWAMP measurement engine with a graphical user interface. Same engine as the server agent, wrapped in a Compose Desktop window with system tray.
 
-It is NOT a separate product. It is the same `slogr-agent` measurement core with a GUI shell. A desktop agent that transitions to CONNECTED mode appears in the SaaS Agent Directory alongside server agents. It publishes to the same RabbitMQ exchange, receives the same Pub/Sub commands, and lands data in the same ClickHouse tables.
+**Key differentiator:** Per-traffic-type testing with real DSCP marking. The app sends 3 separate TWAMP sessions per measurement cycle — each with the actual packet size, interval, and DSCP value of the traffic type (VoIP=EF/DSCP46, Gaming=AF41/DSCP34, etc.). Results show how the ISP treats each traffic class independently.
 
-## Who Uses It
+---
 
-- **Gamers** monitoring connection quality during play sessions
-- **Remote workers** on VoIP/video calls wanting to know if their internet is the problem
-- **Network engineers** running tests from their workstation
-- **IT admins** deploying across VDI/desktop fleets via SCCM/Intune/Jamf
-- **Enterprise users** linked to an organizational tenant
+## Traffic Signatures
 
-## How It Maps to the Three-State Model
+Each traffic type sends a unique TWAMP session that mimics real application traffic:
 
-| Desktop State | Agent State | Key | Experience |
-|---|---|---|---|
-| Fresh install, no sign-in | ANONYMOUS | None | Measures against free-tier Slogr reflectors. Results shown locally. 24h SQLite history. No OTLP, no SaaS. |
-| User signs in, gets free key | REGISTERED | `sk_free_*` | Same as above + OTLP export enabled. Lead tracked in SaaS. |
-| User upgrades to Pro | CONNECTED | `sk_live_*` | Full SaaS: RabbitMQ, Pub/Sub commands, investigation, alerts, history. Agent visible in Agent Directory. $10/agent/month add-on. |
+| Type | Packets | Interval | Size | DSCP | Simulates |
+|------|---------|----------|------|------|-----------|
+| General Internet | 50 | 50ms | 1500B | 0 (BE) | Web browsing, downloads |
+| Gaming | 33 | 30ms | 120B | 34 (AF41) | Game state updates at 33 tick/s |
+| VoIP / Video Calls | 50 | 20ms | 200B | 46 (EF) | G.711 codec at 50pps |
+| Streaming | 20 | 50ms | 1200B | 36 (AF42) | Video chunks |
+| Cloud / SaaS | 30 | 50ms | 1500B | 32 (CS4) | API calls, SaaS apps |
+| Remote Desktop | 33 | 30ms | 500B | 26 (AF31) | RDP/VDI screen updates |
+| IoT / Telemetry | 10 | 100ms | 100B | 0 (BE) | Sensor data bursts |
+| Financial Trading | 50 | 10ms | 64B | 46 (EF) | Ultra-low-latency trading |
+
+Test time: ~3 seconds per type × 3 active types = **~9 seconds per cycle**.
+
+---
+
+## Architecture
+
+```
+Desktop App (Compose Desktop + Kotlin JVM)
+├── UI Layer
+│   ├── Main Window (sidebar: Dashboard + Settings)
+│   ├── Dashboard (3 traffic type cards + history chart)
+│   ├── Settings (accordion: Traffic Types, Servers, Application, About)
+│   └── Tray (Compose popup window, AWT TrayIcon)
+├── Core Layer
+│   ├── ProfileManager (8 traffic types, select 3, DSCP signatures)
+│   ├── DesktopMeasurementScheduler (per-type sequential sessions)
+│   ├── DesktopAgentViewModel (progressive per-type grades)
+│   ├── DesktopSettingsStore (JSON persistence)
+│   ├── EncryptedKeyStore (AES-256-GCM)
+│   ├── DesktopStateManager (ANONYMOUS/REGISTERED/CONNECTED)
+│   ├── LocalHistoryStore (SQLite, 24h retention)
+│   ├── HistoryPruner (hourly cleanup)
+│   ├── ResultsExporter (zip: tests + diagnostics + system info)
+│   ├── AutoUpdater (checks slogr.io, downloads MSI, applies on restart)
+│   ├── AutoStartManager (Windows registry / macOS LaunchAgent)
+│   └── DesktopNotifier (grade change notifications)
+├── Engine (reused from L1 server agent)
+│   ├── MeasurementEngineImpl (pure-Java mode, JavaUdpTransport)
+│   ├── TwampController + TwampReflector
+│   ├── SlaEvaluator + ProfileRegistry
+│   └── TracerouteOrchestrator (ProcessBuilder, off by default)
+└── Platform (reused from L1 server agent — NOT YET WIRED)
+    ├── RabbitMqPublisher (CONNECTED mode)
+    ├── HealthReporter (CONNECTED mode)
+    ├── ApiKeyRegistrar (registration)
+    └── OtlpExporter (REGISTERED mode)
+```
+
+---
 
 ## What the Desktop App Reuses from L1
 
 | Module | Source | Notes |
 |---|---|---|
-| TWAMP controller + responder | `engine/twamp/` | Identical. Pure-Java fallback mode (no JNI on desktop). |
-| Traceroute | `engine/traceroute/` | ProcessBuilder wrapping `tracert` (Windows) or `traceroute -U` (macOS UDP mode). |
-| ASN resolution | `engine/asn/` | Same MaxMind MMDB, same resolver. |
-| Path change detection | `engine/pathchange/` | Identical. |
-| SLA evaluation | `engine/sla/` | Identical. All 27+ profiles. |
-| Deduplication | `engine/dedup/` | Identical. |
-| Data classes / contracts | `contracts/` | Identical. Future KMP common module. |
-| RabbitMQ publisher | `platform/rabbitmq/` | CONNECTED mode only. Identical. |
-| Pub/Sub subscriber | `platform/pubsub/` | CONNECTED mode only. Identical. |
-| OTLP exporter | `platform/otlp/` | REGISTERED + CONNECTED. Identical with R2 gate. |
-| WAL buffer | `platform/wal/` | CONNECTED mode only. Identical with R2 bounded eviction. |
-| Health reporter | `platform/health/` | CONNECTED mode only. Identical. |
-| API key registration | `integration/registration/` | Same `POST /v1/agents` endpoint, same `GET /v1/keys/validate`. |
-| Persistent fingerprint | `platform/identity/` | Same file-backed fingerprint (ADR-034). Windows path already defined. |
-| Config watcher | `platform/config/` | Watches settings file for key changes. |
+| TWAMP controller + reflector | `engine/twamp/` | Pure-Java fallback mode (JavaUdpTransport) |
+| DSCP marking | `native/JavaUdpTransport.setTos()` | Uses `DatagramSocket.setTrafficClass()` |
+| SLA evaluation | `engine/sla/` | All 24 profiles from profiles.json |
+| Traceroute | `engine/traceroute/` | ProcessBuilder wrapping OS `tracert`/`traceroute` |
+| ASN resolution | `engine/asn/` | NullAsnResolver (MaxMind MMDB not bundled yet) |
+| Data classes / contracts | `contracts/` | Shared with server agent |
+| RabbitMQ publisher | `platform/rabbitmq/` | Exists but not wired in desktop Main.kt |
+| Health reporter | `platform/health/` | Exists but not wired |
+| API key registration | `platform/registration/` | Exists but not wired |
+| OTLP exporter | `platform/otlp/` | Exists but not wired |
+
+---
 
 ## What the Desktop App Adds (New)
 
-| Module | Purpose |
-|---|---|
-| Compose Desktop UI | Main window, system tray, settings screens |
-| Local history (SQLite) | 24h queryable result storage for ANONYMOUS/REGISTERED users |
-| Reflector discovery | `GET /v1/reflectors` client, nearest-selection logic |
-| Profile manager | User-selected SLA profile (Internet, Gaming, Streaming, VoIP) |
-| Freemium gating | Enforce free-tier limits on profiles and locations |
-| Desktop OAuth | Browser-based sign-in flow with localhost callback or custom URI scheme |
-| Desktop packaging | `.msi` (Windows), `.dmg` (macOS) with Compose Desktop, auto-start |
+| Module | Purpose | Status |
+|---|---|---|
+| Light theme Compose UI | Sidebar window with Dashboard + accordion Settings | Shipped |
+| Per-type TWAMP scheduler | 3 sequential sessions with real traffic signatures | Shipped |
+| Compose tray popup | Right-click menu as borderless Compose window | Shipped |
+| Traffic type manager | 8 types, select 3, per-type DSCP + packet config | Shipped |
+| Local history (SQLite) | 24h result storage, sparkline chart, export | Shipped |
+| Share Results | Zip export of last 20 tests + diagnostics | Shipped |
+| Auto-updater | Silent check + download from slogr.io | Shipped |
+| Server management | User-added servers, active server dropdown | Shipped |
+| Desktop packaging | MSI with Slogr icon, auto-start, jpackage | Shipped |
+| Enterprise/SaaS connectivity | API key entry, RabbitMQ, registration | **v1.2.0** |
+
+---
+
+## Enterprise / SaaS Connectivity — What's Missing (v1.2.0)
+
+### Existing Code (built, not wired)
+
+| Component | Location | What it does |
+|-----------|----------|-------------|
+| `DesktopStateManager` | `desktop/core/state/` | Detects `sk_free_*` / `sk_live_*` keys, sets ANONYMOUS/REGISTERED/CONNECTED state |
+| `EncryptedKeyStore` | `desktop/core/settings/` | AES-256-GCM encrypted API key storage on disk |
+| `RabbitMqPublisher` | `platform/rabbitmq/` | Publishes measurement bundles to RabbitMQ exchange |
+| `HealthReporter` | `platform/health/` | Sends agent health signals every 60 seconds |
+| `ApiKeyRegistrar` | `platform/registration/` | Calls `POST /v1/agents` to register agent |
+| `OtlpExporter` | `platform/otlp/` | Exports metrics via OpenTelemetry (REGISTERED mode) |
+| `SLOGR_API_KEY` env var | `DesktopStateManager` | Reads key from environment (for SCCM/Intune deployment) |
+| MSI `SLOGR_API_KEY` property | `build.gradle.kts` | IT admin can bake key into installer: `msiexec /i Slogr.msi /qn SLOGR_API_KEY=sk_live_...` |
+
+### What Needs Building
+
+| # | Item | Where | Effort | Description |
+|---|------|-------|--------|-------------|
+| 1 | **Account section in Settings** | `desktop/ui/` | 2h | Text field for API key entry, "Connect" button, status display, "Disconnect" button |
+| 2 | **Wire RabbitMQ publisher** | `desktop/Main.kt` | 2h | When state=CONNECTED, start RabbitMQ publisher in scheduler result callback |
+| 3 | **Wire agent registration** | `desktop/Main.kt` | 1h | On state transition to CONNECTED, call `POST /v1/agents` or `/api/claim-agents` |
+| 4 | **Wire health reporter** | `desktop/Main.kt` | 30m | Start HealthReporter when CONNECTED |
+| 5 | **Bootstrap endpoint (Enterprise)** | `slogr-enterprise/code/` | 2h | New `GET /api/bootstrap?key=sk_live_...` returns RabbitMQ host/port/credentials + reflector list |
+| 6 | **Bootstrap endpoint (SaaS)** | `slogr-app/` BFF | 2h | Same as above but for SaaS (`POST /v1/pair` or similar) |
+| 7 | **Pairing code flow (SaaS, optional)** | `slogr-app/` + `desktop/` | 4h | SaaS generates short code (e.g., `SLOGR-7K2M-9X4P`), user enters in desktop, exchanges for API key |
+| 8 | **Auto-populate reflectors on connect** | `desktop/` | 1h | Bootstrap response includes reflector list → auto-add to servers |
+
+### Enterprise Deployment Flow (after v1.2.0)
+
+```
+IT Admin:
+1. msiexec /i Slogr.msi /qn SLOGR_API_KEY=sk_live_abc123 SLOGR_SERVER=https://slogr.enterprise.com
+2. App auto-starts on login
+3. Reads SLOGR_API_KEY from env → state = CONNECTED
+4. Calls SLOGR_SERVER/api/bootstrap → gets RabbitMQ credentials + reflector list
+5. Starts measuring + publishing to Enterprise RabbitMQ
+6. Agent appears in Enterprise Agent Directory
+```
+
+### SaaS User Flow (after v1.2.0)
+
+```
+User:
+1. Signs up at app.slogr.io → gets dashboard
+2. Clicks "Add Desktop Agent" → gets pairing code or API key
+3. Downloads Slogr Desktop from slogr.io/download
+4. Opens app → Settings → Account → enters key or pairing code
+5. App connects → starts publishing to SaaS
+6. User sees laptop connectivity on SaaS dashboard from anywhere
+```
+
+### MVP Shortcut (no pairing code needed)
+
+Skip items #7. Use direct API key entry:
+1. SaaS dashboard shows user's API key (`sk_live_abc123`)
+2. User copies and pastes into desktop app Settings → Account
+3. App connects
+
+This is the Stripe/Datadog pattern. Pairing code is nicer UX but not essential.
+
+---
+
+## Auto-Update Mechanism
+
+The desktop agent checks for updates silently:
+
+1. On startup + every 24 hours, fetches `https://slogr.io/desktop/update.json`
+2. If 404 or error → silently ignores (no update server yet)
+3. If valid JSON with newer version → downloads MSI to `%APPDATA%\Slogr\slogr-update.msi`
+4. On next app launch, detects pending MSI → launches `msiexec /i /qn` → exits to allow upgrade
+5. MSI `upgradeUuid` ensures clean in-place upgrade (settings preserved)
+
+**update.json format:**
+```json
+{
+  "version": "1.2.0",
+  "download_url": "https://slogr.io/desktop/Slogr-1.2.0.msi",
+  "release_notes": "Enterprise connectivity, auto-discovery"
+}
+```
+
+This enables shipping v1.1.0 now (standalone) and auto-upgrading to v1.2.0 (Enterprise/SaaS connected) when ready — no user action needed.
+
+---
 
 ## Vault Structure
 
@@ -203,53 +226,38 @@ It is NOT a separate product. It is the same `slogr-agent` measurement core with
 slogr-desktop-vault/
 ├── README.md                           ← you are here
 ├── architecture/
-│   ├── system-overview.md              ← L1.1 position in the stack, what it reuses
-│   ├── decisions-log-l11.md            ← ADRs 040-049
+│   ├── system-overview.md              ← L1.1 position in the stack
+│   ├── decisions-log-l11.md            ← ADRs 050-064
 │   └── compose-desktop.md             ← UI architecture, threading, lifecycle
 ├── modules/
-│   ├── local-history.md                ← SQLite schema, 24h retention, query API
-│   ├── reflector-discovery.md          ← runtime server config (user-added, no hardcoded)
-│   └── profile-manager.md             ← 8 traffic types, select 3, freemium gating
+│   ├── local-history.md                ← SQLite schema, 24h retention, export
+│   ├── reflector-discovery.md          ← runtime server config (user-added)
+│   └── profile-manager.md             ← 8 traffic types, 3 active, DSCP signatures
 ├── integration/
-│   ├── desktop-registration.md         ← three-state model applied to desktop UX
-│   └── desktop-oauth.md               ← sign-in flow, token exchange, key storage
+│   ├── desktop-registration.md         ← three-state model (not yet wired)
+│   └── desktop-oauth.md               ← sign-in flow (not yet built)
 ├── ui/
-│   ├── main-window.md                  ← sidebar layout, Dashboard + Settings views
-│   └── system-tray.md                  ← minimal tray menu, icon states, AWT PopupMenu
+│   ├── main-window.md                  ← light theme, sidebar, accordion settings
+│   └── system-tray.md                  ← Compose popup, icon states
 ├── packaging/
-│   └── desktop-packaging.md            ← MSI, DMG, jpackage, Conveyor, auto-start
+│   └── desktop-packaging.md            ← MSI, icon, auto-start, auto-update
 └── build-guide/
-    └── build-guide-l11.md              ← build phases for Claude Code
+    └── build-guide-l11.md              ← build phases
 ```
 
-## Reading Order for Claude Code
+---
 
-1. This `README.md` — understand scope, reuse map, and **complete the Repository Setup section first**
-2. `architecture/system-overview.md` — what you're building
-3. `architecture/compose-desktop.md` — UI architecture
-4. `ui/main-window.md` + `ui/system-tray.md` — what the user sees
-5. `modules/reflector-discovery.md` — how targets are discovered
-6. `modules/local-history.md` — local storage
-7. `integration/desktop-registration.md` — state transitions
-8. `build-guide/build-guide-l11.md` — build phases, mock setup, critical rules
-9. Then read L1 R1 vault (`vault/slogr-agent-vault/`) for inherited module specs
-10. Then read L1 R2 vault (`vault/slogr-agent-vault-r2/`) for three-state model and registration
+## Key ADRs
 
-## Relationship to Other Layers
-
-| Layer | Interaction |
-|---|---|
-| L1 R1/R2 | Desktop app reuses engine, contracts, and platform modules. Same binary core. |
-| L2 (Data Platform) | CONNECTED desktop agents publish to same RabbitMQ exchange, same ClickHouse tables. `src_cloud="residential"`, `src_region` from IP geolocation. |
-| L2.5 (Control Plane) | CONNECTED desktop agents register via `POST /v1/agents`, receive Pub/Sub commands, appear in Agent Directory. |
-| L3 (SaaS) | Desktop app opens SaaS in browser for charts/investigation. New endpoint: `GET /v1/reflectors`. OAuth via `slogr.io/keys`. |
-
-## What Is NOT in This Vault
-
-| Item | Status |
-|---|---|
-| Chrome extension | Parked — measurement model unresolved |
-| Android/iOS SDK | Future — depends on KMP infrastructure |
-| Slogr Proxy | R4 — separate binary, separate vault |
-| Home Assistant plugin | Future |
-| Enterprise tenant association | Deferred — design not locked |
+| ADR | Title | Summary |
+|-----|-------|---------|
+| 050 | Compose Desktop for GUI | JetBrains Compose, cross-platform, bundled JRE |
+| 051 | Pure-Java Fallback Mode | No JNI on desktop, DatagramSocket for TWAMP |
+| 055 | Close = Minimize to Tray | App stays running in background |
+| 056 | Auto-Start Default ON | Runs on login via Windows registry |
+| 057 | 24h Local SQLite History | Local storage for all states |
+| 060 | Traffic-Centric Dashboard | 3 traffic type cards, not location cards |
+| 061 | Runtime Server Config | Zero hardcoded servers, all user-added |
+| 062 | Minimal Tray Menu | 5 items max, Compose popup window |
+| 063 | Light Theme | White bg, dark text, green accent |
+| 064 | Compose Popup for Tray Menu | Replaces broken AWT PopupMenu |

@@ -109,3 +109,52 @@ Extends R1 ADRs 001-020 and R2 ADRs 021-040. L1.1 adds ADR-050 through ADR-059.
 **Context:** The original tray menu had 8+ items including profile submenus and settings. Too complex for a right-click menu. The window should be the single place for all interaction.
 **Decision:** Tray menu has exactly 5 items: grade label, timestamp label, Run Test Now, Open Slogr, Quit. When no servers configured: 3 items (no-servers label, Open Slogr, Quit). Everything else happens in the window.
 **Consequence:** Simpler tray, fewer AWT rendering issues, cleaner UX.
+
+## ADR-063: Light Theme
+
+**Status:** Locked
+**Context:** The dark theme made the Slogr logo (dark grey text) invisible. Dark-on-dark text contrast issues persisted across multiple fix attempts.
+**Decision:** Switch to light theme. White backgrounds, dark text (#212121), Slogr green (#4CAF50) accent. Logo, text, and UI elements all clearly visible on light backgrounds.
+**Consequence:** All composable colors updated. Theme is light. Dark theme may be offered as an option in a future release.
+
+## ADR-064: Compose Popup Window for Tray Menu
+
+**Status:** Locked
+**Context:** AWT PopupMenu on Windows produces overlapping text at various DPI scaling levels. Two fix attempts (emoji removal, plain text) both failed.
+**Decision:** Replace AWT PopupMenu with a Compose Desktop borderless Window that appears on tray icon right-click. Dismisses on focus loss. Full control over fonts, spacing, and rendering.
+**Consequence:** Tray icon remains AWT TrayIcon. Menu rendering is pixel-perfect and DPI-independent.
+
+## ADR-065: Per-Traffic-Type TWAMP Sessions with Real DSCP
+
+**Status:** Locked
+**Context:** A single TWAMP session evaluated against 3 SLA thresholds doesn't show how the ISP actually treats different traffic classes. Real VoIP and gaming traffic have different DSCP markings, packet sizes, and intervals.
+**Decision:** Each measurement cycle runs 3 sequential TWAMP sessions — one per active traffic type — with the actual packet signature (DSCP value, packet size, interval, count) of that traffic class. JavaUdpTransport.setTos() calls DatagramSocket.setTrafficClass() to mark packets.
+**Consequence:** Test time ~9 seconds (3 × 3s). Results show real per-class network treatment. If ISP strips DSCP, the user sees that their traffic gets best-effort treatment — which is the accurate result.
+
+## ADR-066: Accordion Settings
+
+**Status:** Locked
+**Context:** Settings as a long scrollable page hid sections below the fold. Users didn't know what options existed without scrolling.
+**Decision:** 4 collapsible accordion sections (Traffic Types, Servers, Application, About) all collapsed by default. Click header to expand. Multiple can be open at once.
+**Consequence:** All settings categories visible at a glance. Each section expands to show its content inline.
+
+## ADR-067: Share Results (Zip Export)
+
+**Status:** Locked
+**Context:** Users need to share connection quality data with network administrators for troubleshooting.
+**Decision:** "Share Results" button in About section. Generates a .zip with: test_results.json (last 20 tests), diagnostics.json, system_info.json, and summary.txt (human-readable). User picks save location via file dialog.
+**Consequence:** Non-technical users can export and email results. Network admins get structured JSON data.
+
+## ADR-068: Silent Auto-Updater
+
+**Status:** Locked
+**Context:** Desktop agents deployed today (v1.1.0) are standalone. Enterprise/SaaS connectivity will ship in v1.2.0. Users shouldn't need to manually download a new version.
+**Decision:** Agent checks `https://slogr.io/desktop/update.json` on startup + every 24h. If newer version found, downloads MSI silently. On next app launch, applies the MSI via `msiexec /qn` and exits. Fails silently if URL returns 404 or any error.
+**Consequence:** When v1.2.0 is ready, just host update.json + MSI. All v1.1.0 agents auto-upgrade. No user action needed. MSI upgradeUuid ensures clean in-place upgrade with settings preserved.
+
+## ADR-069: Active Server Selection
+
+**Status:** Locked
+**Context:** Users can add multiple TWAMP servers, but only one should be tested at a time to avoid confusing results and unnecessary traffic.
+**Decision:** Dropdown in Servers section to select which server is active. Only the active server is measured. Others remain in the list for easy switching. When first server is added, it becomes active automatically.
+**Consequence:** Clear single-server results. Server list serves as a favorites/recent list for future use.

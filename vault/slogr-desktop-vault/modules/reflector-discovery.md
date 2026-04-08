@@ -1,80 +1,44 @@
 ---
 status: locked
-version: 2.0
-depends-on:
-  - architecture/system-overview
+version: 3.0
 ---
 
 # Server Configuration (Runtime)
 
 ## Overview
 
-The desktop app ships with **zero built-in TWAMP servers**. All servers are added by the user at runtime via the Settings view inside the main window: Settings → Servers → "Add Server."
+The desktop app ships with zero built-in TWAMP servers. All servers are user-added at runtime via Settings > Servers > "Add Server."
 
-Servers persist in `settings.json` and survive restarts. When at least one server is configured, the app begins measuring on the next cycle.
+## Active Server
 
-## Future: Reflector Discovery API
+Only ONE server is tested at a time. Users add multiple servers to a list and select which one is active via a dropdown. Measurement runs only against the active server.
 
-When Slogr deploys public TWAMP reflectors, a future update will add auto-discovery via:
-
-```
-GET https://api.slogr.io/v1/reflectors
-```
-
-This endpoint does not exist yet. Until then, all servers are user-configured.
+When the first server is added, it becomes active automatically.
 
 ## Adding a Server
 
-The user clicks "Add Server" in Settings → Servers and fills in:
+"Add Server" button shows inline form:
+- IP address or hostname (required)
+- Port (default 862)
+- Label (optional, e.g., "GCP us-central1" or "My Office Router")
 
-| Field | Required | Default | Example |
-|-------|----------|---------|---------|
-| IP address or hostname | Yes | — | `34.123.45.67` or `reflector.example.com` |
-| Port | No | `862` | `862` |
-| Label | No | `{host}:{port}` | `GCP us-central1` or `My Office Router` |
-
-Servers are stored in `settings.json`:
-
-```json
-{
-  "servers": [
-    {
-      "id": "auto-generated-uuid",
-      "host": "34.123.45.67",
-      "port": 862,
-      "label": "GCP us-central1"
-    },
-    {
-      "id": "auto-generated-uuid",
-      "host": "10.0.1.5",
-      "port": 862,
-      "label": "My Office Router"
-    }
-  ]
-}
-```
-
-## Removing a Server
-
-Each server in the list has a remove button (x). Clicking it removes the server from `settings.json` and stops measurement against it on the next cycle.
-
-## Empty State
-
-On first launch with no servers:
-- Tray icon: **black** (cannot test)
-- Dashboard: shows "No servers configured" with a "Go to Settings" button
-- No measurement runs until at least one server is added
+Servers persist in `settings.json` → `servers[]` array.
 
 ## Server Status
 
-Each server in the Settings list shows a status dot:
-- **Green:** Last measurement succeeded
-- **Red:** Last measurement failed (unreachable, connection refused, timeout)
-- **Grey:** Never tested yet (just added)
+Each server in the list shows a status dot:
+- **Green:** Last measurement to this server succeeded
+- **Red:** Last measurement failed
+- **Grey:** Never tested (just added or not active)
 
-## Files
+## Future: Auto-Discovery
 
-| File | Action |
-|------|--------|
-| `desktop-core/settings/DesktopSettings.kt` | UPDATED — `servers` list replaces `selectedReflectorIds` + `customTargets` |
-| `desktop-core/settings/DesktopSettingsStore.kt` | UPDATED — reads/writes server list |
+When Slogr deploys public TWAMP reflectors, `GET /v1/reflectors` will auto-populate the server list. When Enterprise/SaaS connectivity is wired (v1.2.0), the bootstrap endpoint will return the reflector list.
+
+## Future: Enterprise Deployment
+
+IT admin pushes servers via MSI property or env var:
+```
+msiexec /i Slogr.msi /qn SLOGR_API_KEY=sk_live_... SLOGR_SERVER=https://slogr.enterprise.com
+```
+The bootstrap endpoint returns the server list — no manual server entry needed.

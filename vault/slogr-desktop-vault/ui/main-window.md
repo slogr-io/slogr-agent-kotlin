@@ -1,8 +1,6 @@
 ---
 status: locked
-version: 2.0
-depends-on:
-  - architecture/compose-desktop
+version: 3.0
 ---
 
 # Main Window
@@ -12,129 +10,51 @@ depends-on:
 | Property | Value |
 |---|---|
 | Title | "Slogr" |
-| Default size | 600 x 500 px |
+| Icon | Slogr "S" favicon (slogr.ico) |
+| Default size | 620 x 520 px |
 | Minimum size | 500 x 400 px |
 | Resizable | Yes |
-| Close behavior | Minimize to tray (ADR-055) |
+| Close behavior | Minimize to tray |
 | Initial state | Hidden (tray-only). User opens via tray. |
+| Theme | Light (white background, dark text, green accent) |
 
 ## Layout
 
-The window has a **left sidebar** with two items and a **content area** on the right.
+Left sidebar (140px) + content area. Two views: Dashboard (default) and Settings.
 
 ### Sidebar
 
-- Width: ~140px
-- Items: "Dashboard" (default, selected on open) and "Settings"
-- Dark background matching theme surface color
-- Selected item highlighted with primary color
-- Slogr logo at the top of the sidebar or in the header bar
+- Slogr text logo at top (slogr_FINAL_516x268.png)
+- "Dashboard" and "Settings" navigation items
+- Selected item: dark green text on light green background
+- "Quit" at bottom
+- Light grey background (#F5F5F5)
 
-### Dashboard View (default)
+### Dashboard View
 
-```
-+------------------------------------------+
-|  Slogr                   [SLOGR LOGO]    |
-+---------------+--------------------------+
-|               |                          |
-|  Dashboard    |     Gaming     VoIP      |
-|               |      GREEN     GREEN     |
-|  Settings     |    12ms 0.0% 18ms 0.0%  |
-|               |                          |
-|               |       Streaming          |
-|               |         RED              |
-|               |      18ms 2.1%          |
-|               |                          |
-|               |  Last test: 2 min ago    |
-|               |  [Run Test Now]          |
-|               |                          |
-|               |  Recent History (24h)    |
-|               |  [sparkline chart]       |
-|               |  12:00  16:00  20:00     |
-|               |                          |
-+---------------+--------------------------+
-```
+Shows 3 traffic type cards in a row. Each card:
+- Traffic type icon (emoji)
+- Type name
+- Grade dot (green/yellow/red/grey)
+- RTT in ms
+- Loss percentage
+- Grey dot + "Testing..." when measurement in progress
 
-Shows 3 traffic type cards with per-profile grade (green/yellow/red), RTT, and loss.
-Below: last test time, Run Test Now button, 24h sparkline chart.
+Cards start grey when cycle begins, light up progressively as each per-type TWAMP session completes (~3 seconds between each).
 
-### Dashboard — Empty State (no servers configured)
+Below cards: "Last test: X min ago" + "Run Test Now" button.
+Below that: "Recent History (24h)" sparkline chart.
 
-```
-+------------------------------------------+
-|  Slogr                   [SLOGR LOGO]    |
-+---------------+--------------------------+
-|               |                          |
-|  Dashboard    |                          |
-|               |   No servers configured  |
-|  Settings     |                          |
-|               |   Add a TWAMP server to  |
-|               |   start monitoring your  |
-|               |   connection quality.    |
-|               |                          |
-|               |   [Go to Settings]       |
-|               |                          |
-+---------------+--------------------------+
-```
+Empty state (no servers): "No servers configured" + "Go to Settings" button.
 
-Clicking "Go to Settings" switches to the Settings view.
+### Settings View (Accordion)
 
-### Settings View
+4 collapsible sections, all collapsed by default:
 
-```
-+------------------------------------------+
-|  Slogr                   [SLOGR LOGO]    |
-+---------------+--------------------------+
-|               |                          |
-|  Dashboard    |  Traffic Types           |
-|               |  Select up to 3:         |
-|  Settings     |  [ ] Gaming              |
-|               |  [ ] VoIP / Video Calls  |
-|               |  [ ] Streaming           |
-|               |  [ ] General Internet    |
-|               |  [ ] Cloud / SaaS        |
-|               |  [ ] Remote Desktop      |
-|               |  [ ] IoT / Telemetry     |
-|               |  [ ] Financial Trading   |
-|               |                          |
-|               |  Test Interval: [5 min]  |
-|               |  [ ] Include traceroute  |
-|               |  ------------------------|
-|               |  Servers                 |
-|               |  (no servers yet)        |
-|               |  [+ Add Server]          |
-|               |  ------------------------|
-|               |  Application             |
-|               |  [ ] Start on login      |
-|               |  [ ] Show notifications  |
-|               |  Data: %APPDATA%\Slogr   |
-|               |  ------------------------|
-|               |  About                   |
-|               |  Slogr Desktop v1.1.0    |
-|               |  [Run Diagnostics]       |
-+---------------+--------------------------+
-```
+**Traffic Types** — selected 3 types shown, "Show all types (N more)" expander, test interval dropdown, traceroute toggle with disclaimer.
 
-Single scrollable view. NOT tabs. Sections separated by dividers.
+**Servers** — active server dropdown, server list with status dots and remove buttons, "Add Server" form (IP, port, label).
 
-## Key Design Decisions
+**Application** — start on login, show notifications checkboxes, data directory path.
 
-- No separate settings window. Everything inside the main window.
-- Profile dropdown selector REMOVED. The 3 traffic type cards on Dashboard replace it.
-- Location cards REMOVED from Dashboard. Server management is in Settings → Servers.
-- All servers are user-added at runtime. No hardcoded servers.
-- The "Add Server" form is inline (IP, port, optional label).
-- Each server has a remove button. Slogr auto-discovery servers (future) will not be removable.
-
-## Files
-
-| File | Action |
-|------|--------|
-| `desktop/ui/window/MainWindow.kt` | REWRITE — sidebar + 2 views |
-| `desktop/ui/window/DashboardView.kt` | NEW — traffic cards + history |
-| `desktop/ui/window/SettingsView.kt` | NEW — single scrollable settings |
-| `desktop/ui/window/TrafficTypeCard.kt` | NEW — per-profile grade card |
-| `desktop/ui/window/HistoryChart.kt` | KEEP — sparkline chart |
-| `desktop/ui/window/GradeBadge.kt` | REMOVED — replaced by traffic cards |
-| `desktop/ui/window/LocationCard.kt` | REMOVED |
-| `desktop/ui/settings/SettingsWindow.kt` | REMOVED — settings are inline now |
+**About** — version, slogr.io link, "Run Diagnostics" button, "Share Results" button (exports zip of last 20 tests + diagnostics + system info).

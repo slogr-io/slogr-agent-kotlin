@@ -1,56 +1,44 @@
 ---
 status: locked
-version: 2.0
-depends-on:
-  - architecture/system-overview
+version: 3.0
 ---
 
 # Profile Manager (Traffic Types)
 
 ## Overview
 
-The desktop user selects **exactly 3 traffic types** to monitor. Each measurement cycle evaluates the same TWAMP result against all 3 selected SLA profiles simultaneously. The dashboard shows 3 icons with per-profile grades.
+The desktop agent tests 3 user-selected traffic types simultaneously. Each type gets its own TWAMP session with a real traffic signature (DSCP, packet size, interval, count). Results show how the ISP treats each traffic class independently.
 
-## Available Traffic Types (8 total)
+## 8 Traffic Types
 
-| Name | Display Name | Free Tier | GREEN Thresholds |
-|---|---|---|---|
-| `internet` | General Internet | Yes | RTT < 100ms, Jitter < 30ms, Loss < 1% |
-| `gaming` | Gaming | Yes | RTT < 50ms, Jitter < 15ms, Loss < 0.5% |
-| `voip` | VoIP / Video Calls | Yes | RTT < 150ms, Jitter < 20ms, Loss < 1% |
-| `streaming` | Streaming | Yes | RTT < 200ms, Jitter < 50ms, Loss < 2% |
-| `cloud` | Cloud / SaaS | Paid | RTT < 100ms, Jitter < 25ms, Loss < 0.5% |
-| `rdp` | Remote Desktop | Paid | RTT < 80ms, Jitter < 20ms, Loss < 0.5% |
-| `iot` | IoT / Telemetry | Paid | RTT < 500ms, Jitter < 100ms, Loss < 5% |
-| `trading` | Financial Trading | Paid | RTT < 10ms, Jitter < 2ms, Loss < 0.01% |
+| Name | Display | Packets | Interval | Size | DSCP | GREEN Thresholds |
+|------|---------|---------|----------|------|------|-----------------|
+| `internet` | General Internet | 50 | 50ms | 1500B | 0 (BE) | RTT<100, Jitter<30, Loss<1% |
+| `gaming` | Gaming | 33 | 30ms | 120B | 34 (AF41) | RTT<50, Jitter<15, Loss<0.5% |
+| `voip` | VoIP / Video Calls | 50 | 20ms | 200B | 46 (EF) | RTT<150, Jitter<20, Loss<1% |
+| `streaming` | Streaming | 20 | 50ms | 1200B | 36 (AF42) | RTT<200, Jitter<50, Loss<2% |
+| `cloud` | Cloud / SaaS | 30 | 50ms | 1500B | 32 (CS4) | RTT<100, Jitter<25, Loss<0.5% |
+| `rdp` | Remote Desktop | 33 | 30ms | 500B | 26 (AF31) | RTT<80, Jitter<20, Loss<0.5% |
+| `iot` | IoT / Telemetry | 10 | 100ms | 100B | 0 (BE) | RTT<500, Jitter<100, Loss<5% |
+| `trading` | Financial Trading | 50 | 10ms | 64B | 46 (EF) | RTT<10, Jitter<2, Loss<0.01% |
 
 ## Selection Rules
 
-- User selects exactly 3 traffic types
-- Default selection: Gaming, VoIP, Streaming
-- When user checks a 4th, show "Uncheck one first" — do not auto-uncheck
-- Selection stored in `settings.json` as `activeProfiles: ["gaming", "voip", "streaming"]`
+- User selects exactly 3 types (default: Gaming, VoIP, Streaming)
+- All 8 types selectable by all users (no freemium gating on types)
+- Settings shows selected 3 by default, "Show all types (N more)" to expand
+- Test interval dropdown and traceroute toggle below type selection
 
-## Freemium Gating
+## DSCP Marking
 
-- **Free users (ANONYMOUS/REGISTERED):** 4 types available (Internet, Gaming, VoIP, Streaming). Paid types locked with upgrade prompt.
-- **Paid users (CONNECTED):** All 8 types available.
+`JavaUdpTransport.setTos()` calls `DatagramSocket.setTrafficClass()` to mark each packet with the correct DSCP value. Whether the OS/ISP honors it depends on the platform, but this shows the true result — if the ISP strips DSCP, the user sees that all traffic gets best-effort treatment.
 
-## Profile Interaction with Measurement
+## Measurement Flow
 
-The profile does NOT change what gets measured. One TWAMP session produces RTT/jitter/loss numbers. Those same numbers are evaluated against all 3 active profiles to produce 3 separate grades:
+1. Scheduler starts cycle → all 3 cards go grey ("Testing...")
+2. First type session runs (~3s) → that card turns green/yellow/red
+3. Second type session runs (~3s) → that card updates
+4. Third type session runs (~3s) → that card updates
+5. Overall tray icon grade = worst of the 3
 
-```kotlin
-val result = engine.measure(target, profile = baseProfile)
-val grade1 = SlaEvaluator.evaluate(result, profileForTrafficType1)
-val grade2 = SlaEvaluator.evaluate(result, profileForTrafficType2)
-val grade3 = SlaEvaluator.evaluate(result, profileForTrafficType3)
-overallGrade = worstOf(grade1, grade2, grade3)
-```
-
-## Files
-
-| File | Action |
-|------|--------|
-| `desktop/core/profiles/ProfileManager.kt` | REWRITE — 8 types, 3 active, enforce-3 logic |
-| `desktop/core/profiles/DesktopProfile.kt` | NEW — traffic type metadata + SLA thresholds |
+Each session uses `engine.measure()` with the type's `SlaProfile` (containing nPackets, intervalMs, packetSize, dscp).
