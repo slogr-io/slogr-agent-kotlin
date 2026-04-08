@@ -1,26 +1,30 @@
 package io.slogr.desktop.core.update
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
-import java.io.File
+import java.awt.Desktop
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.nio.file.Path
 import java.time.Duration
 
 /**
- * Silent auto-updater. Checks slogr.io/desktop/update.json on startup and every 24h.
- * If a newer version is found, downloads the MSI to the data directory.
- * On next app launch, if a pending MSI exists, it launches the installer and exits.
+ * Update checker. Checks slogr.io/desktop/update.json on startup and every 24h.
+ * If a newer version is found, sets [updateAvailable] to true with the download URL.
+ * The user must click to open the browser and download manually.
  *
- * Fails silently on any error — network down, 404, bad JSON, download failure.
+ * SECURITY: Never downloads or executes anything automatically. No MSI is written
+ * to disk. The agent only checks a JSON endpoint and shows a notification.
+ * The user downloads from slogr.io via their browser (HTTPS, verified domain).
  */
-class AutoUpdater(private val dataDir: Path) {
+class AutoUpdater {
 
     private val log = LoggerFactory.getLogger(AutoUpdater::class.java)
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -30,96 +34,61 @@ class AutoUpdater(private val dataDir: Path) {
     companion object {
         const val CURRENT_VERSION = "1.1.0"
         const val UPDATE_URL = "https://slogr.io/desktop/update.json"
-        private const val CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000 // 24 hours
-        private const val PENDING_MSI = "slogr-update.msi"
+        private const val CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000
     }
 
     @Serializable
     data class UpdateInfo(
         val version: String,
         @SerialName("download_url") val downloadUrl: String,
-        @SerialName("release_notes") val releaseNotes: String = "",
     )
 
-    /**
-     * Call on app startup. If a pending MSI was downloaded in a previous session,
-     * launch it and return true (caller should exit). Otherwise returns false.
-     */
-    fun applyPendingUpdate(): Boolean {
-        val msi = dataDir.resolve(PENDING_MSI).toFile()
-        if (msi.exists() && msi.length() > 100_000) { // sanity check: >100KB
-            try {
-                log.info("Applying pending update: {}", msi.absolutePath)
-                ProcessBuilder("msiexec", "/i", msi.absolutePath, "/qn").start()
-                return true // caller should exitApplication()
-            } catch (e: Exception) {
-                log.warn("Failed to launch update installer: {}", e.message)
-                msi.delete()
-            }
-        }
-        return false
-    }
+    private val _updateAvailable = MutableStateFlow<UpdateInfo?>(null)
+    val updateAvailable: StateFlow<UpdateInfo?> = _updateAvailable.asStateFlow()
 
-    /** Start background check loop. */
     fun start() {
         scope.launch {
-            // First check after 60 seconds (let the app settle)
-            delay(60_000)
-            checkAndDownload()
-            // Then every 24 hours
+            delay(60_000) // wait 60s after startup
+            check()
             while (isActive) {
                 delay(CHECK_INTERVAL_MS)
-                checkAndDownload()
+                check()
             }
         }
     }
 
-    fun stop() {
-        scope.cancel()
-    }
+    fun stop() { scope.cancel() }
 
-    private suspend fun checkAndDownload() {
+    /** Open the download URL in the system browser. */
+    fun openDownloadPage() {
+        val info = _updateAvailable.value ?: return
         try {
-            val info = fetchUpdateInfo() ?: return
-            if (!isNewer(info.version, CURRENT_VERSION)) return
-            log.info("Update available: {} -> {}", CURRENT_VERSION, info.version)
-            downloadMsi(info.downloadUrl)
-        } catch (_: Exception) {
-            // Silent fail — network issues, bad URL, anything
+            Desktop.getDesktop().browse(URI(info.downloadUrl))
+        } catch (e: Exception) {
+            log.warn("Failed to open browser: {}", e.message)
         }
     }
 
-    private fun fetchUpdateInfo(): UpdateInfo? {
-        return try {
+    fun dismiss() { _updateAvailable.value = null }
+
+    private fun check() {
+        try {
             val request = HttpRequest.newBuilder()
                 .uri(URI.create(UPDATE_URL))
                 .timeout(Duration.ofSeconds(10))
-                .GET()
-                .build()
+                .GET().build()
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() != 200) return null
-            json.decodeFromString<UpdateInfo>(response.body())
+            if (response.statusCode() != 200) return
+            val info = json.decodeFromString<UpdateInfo>(response.body())
+            if (isNewer(info.version, CURRENT_VERSION)) {
+                log.info("Update available: {} -> {}", CURRENT_VERSION, info.version)
+                _updateAvailable.value = info
+            }
         } catch (_: Exception) {
-            null
+            // Silent fail — no update server, network down, bad JSON
         }
     }
 
-    private fun downloadMsi(url: String) {
-        try {
-            val request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(300)) // 5 min for large MSI
-                .GET()
-                .build()
-            val dest = dataDir.resolve(PENDING_MSI)
-            client.send(request, HttpResponse.BodyHandlers.ofFile(dest))
-            log.info("Update downloaded to {}", dest)
-        } catch (e: Exception) {
-            log.debug("Update download failed: {}", e.message)
-        }
-    }
-
-    /** Simple semver comparison: "1.2.0" > "1.1.0" */
     internal fun isNewer(remote: String, local: String): Boolean {
         val r = remote.split(".").map { it.toIntOrNull() ?: 0 }
         val l = local.split(".").map { it.toIntOrNull() ?: 0 }

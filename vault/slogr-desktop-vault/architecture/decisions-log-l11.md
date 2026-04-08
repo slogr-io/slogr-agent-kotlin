@@ -145,12 +145,24 @@ Extends R1 ADRs 001-020 and R2 ADRs 021-040. L1.1 adds ADR-050 through ADR-059.
 **Decision:** "Share Results" button in About section. Generates a .zip with: test_results.json (last 20 tests), diagnostics.json, system_info.json, and summary.txt (human-readable). User picks save location via file dialog.
 **Consequence:** Non-technical users can export and email results. Network admins get structured JSON data.
 
-## ADR-068: Silent Auto-Updater
+## ADR-068: Update Notification (No Silent Install)
 
 **Status:** Locked
-**Context:** Desktop agents deployed today (v1.1.0) are standalone. Enterprise/SaaS connectivity will ship in v1.2.0. Users shouldn't need to manually download a new version.
-**Decision:** Agent checks `https://slogr.io/desktop/update.json` on startup + every 24h. If newer version found, downloads MSI silently. On next app launch, applies the MSI via `msiexec /qn` and exits. Fails silently if URL returns 404 or any error.
-**Consequence:** When v1.2.0 is ready, just host update.json + MSI. All v1.1.0 agents auto-upgrade. No user action needed. MSI upgradeUuid ensures clean in-place upgrade with settings preserved.
+**Context:** Desktop agents need to know when a new version is available. However, silent auto-download and auto-install is a supply chain attack vector — if the update server (slogr.io) is compromised, attackers could push malicious code to every desktop agent.
+**Decision:** Agent checks `https://slogr.io/desktop/update.json` on startup + every 24h. If newer version found, shows a persistent green banner at the top of the window: "A new version of Slogr is available that improves performance. Click here to download." The banner cannot be dismissed (stays until user updates or server returns no update). Clicking opens the download URL in the system browser. The agent NEVER downloads or executes any file automatically.
+**Consequence:** Users must manually download and install updates via their browser (HTTPS, verified domain). No automatic code execution. The banner is a gentle nudge, not a forced update.
+
+**Update check URL:** `https://slogr.io/desktop/update.json`
+
+**update.json format:**
+```json
+{
+  "version": "1.2.0",
+  "download_url": "https://slogr.io/desktop/Slogr-1.2.0.msi"
+}
+```
+
+**If the URL returns 404 or any error:** silently ignored, no banner shown.
 
 ## ADR-069: Active Server Selection
 

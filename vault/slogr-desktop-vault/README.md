@@ -197,26 +197,29 @@ This is the Stripe/Datadog pattern. Pairing code is nicer UX but not essential.
 
 ---
 
-## Auto-Update Mechanism
+## Update Notification Mechanism
 
-The desktop agent checks for updates silently:
+The desktop agent checks for updates but **never downloads or installs anything automatically** (supply chain security — see ADR-068).
 
 1. On startup + every 24 hours, fetches `https://slogr.io/desktop/update.json`
-2. If 404 or error → silently ignores (no update server yet)
-3. If valid JSON with newer version → downloads MSI to `%APPDATA%\Slogr\slogr-update.msi`
-4. On next app launch, detects pending MSI → launches `msiexec /i /qn` → exits to allow upgrade
-5. MSI `upgradeUuid` ensures clean in-place upgrade (settings preserved)
+2. If 404 or error → silently ignored, no banner shown
+3. If valid JSON with newer version → shows **persistent green banner** at top of window:
+   "A new version of Slogr is available that improves performance. Click here to download."
+4. Banner cannot be dismissed — stays until user updates or update is no longer available
+5. Clicking the banner opens the download URL in the system browser
+6. User downloads and installs manually (standard MSI upgrade, settings preserved)
+
+**Update check URL:** `https://slogr.io/desktop/update.json`
 
 **update.json format:**
 ```json
 {
   "version": "1.2.0",
-  "download_url": "https://slogr.io/desktop/Slogr-1.2.0.msi",
-  "release_notes": "Enterprise connectivity, auto-discovery"
+  "download_url": "https://slogr.io/desktop/Slogr-1.2.0.msi"
 }
 ```
 
-This enables shipping v1.1.0 now (standalone) and auto-upgrading to v1.2.0 (Enterprise/SaaS connected) when ready — no user action needed.
+**Security:** The agent never writes executables to disk. No automatic code execution. The user's browser handles the download over HTTPS from the verified slogr.io domain.
 
 ---
 

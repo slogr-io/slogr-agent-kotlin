@@ -62,17 +62,11 @@ fun main() {
     )
     val scheduler = DesktopMeasurementScheduler(engine, viewModel, profileManager, historyStore)
 
-    val autoUpdater = io.slogr.desktop.core.update.AutoUpdater(dataDir)
+    val autoUpdater = io.slogr.desktop.core.update.AutoUpdater()
 
     settingsStore.load()
     stateManager.initialize()
     profileManager.initialize(settingsStore.settings.value)
-
-    // Apply pending update from previous session (downloaded MSI)
-    if (autoUpdater.applyPendingUpdate()) {
-        // Installer launched — exit so it can replace files
-        return
-    }
 
     application {
         var isWindowVisible by remember { mutableStateOf(false) }
@@ -90,6 +84,8 @@ fun main() {
         val hasServers = settings.servers.isNotEmpty()
         val activeServer = settings.servers.find { it.id == settings.activeServerId } ?: settings.servers.firstOrNull()
         val activeServerList = listOfNotNull(activeServer)
+
+        val updateInfo by autoUpdater.updateAvailable.collectAsState()
 
         // Compose tray popup
         var showTrayPopup by remember { mutableStateOf(false) }
@@ -219,7 +215,29 @@ fun main() {
             ) {
                 window.minimumSize = java.awt.Dimension(500, 400)
                 SlogrTheme {
-                    Row(Modifier.fillMaxSize().background(SlogrBackground)) {
+                    Column(Modifier.fillMaxSize()) {
+                        // Update banner — persistent, not dismissable
+                        if (updateInfo != null) {
+                            Surface(
+                                color = SlogrGreen,
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().clickable { autoUpdater.openDownloadPage() }
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        "A new version of Slogr is available that improves performance. Click here to download.",
+                                        color = androidx.compose.ui.graphics.Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    )
+                                }
+                            }
+                        }
+                    Row(Modifier.fillMaxSize().weight(1f).background(SlogrBackground)) {
                         Column(Modifier.width(140.dp).fillMaxHeight().background(SlogrSidebarBg).padding(vertical = 12.dp)) {
                             Image(painter = painterResource("slogr-logo.png"), contentDescription = "Slogr",
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp).width(100.dp))
@@ -251,12 +269,13 @@ fun main() {
                                     historyStore = historyStore)
                             }
                         }
-                    }
-                }
-            }
-        }
-    }
-}
+                    }  // Row
+                    }  // Column
+                }  // SlogrTheme
+            }  // Window
+        }  // if isWindowVisible
+    }  // application
+}  // main
 
 @Composable
 private fun TrayMenuItem(text: String, enabled: Boolean = true, onClick: () -> Unit = {}) {
