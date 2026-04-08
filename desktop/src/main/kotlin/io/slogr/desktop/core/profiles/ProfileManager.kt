@@ -105,11 +105,8 @@ class ProfileManager(
     /** Evaluate a TWAMP result against a single traffic type. */
     fun evaluate(result: MeasurementResult, tt: TrafficType): TrafficGrade {
         val grade = SlaEvaluator.evaluate(result, toSlaProfile(tt))
-        val fwd = result.fwdAvgRttMs
-        val rev = result.revAvgRttMs ?: 0f
-        val totalRtt = if (rev > 0f) fwd + rev else fwd  // corrected fwd + rev = true RTT
-        return TrafficGrade(tt, grade, avgRttMs = totalRtt, result.fwdLossPct,
-            fwdRttMs = fwd, revRttMs = rev)
+        return TrafficGrade(tt, grade, avgRttMs = result.fwdAvgRttMs, result.fwdLossPct,
+            fwdRttMs = result.fwdAvgRttMs, revRttMs = result.revAvgRttMs ?: 0f)
     }
 
     fun worstGrade(grades: List<TrafficGrade>): SlaGrade? {
