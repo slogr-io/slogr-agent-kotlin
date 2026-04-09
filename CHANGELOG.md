@@ -17,6 +17,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   profile thresholds instead of `fwd_avg_rtt_ms` (one-way delay). Jitter evaluated as
   `max(fwd, rev)` instead of forward-only.
 
+### Migration Note (L2 / ClickHouse)
+After `ALTER TABLE twamp_raw ADD COLUMN rtt_avg_ms Float32 DEFAULT 0`, historical rows
+will have `rtt_avg_ms = 0`. Any query or view that reads RTT (e.g. `measurements_unified`,
+rollup tables, dashboard queries) must use:
+```sql
+COALESCE(NULLIF(rtt_avg_ms, 0), fwd_avg_rtt_ms) AS primary_rtt_ms
+```
+This returns ground-truth RTT for new data and falls back to `fwd_avg_rtt_ms` for old data.
+Same pattern applies to `rtt_min_ms` and `rtt_max_ms`.
+
 ### Fixed
 - Stale comment in DaemonCommand.kt line 129 (FIX-3 from v1.0.4 backlog)
 
