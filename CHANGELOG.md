@@ -5,7 +5,7 @@ All notable changes to the Slogr Agent (Kotlin/JVM) are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.5] - 2026-04-09
 
 ### Changed
 - **Ground-truth RTT** — new `rtt_min_ms`, `rtt_avg_ms`, `rtt_max_ms` fields computed
@@ -18,14 +18,15 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `max(fwd, rev)` instead of forward-only.
 
 ### Migration Note (L2 / ClickHouse)
-After `ALTER TABLE twamp_raw ADD COLUMN rtt_avg_ms Float32 DEFAULT 0`, historical rows
-will have `rtt_avg_ms = 0`. Any query or view that reads RTT (e.g. `measurements_unified`,
-rollup tables, dashboard queries) must use:
+The three new columns must be added as `Nullable(Float32)` — NOT `Float32 DEFAULT 0`.
+Nullable ensures NULL = "agent didn't send this field" (v1.0.4) while 0.0 = "agent
+measured sub-millisecond RTT" (v1.0.5+). Any query or view that reads RTT must use:
 ```sql
-COALESCE(NULLIF(rtt_avg_ms, 0), fwd_avg_rtt_ms) AS primary_rtt_ms
+COALESCE(rtt_avg_ms, fwd_avg_rtt_ms) AS primary_rtt_ms
 ```
-This returns ground-truth RTT for new data and falls back to `fwd_avg_rtt_ms` for old data.
-Same pattern applies to `rtt_min_ms` and `rtt_max_ms`.
+No NULLIF needed — NULL rows naturally fall back via COALESCE. This applies to
+`measurements_unified`, rollup tables, and all dashboard/enterprise queries.
+Same pattern for `rtt_min_ms` and `rtt_max_ms`.
 
 ### Fixed
 - Stale comment in DaemonCommand.kt line 129 (FIX-3 from v1.0.4 backlog)
