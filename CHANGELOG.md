@@ -7,6 +7,16 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- **Ground-truth RTT** — new `rtt_min_ms`, `rtt_avg_ms`, `rtt_max_ms` fields computed
+  as `(T4-T1) - (T3-T2)` using same-clock timestamp pairs. Always clock-independent.
+- **Directional split anchored to RTT** — `fwd_avg_rtt_ms` and `rev_avg_rtt_ms` now
+  represent the ratio-scaled portion of the ground-truth RTT. Guaranteed: `fwd + rev == rtt`.
+  UNSYNCABLE mode sets fwd/rev to 0 (unavailable) instead of fabricating RTT/2.
+- **SLA grading uses full RTT** — evaluator now compares `rtt_avg_ms` (round-trip) against
+  profile thresholds instead of `fwd_avg_rtt_ms` (one-way delay). Jitter evaluated as
+  `max(fwd, rev)` instead of forward-only.
+
 ### Fixed
 - Stale comment in DaemonCommand.kt line 129 (FIX-3 from v1.0.4 backlog)
 

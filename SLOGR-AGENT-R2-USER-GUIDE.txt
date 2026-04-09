@@ -270,16 +270,19 @@ Run a one-shot measurement against a target and print results.
     profile               Profile name used
     grade                 GREEN, YELLOW, or RED
     twamp {}
+      rtt_min_ms          Float — ground-truth RTT: (T4-T1)-(T3-T2)
+      rtt_avg_ms          Float — ground-truth RTT (used for SLA grading)
+      rtt_max_ms          Float — ground-truth RTT
       packets_sent        Integer
       packets_recv        Integer
       fwd_loss_pct        Float (%)
-      fwd_min_rtt_ms      Float
+      fwd_min_rtt_ms      Float — directional split (ratio of RTT)
       fwd_avg_rtt_ms      Float
       fwd_max_rtt_ms      Float
       fwd_jitter_ms       Float
-      rev_min_rtt_ms      Float (optional — reflector timestamps)
-      rev_avg_rtt_ms      Float (optional)
-      rev_max_rtt_ms      Float (optional)
+      rev_min_rtt_ms      Float (0 if clock unsyncable)
+      rev_avg_rtt_ms      Float (0 if clock unsyncable)
+      rev_max_rtt_ms      Float (0 if clock unsyncable)
       rev_jitter_ms       Float (optional)
       session_id          UUID
       path_id             UUID
@@ -453,10 +456,11 @@ ssm              20       50ms      150ms      500ms    0.1%        0.5%
 player           20       50ms      100ms      200ms    0.1%        0.5%
 data-recovery    20       50ms      150ms      300ms    0.1%        0.5%
 
-Grade logic:
-  GREEN   avg RTT <= rttGreenMs  AND  loss <= lossGreenPct
-  YELLOW  avg RTT <= rttRedMs    AND  loss <= lossRedPct   (and not GREEN)
-  RED     avg RTT > rttRedMs     OR   loss > lossRedPct
+Grade logic (evaluated against ground-truth RTT = (T4-T1)-(T3-T2), not one-way):
+  GREEN   rtt_avg_ms <= rttGreenMs  AND  jitter <= jitterGreenMs  AND  loss <= lossGreenPct
+  YELLOW  rtt_avg_ms <= rttRedMs    AND  jitter <= jitterRedMs    AND  loss <= lossRedPct  (and not GREEN)
+  RED     rtt_avg_ms > rttRedMs     OR   jitter > jitterRedMs     OR   loss > lossRedPct
+  Jitter = max(fwd_jitter, rev_jitter)
 
 
 ================================================================================
@@ -467,12 +471,15 @@ All metric names are locked — changing them breaks the Slogr Proxy ingestion.
 
 Metric name                           Type   Unit   Description
 ------------------------------------  -----  -----  ----------------------------
-slogr.network.rtt.forward.min         gauge  ms     Forward RTT minimum
-slogr.network.rtt.forward.avg         gauge  ms     Forward RTT average
-slogr.network.rtt.forward.max         gauge  ms     Forward RTT maximum
-slogr.network.rtt.reverse.min         gauge  ms     Reverse RTT minimum
-slogr.network.rtt.reverse.avg         gauge  ms     Reverse RTT average
-slogr.network.rtt.reverse.max         gauge  ms     Reverse RTT maximum
+slogr.network.rtt.min                 gauge  ms     Ground-truth RTT min: (T4-T1)-(T3-T2)
+slogr.network.rtt.avg                 gauge  ms     Ground-truth RTT avg (used for SLA)
+slogr.network.rtt.max                 gauge  ms     Ground-truth RTT max
+slogr.network.rtt.forward.min         gauge  ms     Forward delay (ratio-scaled from RTT)
+slogr.network.rtt.forward.avg         gauge  ms     Forward delay average
+slogr.network.rtt.forward.max         gauge  ms     Forward delay maximum
+slogr.network.rtt.reverse.min         gauge  ms     Reverse delay (0 if unsyncable)
+slogr.network.rtt.reverse.avg         gauge  ms     Reverse delay average
+slogr.network.rtt.reverse.max         gauge  ms     Reverse delay maximum
 slogr.network.jitter.forward          gauge  ms     Forward jitter
 slogr.network.jitter.reverse          gauge  ms     Reverse jitter
 slogr.network.loss.forward            gauge  %      Forward packet loss

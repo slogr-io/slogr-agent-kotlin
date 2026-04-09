@@ -34,13 +34,17 @@ data class MeasurementResult(
     val dstRegion: String,
     val windowTs: Instant,                   // 5-min window timestamp
     val profile: SlaProfile,
-    // Forward (sender → reflector)
+    // Ground-truth RTT: (T4-T1) - (T3-T2), always clock-independent
+    val rttMinMs: Float,
+    val rttAvgMs: Float,
+    val rttMaxMs: Float,
+    // Forward (sender → reflector) — ratio-scaled portion of RTT
     val fwdMinRttMs: Float,
     val fwdAvgRttMs: Float,
     val fwdMaxRttMs: Float,
     val fwdJitterMs: Float,
     val fwdLossPct: Float,
-    // Reverse (reflector → sender)
+    // Reverse (reflector → sender) — remainder: rtt - fwd. 0 if UNSYNCABLE.
     val revMinRttMs: Float?,
     val revAvgRttMs: Float?,
     val revMaxRttMs: Float?,
@@ -333,7 +337,10 @@ The `slogr.network.*` namespace is intentionally generic — not `slogr.twamp.*`
 
 ```
 # Network measurement metrics (source-agnostic)
-slogr.network.rtt.forward.min       gauge, unit: ms
+slogr.network.rtt.min               gauge, unit: ms  (ground-truth RTT, clock-independent)
+slogr.network.rtt.avg               gauge, unit: ms  (ground-truth RTT, clock-independent)
+slogr.network.rtt.max               gauge, unit: ms  (ground-truth RTT, clock-independent)
+slogr.network.rtt.forward.min       gauge, unit: ms  (directional split, ratio-scaled from RTT)
 slogr.network.rtt.forward.avg       gauge, unit: ms
 slogr.network.rtt.forward.max       gauge, unit: ms
 slogr.network.rtt.reverse.min       gauge, unit: ms

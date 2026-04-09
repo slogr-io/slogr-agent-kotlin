@@ -13,6 +13,7 @@ import java.util.UUID
  *
  * Metric names (Rule T7 — locked, must not be changed):
  * ```
+ * slogr.network.rtt.min/avg/max  (ground-truth RTT)
  * slogr.network.rtt.forward.min/avg/max
  * slogr.network.rtt.reverse.min/avg/max
  * slogr.network.jitter.forward/reverse
@@ -36,6 +37,12 @@ object MetricMapper {
             .put("measurement_method", "twamp")
             .build()
 
+        // Ground-truth RTT: (T4-T1) - (T3-T2), always clock-independent
+        meter.gaugeBuilder("slogr.network.rtt.min").build().set(t.rttMinMs.toDouble(), base)
+        meter.gaugeBuilder("slogr.network.rtt.avg").build().set(t.rttAvgMs.toDouble(), base)
+        meter.gaugeBuilder("slogr.network.rtt.max").build().set(t.rttMaxMs.toDouble(), base)
+
+        // Directional split (ratio-scaled from ground-truth RTT)
         meter.gaugeBuilder("slogr.network.rtt.forward.min").build().set(t.fwdMinRttMs.toDouble(), base)
         meter.gaugeBuilder("slogr.network.rtt.forward.avg").build().set(t.fwdAvgRttMs.toDouble(), base)
         meter.gaugeBuilder("slogr.network.rtt.forward.max").build().set(t.fwdMaxRttMs.toDouble(), base)
