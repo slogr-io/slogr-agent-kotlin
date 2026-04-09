@@ -69,27 +69,49 @@ val syncStatus = when {
 }
 ```
 
-### Applying the Offset
+### Ground-Truth RTT
+
+Per-packet RTT is always computed from same-clock timestamp pairs:
+
+```
+rtt = (T4 - T1) - (T3 - T2)
+       sender clock    reflector clock
+```
+
+This is **always clock-independent** and stored as `rtt_min_ms`, `rtt_avg_ms`, `rtt_max_ms`.
+
+### Applying the Offset (Directional Split)
+
+The offset-corrected one-way delays provide only the **ratio** (what % is forward vs reverse).
+The actual values are scaled so that `fwd + rev == ground-truth RTT` exactly.
 
 ```kotlin
+// Ground truth per packet (always accurate)
+val rtt = ntpDiffMs(rxNtp, txNtp) - (reflectorProcNs / 1_000_000)   // (T4-T1) - (T3-T2)
+
 when (syncStatus) {
-    SYNCED -> {
-        // Use raw T2-T1 and T4-T3 directly
-        fwdDelayMs = (t2 - t1).toMillis()
-        revDelayMs = (t4 - t3).toMillis()
-    }
-    ESTIMATED -> {
-        // Apply virtual clock correction
-        fwdDelayMs = ((t2 - t1) - bestOffset).toMillis()
-        revDelayMs = ((t4 - t3) + bestOffset).toMillis()
+    SYNCED, ESTIMATED -> {
+        // Offset-corrected estimates (used only for ratio)
+        val estFwd = (rawFwd - offset).coerceAtLeast(0f)
+        val estRev = (rawRev + offset).coerceAtLeast(0f)
+        // Scale to ground truth
+        val fwdRatio = estFwd / (estFwd + estRev)
+        fwdDelayMs = rtt * fwdRatio
+        revDelayMs = rtt - fwdDelayMs            // guarantees fwd + rev == rtt
     }
     UNSYNCABLE -> {
-        // Can't determine direction split — use RTT/2
-        fwdDelayMs = rtt / 2.0f
-        revDelayMs = rtt / 2.0f
+        // No usable directional signal — fwd/rev set to 0 (unavailable)
+        // rttAvgMs still has the correct ground-truth value
+        fwdDelayMs = 0f
+        revDelayMs = 0f
     }
 }
 ```
+
+### SLA Grading
+
+The SLA evaluator compares `rttAvgMs` (ground-truth round-trip) against profile thresholds,
+not `fwdAvgRttMs` (one-way). Jitter uses `max(fwd, rev)`.
 
 ## Data Model Changes
 
@@ -99,6 +121,11 @@ when (syncStatus) {
 data class MeasurementResult(
     // ... existing R1 fields ...
 
+    // Ground-truth RTT: (T4-T1) - (T3-T2), always clock-independent
+    val rttMinMs: Float,
+    val rttAvgMs: Float,
+    val rttMaxMs: Float,
+
     // R2 additions:
     val clockSyncStatus: ClockSyncStatus,       // SYNCED, ESTIMATED, UNSYNCABLE
     val estimatedClockOffsetMs: Float? = null,   // null if UNSYNCABLE
@@ -106,14 +133,17 @@ data class MeasurementResult(
 
 enum class ClockSyncStatus {
     SYNCED,       // Both NTP-synced, raw T2-T1/T4-T3 used
-    ESTIMATED,    // Virtual clock offset estimated from packet stream
-    UNSYNCABLE    // Can't determine offset, fwd/rev are RTT/2
+    ESTIMATED,    // Virtual clock offset estimated, ratio-scaled to RTT
+    UNSYNCABLE    // Can't determine offset, fwd/rev are 0 (unavailable)
 }
 ```
 
 ### OTLP Metrics (extends R1)
 
 ```
+slogr.network.rtt.min              gauge, unit: ms  (ground-truth RTT min)
+slogr.network.rtt.avg              gauge, unit: ms  (ground-truth RTT avg)
+slogr.network.rtt.max              gauge, unit: ms  (ground-truth RTT max)
 slogr.network.clock.sync_status    gauge, unit: enum (0=SYNCED, 1=ESTIMATED, 2=UNSYNCABLE)
 slogr.network.clock.offset_ms      gauge, unit: ms (estimated clock offset)
 ```
@@ -122,6 +152,9 @@ slogr.network.clock.offset_ms      gauge, unit: ms (estimated clock offset)
 
 ```json
 {
+  "rtt_avg_ms": 28.5,
+  "rtt_min_ms": 25.2,
+  "rtt_max_ms": 31.8,
   "clock_sync_status": "ESTIMATED",
   "estimated_clock_offset_ms": 2.3,
   "fwd_avg_rtt_ms": 14.7,

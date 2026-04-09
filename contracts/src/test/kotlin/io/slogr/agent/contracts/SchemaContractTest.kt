@@ -30,6 +30,7 @@ class SchemaContractTest {
             "tenant_id", "session_id", "source_agent_id", "dest_agent_id",
             "source_type", "src_cloud", "src_region", "dst_cloud", "dst_region",
             "path_id", "window_ts", "received_at",
+            "rtt_min_ms", "rtt_avg_ms", "rtt_max_ms",
             "fwd_min_rtt_ms", "fwd_avg_rtt_ms", "fwd_max_rtt_ms", "fwd_jitter_ms", "fwd_loss_pct",
             "rev_min_rtt_ms", "rev_avg_rtt_ms", "rev_max_rtt_ms", "rev_jitter_ms", "rev_loss_pct",
             "packets_sent", "packets_recv", "schema_version"
