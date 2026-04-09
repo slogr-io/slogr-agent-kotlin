@@ -19,8 +19,10 @@ import kotlin.math.sqrt
  * Converts a raw [SenderResult] (per-packet records from [TwampSessionSender])
  * into a [MeasurementResult] suitable for publishing.
  *
- * All RTT statistics are computed over the round-trip delay
- * (fwdDelayMs + revDelayMs) per packet.
+ * **RTT ground truth:** Per-packet RTT is always computed as `(T4−T1) − (T3−T2)`
+ * using same-clock timestamp pairs, making it independent of clock synchronisation.
+ * The directional split (forward vs reverse) is derived from the estimated clock
+ * offset ratio, then scaled so that `fwd + rev == RTT` exactly.
  */
 object MeasurementAssembler {
 
@@ -54,35 +56,51 @@ object MeasurementAssembler {
     ): MeasurementResult {
         val packets = result.packets
 
-        // Compute per-direction statistics from raw (cross-clock) delays
-        val fwdDelays = packets.map { it.fwdDelayMs }
-        val revDelays = packets.map { it.revDelayMs }
+        // ── Ground-truth RTT per packet: (T4-T1) - (T3-T2) ──────────────────
+        // T4-T1 = sender clock only; T3-T2 = reflector clock only (stored as reflectorProcNs).
+        // This is always clock-independent.
+        val perPacketRtt = packets.map { rec ->
+            val totalElapsedMs = TwampTimeUtil.ntpDiffMs(rec.rxNtp, rec.txNtp).toFloat()  // T4-T1
+            val reflectorProcMs = rec.reflectorProcNs / 1_000_000f                         // T3-T2
+            (totalElapsedMs - reflectorProcMs).coerceAtLeast(0f)
+        }
 
-        val rawFwdStats = computeStats(fwdDelays)
-        val rawRevStats = computeStats(revDelays)
+        // Raw cross-clock one-way delays (used only for directional ratio estimation)
+        val rawFwdDelays = packets.map { it.fwdDelayMs }
+        val rawRevDelays = packets.map { it.revDelayMs }
 
         // R2: Virtual clock correction — estimate offset, classify sync quality
         val bestOffset  = VirtualClockEstimator.estimate(packets)
+        val rawFwdAvg   = rawFwdDelays.averageOrZero()
+        val rawRevAvg   = rawRevDelays.averageOrZero()
         val syncStatus  = ClockSyncDetector.classify(
-            fwdAvgMs     = rawFwdStats.avg,
-            revAvgMs     = rawRevStats.avg,
+            fwdAvgMs     = rawFwdAvg,
+            revAvgMs     = rawRevAvg,
             bestOffsetMs = bestOffset
         )
 
-        // Apply correction per sync state
-        val (fwdStats, revStats) = when (syncStatus) {
-            ClockSyncStatus.SYNCED -> rawFwdStats to rawRevStats    // NTP-synced: use raw
-            ClockSyncStatus.ESTIMATED -> {
+        // ── Directional split: distribute ground-truth RTT into fwd + rev ────
+        // The offset-corrected one-way delays give the best available ratio;
+        // we then scale so fwd + rev == RTT exactly (no drift, no rounding gap).
+        val (fwdDelays, revDelays) = when (syncStatus) {
+            ClockSyncStatus.SYNCED, ClockSyncStatus.ESTIMATED -> {
                 val off = bestOffset ?: 0f
-                computeStats(fwdDelays.map { it - off }) to computeStats(revDelays.map { it + off })
+                val estFwd = rawFwdDelays.map { (it - off).coerceAtLeast(0f) }
+                val estRev = rawRevDelays.map { (it + off).coerceAtLeast(0f) }
+                // Scale each packet's fwd/rev so they sum to the ground-truth RTT
+                splitByRatio(perPacketRtt, estFwd, estRev)
             }
             ClockSyncStatus.UNSYNCABLE -> {
-                // Cannot determine direction split — use RTT/2 for all
-                val halfRtt = (rawFwdStats.avg + rawRevStats.avg) / 2f
-                val s = Stats(halfRtt, halfRtt, halfRtt)
-                s to s
+                // No usable directional signal — report 0/0 so consumers
+                // know the split is unavailable; rttAvgMs still has ground truth.
+                val zeros = perPacketRtt.map { 0f }
+                zeros to zeros
             }
         }
+
+        val rttStats = computeStats(perPacketRtt)
+        val fwdStats = computeStats(fwdDelays)
+        val revStats = computeStats(revDelays)
 
         // Jitter (IPDV) is always accurate — clock offset cancels between packets
         val fwdJitter = computeJitter(fwdDelays)
@@ -118,6 +136,9 @@ object MeasurementAssembler {
             dstRegion                = dstRegion,
             windowTs                 = windowTs,
             profile                  = profile,
+            rttMinMs                 = rttStats.min,
+            rttAvgMs                 = rttStats.avg,
+            rttMaxMs                 = rttStats.max,
             fwdMinRttMs              = fwdStats.min,
             fwdAvgRttMs              = fwdStats.avg,
             fwdMaxRttMs              = fwdStats.max,
@@ -162,6 +183,35 @@ object MeasurementAssembler {
         if (sent <= 0) return 0f
         return ((sent - recv).coerceAtLeast(0).toFloat() / sent * 100f)
     }
+
+    /**
+     * Distribute [rtt] into forward/reverse per packet using the ratio from
+     * [estFwd] and [estRev]. Guarantees `fwd[i] + rev[i] == rtt[i]` exactly.
+     */
+    private fun splitByRatio(
+        rtt: List<Float>,
+        estFwd: List<Float>,
+        estRev: List<Float>
+    ): Pair<List<Float>, List<Float>> {
+        val fwd = mutableListOf<Float>()
+        val rev = mutableListOf<Float>()
+        for (i in rtt.indices) {
+            val sum = estFwd[i] + estRev[i]
+            if (sum <= 0f) {
+                // No usable ratio — split evenly
+                fwd.add(rtt[i] / 2f)
+                rev.add(rtt[i] / 2f)
+            } else {
+                val f = rtt[i] * (estFwd[i] / sum)
+                fwd.add(f)
+                rev.add(rtt[i] - f)   // subtract to avoid floating-point gap
+            }
+        }
+        return fwd to rev
+    }
+
+    private fun List<Float>.averageOrZero(): Float =
+        if (isEmpty()) 0f else average().toFloat()
 
     private fun ntpToInstant(ntpTimestamp: Long): Instant {
         val millis = TwampTimeUtil.ntpToMillis(ntpTimestamp)
