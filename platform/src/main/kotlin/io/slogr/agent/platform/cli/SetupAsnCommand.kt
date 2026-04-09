@@ -33,5 +33,9 @@ class SetupAsnCommand(private val ctx: CliContext) : CliktCommand(name = "setup-
             echo("")
             echo("Running without ASN enrichment. Traceroute hops will show IPs only.")
         }
+
+        echo("")
+        echo("Note: Since v1.0.6, ASN enrichment works automatically using ip2asn.com data.")
+        echo("MaxMind is optional and provides higher accuracy if configured.")
     }
 }

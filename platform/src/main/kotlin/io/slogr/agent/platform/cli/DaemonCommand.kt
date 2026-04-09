@@ -5,6 +5,7 @@ import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import io.slogr.agent.contracts.Schedule
+import io.slogr.agent.engine.asn.Ip2AsnResolver
 import io.slogr.agent.platform.buffer.WriteAheadLog
 import io.slogr.agent.platform.config.AgentState
 import io.slogr.agent.platform.rabbitmq.RabbitMqConnection
@@ -97,6 +98,14 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
             }
         }
 
+        // ── ASN database periodic refresh ────────────────────────────────────
+        ctx.asnDatabaseUpdater?.startPeriodicRefresh(publishScope) { newFile ->
+            Ip2AsnResolver.fromFile(newFile)?.let { resolver ->
+                ctx.swappableAsnResolver?.swap(resolver)
+                log.info("ASN database refreshed from {}", newFile.name)
+            }
+        }
+
         // ── Issue 1 fix: force reflector to bind 0.0.0.0:862 immediately ────
         ctx.engine.start()
 
@@ -149,6 +158,7 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
 
         val shutdownHook = Thread {
             log.info("Shutting down daemon...")
+            ctx.asnDatabaseUpdater?.stopPeriodicRefresh()
             scheduler.stop()
             runBlocking { publisher?.flush() }
             rabbitConn?.close()

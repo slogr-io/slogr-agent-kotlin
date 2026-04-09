@@ -5,6 +5,21 @@ All notable changes to the Slogr Agent (Kotlin/JVM) are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] - 2026-04-09
+
+### Added
+- Zero-config ASN/ISP resolution using ip2asn database (IPtoASN.com, public domain)
+- Ip2AsnResolver: sorted-array binary search over ~700K IPv4 ranges, sub-millisecond lookups
+- Bundled ip2asn-v4.tsv.gz (~3MB) in JAR — ASN works on first boot with no network access
+- AsnDatabaseUpdater: 5-tier download chain (slogr.io → iptoasn.com → disk cache → bundled → null)
+- First-run deployment analytics: agent pings data.slogr.io on install for fleet visibility
+- SwappableAsnResolver: thread-safe runtime hot-swap for 30-day daemon refresh cycle
+- Cloudflare Worker at data.slogr.io/asn-db serving cached database + logging analytics
+
+### Changed
+- ASN resolver priority: MaxMind (if configured) > ip2asn (automatic) > NullAsnResolver
+- setup-asn command now notes ip2asn is automatic; MaxMind is optional for higher accuracy
+
 ## [1.0.5] - 2026-04-09
 
 ### Changed
