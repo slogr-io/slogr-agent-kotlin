@@ -14,6 +14,7 @@ JNIEXPORT void  JNICALL Java_io_slogr_agent_native_SlogrNative_closeSocket(JNIEn
 JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_bindSocket(JNIEnv *, jobject, jint, jint, jint);
 JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_bindSocket6(JNIEnv *, jobject, jint, jbyteArray, jshort);
 JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_connectSocket(JNIEnv *, jobject, jint, jbyteArray, jshort);
+JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_setReusePort(JNIEnv *, jobject, jint);
 
 /* Socket options */
 JNIEXPORT jint  JNICALL Java_io_slogr_agent_native_SlogrNative_setSocketOption(JNIEnv *, jobject, jint, jint);

@@ -21,7 +21,7 @@ import java.time.Duration
 class InteractiveRegistrar(
     private val credentialStore: CredentialStore,
     private val apiBaseUrl: String = System.getenv("SLOGR_API_URL") ?: "https://api.slogr.io",
-    private val agentVersion: String = "1.0.0"
+    private val agentVersion: String = "1.0.3"
 ) {
     private val log       = LoggerFactory.getLogger(InteractiveRegistrar::class.java)
     private val helper    = ApiKeyRegistrar(credentialStore, apiBaseUrl, agentVersion)

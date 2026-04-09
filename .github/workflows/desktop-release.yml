@@ -1,0 +1,72 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - 'l1.1/v*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Run desktop tests
+        run: ./gradlew :desktop:test
+      - name: Run L1R2 regression tests
+        run: ./gradlew :app:test
+
+  package-windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Build MSI
+        run: ./gradlew :desktop:packageMsi
+      - name: Upload MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: slogr-desktop-windows-msi
+          path: desktop/build/compose/binaries/main/msi/*.msi
+
+  package-macos:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Build DMG
+        run: ./gradlew :desktop:packageDmg
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: slogr-desktop-macos-dmg
+          path: desktop/build/compose/binaries/main/dmg/*.dmg
+
+  release:
+    needs: [package-windows, package-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/slogr-desktop-windows-msi/*.msi
+            artifacts/slogr-desktop-macos-dmg/*.dmg
+          generate_release_notes: true

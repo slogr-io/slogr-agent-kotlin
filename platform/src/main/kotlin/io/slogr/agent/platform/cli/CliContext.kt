@@ -2,9 +2,11 @@ package io.slogr.agent.platform.cli
 
 import io.slogr.agent.contracts.interfaces.CredentialStore
 import io.slogr.agent.contracts.interfaces.MeasurementEngine
+import io.slogr.agent.engine.asn.SwappableAsnResolver
 import io.slogr.agent.engine.probe.IcmpPingProbe
 import io.slogr.agent.engine.probe.TcpConnectProbe
 import io.slogr.agent.engine.traceroute.TracerouteOrchestrator
+import io.slogr.agent.platform.asn.AsnDatabaseUpdater
 import io.slogr.agent.platform.config.AgentConfig
 import io.slogr.agent.platform.otlp.OtlpExporter
 import io.slogr.agent.platform.output.JsonResultFormatter
@@ -26,6 +28,8 @@ data class CliContext(
     val icmpPingProbe: IcmpPingProbe,
     val tcpConnectProbe: TcpConnectProbe,
     val tracerouteOrchestrator: TracerouteOrchestrator,
+    val asnDatabaseUpdater: AsnDatabaseUpdater? = null,
+    val swappableAsnResolver: SwappableAsnResolver? = null,
     val textFormatter: ResultFormatter = TextResultFormatter(config.agentState),
     val jsonFormatter: ResultFormatter = JsonResultFormatter()
 )

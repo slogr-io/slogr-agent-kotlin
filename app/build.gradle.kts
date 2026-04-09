@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":native"))
     implementation(project(":engine"))
     implementation(project(":platform"))
+    implementation(libs.kotlinx.coroutines)
     implementation(libs.clikt)
     implementation(libs.logback)
     testImplementation(libs.junit.jupiter)

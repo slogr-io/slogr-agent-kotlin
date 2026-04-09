@@ -36,8 +36,9 @@ RUN ./gradlew :app:shadowJar --no-daemon -x test
 # ── Stage 2: minimal runtime image ────────────────────────────────────────────
 FROM amazoncorretto:21-alpine
 
-# CAP_NET_RAW      — required for TWAMP raw socket operations
+# CAP_NET_RAW          — required for traceroute (ICMP raw sockets)
 # CAP_NET_BIND_SERVICE — required for binding port 862 as non-root
+# SLOGR_TEST_PORT      — fixed UDP port for TWAMP test sessions (default 863)
 
 RUN apk add --no-cache bash libcap && \
     addgroup -S slogr && \
@@ -60,7 +61,10 @@ WORKDIR /opt/slogr
 
 ENV SLOGR_DATA_DIR=/opt/slogr/data
 ENV SLOGR_NATIVE_DIR=/opt/slogr/lib
+ENV SLOGR_TEST_PORT=863
 ENV JAVA_OPTS="-Xmx384m"
+
+EXPOSE 862/tcp 862/udp 863/udp
 
 ENTRYPOINT ["/usr/local/bin/slogr-agent"]
 CMD ["daemon"]

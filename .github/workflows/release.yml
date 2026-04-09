@@ -10,6 +10,9 @@ on:
       version:
         description: 'Version to release (e.g. 1.0.0)'
         required: true
+      source_run_id:
+        description: 'Package workflow run ID to pull artifacts from'
+        required: false
       dry_run:
         description: 'Dry run (skip publish steps)'
         type: boolean
@@ -42,47 +45,70 @@ jobs:
         with:
           name: slogr-agent-jar
           path: dist/
+          run-id: ${{ github.event.workflow_run.id || github.event.inputs.source_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       - uses: actions/download-artifact@v4
         with:
           name: slogr-agent-rpm
           path: dist/
+          run-id: ${{ github.event.workflow_run.id || github.event.inputs.source_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       - uses: actions/download-artifact@v4
         with:
           name: slogr-agent-deb
           path: dist/
+          run-id: ${{ github.event.workflow_run.id || github.event.inputs.source_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
       # ── Publish RPM + DEB to Buildkite Package Registries ────────────────
       - name: Push packages to Buildkite Package Registries
         if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
-          if [ -z "$PACKAGECLOUD_TOKEN" ]; then
-            echo "PACKAGECLOUD_TOKEN not set — skipping Buildkite package registry publish"
+          if [ -z "$BUILDKITE_API_TOKEN" ]; then
+            echo "BUILDKITE_API_TOKEN not set — skipping Buildkite package registry publish"
             exit 0
           fi
-          gem install package_cloud --no-document -q
-          # RPM — covers RHEL 8/9, CentOS Stream, Amazon Linux 2023, Fedora
-          package_cloud push slogr/agent-rpm/el/8  dist/slogr-agent-*.rpm || true
-          package_cloud push slogr/agent-rpm/el/9  dist/slogr-agent-*.rpm || true
-          # DEB — covers Ubuntu 20.04 (focal), 22.04 (jammy), Debian 12 (bookworm)
-          package_cloud push slogr/agent-deb/ubuntu/focal     dist/slogr-agent_*.deb || true
-          package_cloud push slogr/agent-deb/ubuntu/jammy     dist/slogr-agent_*.deb || true
-          package_cloud push slogr/agent-deb/debian/bookworm  dist/slogr-agent_*.deb || true
+          API="https://api.buildkite.com/v2/packages/organizations/slogr/registries"
+          upload() {
+            local registry="$1" file="$2"
+            echo "Uploading $file to $registry..."
+            HTTP=$(curl -s -o /tmp/bk_response.json -w "%{http_code}" \
+              -X POST "$API/$registry/packages" \
+              -H "Authorization: Bearer $BUILDKITE_API_TOKEN" \
+              -F "file=@$file")
+            if [ "$HTTP" = "201" ]; then
+              echo "  -> OK ($file)"
+            else
+              echo "  -> WARN: HTTP $HTTP"
+              cat /tmp/bk_response.json || true
+            fi
+          }
+          # RPM registry
+          for f in dist/slogr-agent-*.rpm; do
+            [ -f "$f" ] && upload agent-rpm "$f"
+          done
+          # DEB registry
+          for f in dist/slogr-agent_*.deb; do
+            [ -f "$f" ] && upload agent-deb "$f"
+          done
         env:
-          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
+          BUILDKITE_API_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
 
       # ── Publish to S3 release bucket ──────────────────────────────────────
       - uses: aws-actions/configure-aws-credentials@v4
+        continue-on-error: true
         with:
           role-to-assume: ${{ secrets.AWS_RELEASE_ROLE_ARN }}
           aws-region: us-east-1
 
       - name: Publish artifacts to S3
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         run: |
           V=${{ steps.ver.outputs.version }}
           aws s3 cp dist/ s3://releases.slogr.io/agent/$V/ \
@@ -94,10 +120,12 @@ jobs:
       # ── Publish Docker image to ECR ───────────────────────────────────────
       - name: Login to Amazon ECR
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Tag and push to ECR
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         run: |
           V=${{ steps.ver.outputs.version }}
           ECR="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/slogr/agent"
@@ -119,32 +147,35 @@ jobs:
             dist/slogr-agent-all.jar
             dist/slogr-agent-*.rpm
             dist/slogr-agent_*.deb
-            agent-kotlin/install.sh
+            install.sh
 
       # ── Publish Helm chart to ghcr.io OCI registry ───────────────────────
       - name: Install Helm
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         uses: azure/setup-helm@v4
         with:
           version: v3.14.0
 
       - name: Package and push Helm chart
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         run: |
           V=${{ steps.ver.outputs.version }}
-          helm package agent-kotlin/packaging/helm --version "$V" --app-version "$V" -d dist/
+          helm package packaging/helm --version "$V" --app-version "$V" -d dist/
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
-          helm push dist/slogr-agent-${V}.tgz oci://ghcr.io/slogr/charts
+          helm push dist/slogr-agent-${V}.tgz oci://ghcr.io/slogr-io/charts
 
       # ── Update Homebrew tap formula ───────────────────────────────────────
       - name: Update Homebrew tap
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         env:
           TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           V=${{ steps.ver.outputs.version }}
           git clone "https://x-access-token:${TAP_TOKEN}@github.com/slogr/homebrew-tap.git" /tmp/homebrew-tap
-          cp agent-kotlin/packaging/homebrew/slogr-agent.rb /tmp/homebrew-tap/Formula/slogr-agent.rb
+          cp packaging/homebrew/slogr-agent.rb /tmp/homebrew-tap/Formula/slogr-agent.rb
           # Update version in formula
           sed -i "s/version \".*\"/version \"${V}\"/" /tmp/homebrew-tap/Formula/slogr-agent.rb
           cd /tmp/homebrew-tap
@@ -157,12 +188,13 @@ jobs:
       # ── Push Chocolatey package ───────────────────────────────────────────
       - name: Push Chocolatey package
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        continue-on-error: true
         run: |
           V=${{ steps.ver.outputs.version }}
           # Update version in nuspec
           sed -i "s/<version>.*<\/version>/<version>${V}<\/version>/" \
-            agent-kotlin/packaging/chocolatey/slogr-agent.nuspec
-          choco pack agent-kotlin/packaging/chocolatey/slogr-agent.nuspec --outputdirectory dist/
+            packaging/chocolatey/slogr-agent.nuspec
+          choco pack packaging/chocolatey/slogr-agent.nuspec --outputdirectory dist/
           choco push dist/slogr-agent.${V}.nupkg \
             --source https://push.chocolatey.org/ \
             --api-key ${{ secrets.CHOCOLATEY_API_KEY }}

@@ -18,16 +18,21 @@ class JniProbeAdapter : NativeProbeAdapter {
 
     // ── Socket lifecycle ─────────────────────────────────────────────────
 
-    override fun createSocket(localIp: InetAddress, localPort: Int): Int {
+    override fun createSocket(localIp: InetAddress, localPort: Int): Int =
+        createSocket(localIp, localPort, reusePort = false)
+
+    override fun createSocket(localIp: InetAddress, localPort: Int, reusePort: Boolean): Int {
         return if (localIp is Inet6Address) {
             val fd = SlogrNative.createSocket6()
             if (fd < 0) return -1
+            if (reusePort) SlogrNative.setReusePort(fd)
             val result = SlogrNative.bindSocket6(fd, localIp.address, localPort.toShort())
             if (result != 0) { SlogrNative.closeSocket(fd); return -1 }
             fd
         } else {
             val fd = SlogrNative.createSocket()
             if (fd < 0) return -1
+            if (reusePort) SlogrNative.setReusePort(fd)
             val ipInt = ByteBuffer.wrap(localIp.address).int
             val result = SlogrNative.bindSocket(fd, ipInt, localPort)
             if (result != 0) { SlogrNative.closeSocket(fd); return -1 }

@@ -64,7 +64,8 @@ class TwampResponderSession(
     private val sharedSecret: ByteArray? = null,
     private val adapter: NativeProbeAdapter,
     private val threadPool: ReflectorThreadPool,
-    private val agentIdBytes: ByteArray? = null
+    private val agentIdBytes: ByteArray? = null,
+    private val testPort: Int = 0
 ) {
     private val log = LoggerFactory.getLogger(TwampResponderSession::class.java)
 
@@ -82,13 +83,18 @@ class TwampResponderSession(
     // Active test sessions keyed by SID
     private val testSessions = mutableMapOf<SessionId, ReflectorTask>()
 
-    // Server-wait timeout task
+    // L5: Handshake deadline — 10 seconds from TCP accept to STARTED state
+    private val handshakeDeadlineMs = System.currentTimeMillis() + HANDSHAKE_DEADLINE_MS
+    private var handshakeCompleted = false
+
+    // Server-wait timeout task (for idle sessions AFTER handshake)
     private var serverWaitTask: Future<*>? = null
     private val serverWaitCount = AtomicInteger(0)
     private val serverWaitIntervalMs =
         (TwampConstants.DEFAULT_SERVER_WAIT_SEC * 1000L / 10).coerceAtLeast(1000L)
 
     fun getSelectionKey(): SelectionKey = key
+    val clientIpAddress: String get() = clientIp.hostAddress
 
     /** Called by [TwampReflector] immediately after accept() to send ServerGreeting. */
     fun smStart() {
@@ -136,6 +142,13 @@ class TwampResponderSession(
     @Synchronized
     fun read(buf: ByteBuffer) {
         serverWaitCount.set(0)
+
+        // L5: Enforce 10-second handshake deadline
+        if (!handshakeCompleted && System.currentTimeMillis() > handshakeDeadlineMs) {
+            log.warn("TWAMP handshake timeout from $clientIp — closing")
+            close(); return
+        }
+
         try {
             when (state) {
                 State.AWAITING_SETUP_RESPONSE -> handleSetupResponse(buf)
@@ -225,7 +238,8 @@ class TwampResponderSession(
             senderIp      = clientIp,
             senderPort    = req.senderPort.toInt() and 0xFFFF,
             timeoutMs     = TwampConstants.DEFAULT_REF_WAIT_SEC * 1000L,
-            threadPool    = threadPool
+            threadPool    = threadPool,
+            testPort      = testPort
         )
         // Submit to pool instead of spawning a dedicated thread per session.
         val future = threadPool.submit(reflector)
@@ -239,6 +253,7 @@ class TwampResponderSession(
 
     private fun handleStartSessions(buf: ByteBuffer) {
         StartSessions.readFrom(buf, twampMode)
+        handshakeCompleted = true  // L5: handshake succeeded — disable deadline
         // Reflectors are already submitted to the pool in handleRequestTwSession.
         // StartSessions is acknowledged without starting additional threads.
         val ack = ResponderPacketUtil.genStartAck()
@@ -325,4 +340,9 @@ class TwampResponderSession(
         val reflector: TwampSessionReflector,
         val future: Future<*>
     )
+
+    companion object {
+        /** L5: Maximum time from TCP accept to START_SESSIONS before session is closed. */
+        private const val HANDSHAKE_DEADLINE_MS = 10_000L
+    }
 }

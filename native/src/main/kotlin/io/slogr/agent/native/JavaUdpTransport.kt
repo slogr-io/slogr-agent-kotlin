@@ -28,9 +28,19 @@ class JavaUdpTransport(
 
     // ── Socket lifecycle ─────────────────────────────────────────────────
 
-    override fun createSocket(localIp: InetAddress, localPort: Int): Int {
+    override fun createSocket(localIp: InetAddress, localPort: Int): Int =
+        createSocket(localIp, localPort, reusePort = false)
+
+    override fun createSocket(localIp: InetAddress, localPort: Int, reusePort: Boolean): Int {
         return try {
-            val socket = DatagramSocket(localPort, localIp)
+            val socket = if (reusePort) {
+                DatagramSocket(null).apply {
+                    reuseAddress = true
+                    bind(java.net.InetSocketAddress(localIp, localPort))
+                }
+            } else {
+                DatagramSocket(localPort, localIp)
+            }
             val fd = fdSource.getAndIncrement()
             sockets[fd] = socket
             fd
@@ -55,9 +65,11 @@ class JavaUdpTransport(
     /** SO_TIMESTAMPING is not available via [DatagramSocket]; silently accepted. */
     override fun enableTimestamping(fd: Int): Boolean = sockets.containsKey(fd)
 
-    /** TOS is not supported via [DatagramSocket]; silently accepted. */
-    override fun setTos(fd: Int, tos: Short, ipv6: Boolean): Boolean =
-        sockets.containsKey(fd)
+    /** Set IP TOS byte (includes DSCP) via DatagramSocket.setTrafficClass(). */
+    override fun setTos(fd: Int, tos: Short, ipv6: Boolean): Boolean {
+        val s = sockets[fd] ?: return false
+        return try { s.trafficClass = tos.toInt() and 0xFF; true } catch (_: Exception) { false }
+    }
 
     override fun setTimeout(fd: Int, timeoutMs: Int): Boolean {
         val s = sockets[fd] ?: return false

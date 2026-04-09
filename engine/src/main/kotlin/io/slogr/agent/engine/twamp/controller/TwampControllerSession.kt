@@ -99,21 +99,37 @@ class TwampControllerSession(
     // Sender lifecycle
     private val activeSenders = mutableListOf<Thread>()
     private val senderResults = mutableListOf<SenderResult>()
+    @Volatile private var completed = false
+    @Volatile private var closeReason: String? = null
+
+    // Accumulation buffer for partial TCP reads — TCP does not guarantee message
+    // boundaries, so a 64-byte ServerGreeting may arrive as 40+24 across two reads.
+    private val accumBuf = ByteBuffer.allocate(9216)
 
     fun getSelectionKey(): SelectionKey = key
+
+    /** Set the reason for closing (called by [TwampController] before closeWithCallback). */
+    fun setCloseReason(reason: String) { if (closeReason == null) closeReason = reason }
 
     /** Called by [TwampController] when TCP data is available. NOT called on close. */
     @Synchronized
     fun read(buf: ByteBuffer) {
+        // Accumulate incoming bytes across reads
+        accumBuf.put(buf)
+        accumBuf.flip()
         try {
-            dispatchRead(buf)
+            dispatchRead(accumBuf)
         } catch (e: SecurityException) {
             log.error("Auth failure in state $state: ${e.message}")
+            closeReason = "auth failure in $state: ${e.message}"
             close()
         } catch (e: Exception) {
             log.error("Session error in state $state: ${e.message}", e)
+            closeReason = "session error in $state: ${e.message}"
             close()
         }
+        // Preserve unconsumed bytes for next read
+        accumBuf.compact()
     }
 
     private fun dispatchRead(buf: ByteBuffer) {
@@ -136,12 +152,14 @@ class TwampControllerSession(
         val selectedMode = modeChain.selectMode(greeting.modes)
         if (selectedMode == null) {
             log.error("No common TWAMP mode (server 0x${greeting.modes.toString(16)})")
+            closeReason = "no common TWAMP mode (server offered 0x${greeting.modes.toString(16)})"
             close(); return
         }
         twampMode.mode = selectedMode
         serverSalt = greeting.salt
         serverCount = greeting.count   // FIX-1: no ceiling
 
+        log.info("TWAMP greeting received (modes=0x${greeting.modes.toString(16)}, selected=0x${selectedMode.toString(16)}, slogr=${greeting.isSlogrAgent})")
         sendSetUpResponse(greeting.challenge)
         state = State.AWAITING_SERVER_START
     }
@@ -183,11 +201,13 @@ class TwampControllerSession(
         val start = ServerStart.readFrom(buf, twampMode)
         if (start.accept != 0.toByte()) {
             log.error("Server rejected SetUpResponse: accept=${start.accept}")
+            closeReason = "server rejected SetUpResponse (accept=${start.accept})"
             close(); return
         }
         if (twampMode.isControlEncrypted()) {
             twampMode.receiveIv = start.serverIv.copyOf()
         }
+        log.info("TWAMP server-start accepted, sending RequestTwSession")
         sendRequestTwSession()
         state = State.AWAITING_ACCEPT_SESSION
     }
@@ -213,10 +233,12 @@ class TwampControllerSession(
         val accept = AcceptTwSession.readFrom(buf, twampMode)
         if (accept.accept != 0.toByte()) {
             log.error("Reflector rejected test session: accept=${accept.accept}")
+            closeReason = "reflector rejected test session (accept=${accept.accept})"
             close(); return
         }
         reflectorUdpPort = accept.port.toInt() and 0xFFFF
         acceptedSid = SessionId.fromByteArray(accept.sid)
+        log.info("TWAMP session accepted (udpPort=$reflectorUdpPort, sid=$acceptedSid)")
         sendStartSessions()
     }
 
@@ -243,8 +265,10 @@ class TwampControllerSession(
         val ack = StartSessionsAck.readFrom(buf, twampMode)
         if (ack.accept != 0.toByte()) {
             log.error("Start-Sessions rejected: accept=${ack.accept}")
+            closeReason = "start-sessions rejected (accept=${ack.accept})"
             close(); return
         }
+        log.info("TWAMP start-ack received, launching sender")
         startSenders()
     }
 
@@ -255,7 +279,7 @@ class TwampControllerSession(
         when (val cmd = buf.get()) {
             TwampCommand.START_N_ACK -> {
                 val ack = StartNAck.readFrom(buf, twampMode)
-                if (ack.accept != 0.toByte()) { close(); return }
+                if (ack.accept != 0.toByte()) { closeReason = "start-n rejected (accept=${ack.accept})"; close(); return }
                 startSenders()
             }
             TwampCommand.STOP_N_ACK -> {
@@ -269,7 +293,7 @@ class TwampControllerSession(
     // ── Sender lifecycle ─────────────────────────────────────────────────────
 
     private fun startSenders() {
-        val sid = acceptedSid ?: run { log.error("No SID — cannot start senders"); close(); return }
+        val sid = acceptedSid ?: run { log.error("No SID — cannot start senders"); closeReason = "no SID from reflector"; close(); return }
         val testMode = twampMode.getTestSessionMode(sid)
         val port = reflectorUdpPort.takeIf { it > 0 } ?: TwampConstants.DEFAULT_PORT
 
@@ -284,6 +308,7 @@ class TwampControllerSession(
                 synchronized(this) {
                     senderResults.add(result)
                     if (senderResults.size >= activeSenders.size) {
+                        completed = true
                         onComplete(mergeSenderResults())
                         close()
                     }
@@ -295,6 +320,7 @@ class TwampControllerSession(
         activeSenders.add(t)
         state = State.RUNNING
         t.start()
+        log.info("TWAMP sender started (sid=$sid, reflectorPort=$port, packets=${config.count})")
     }
 
     private fun mergeSenderResults(): SenderResult =
@@ -332,7 +358,8 @@ class TwampControllerSession(
             }
             while (buf.hasRemaining()) chan.write(buf)
         } catch (e: Exception) {
-            log.error("Write failed: ${e.message}")
+            log.error("Write failed in $state: ${e.message}")
+            closeReason = "write failed in $state: ${e.message}"
             close()
         }
     }
@@ -342,6 +369,20 @@ class TwampControllerSession(
         state = State.CLOSED
         try { key.channel().close() } catch (_: Exception) {}
         key.cancel()
+    }
+
+    /** Close and fire onComplete with an error result if not already completed. */
+    fun closeWithCallback() {
+        val needsCallback = !completed
+        val reason = closeReason ?: "closed in state $state"
+        close()  // sets state=CLOSED — capture reason above
+        if (needsCallback) {
+            completed = true
+            onComplete(SenderResult(
+                packets = emptyList(), packetsSent = 0, packetsRecv = 0,
+                error = reason
+            ))
+        }
     }
 
     val isClosed: Boolean get() = state == State.CLOSED

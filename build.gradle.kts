@@ -1,12 +1,14 @@
 plugins {
     kotlin("jvm") version "2.1.0" apply false
     kotlin("plugin.serialization") version "2.1.0" apply false
+    kotlin("plugin.compose") version "2.1.0" apply false
     id("com.github.johnrengelman.shadow") version "8.1.1" apply false
+    id("org.jetbrains.compose") version "1.7.3" apply false
 }
 
 subprojects {
     group = "io.slogr"
-    version = "1.0.0-SNAPSHOT"
+    version = "1.0.6-SNAPSHOT"
     repositories {
         mavenCentral()
     }

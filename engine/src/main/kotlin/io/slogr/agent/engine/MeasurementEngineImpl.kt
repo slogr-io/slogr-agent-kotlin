@@ -23,6 +23,7 @@ import io.slogr.agent.engine.twamp.controller.TimingMode
 import io.slogr.agent.engine.twamp.controller.TwampController
 import io.slogr.agent.engine.twamp.responder.TwampReflector
 import io.slogr.agent.native.NativeProbeAdapter
+import org.slf4j.LoggerFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -51,10 +52,13 @@ class MeasurementEngineImpl(
     private val agentId: UUID = UUID.randomUUID(),
     private val localIp: InetAddress = InetAddress.getByName("0.0.0.0"),
     private val keyStore: Map<String, ByteArray> = emptyMap(),
-    reflectorListenPort: Int = 862
+    reflectorListenPort: Int = 862,
+    private val startReflector: Boolean = true,
+    private val testPort: Int = 0
 ) : MeasurementEngine {
 
-    private val reflector              = TwampReflector(adapter = adapter, listenPort = reflectorListenPort, bindIp = localIp)
+    private val log = LoggerFactory.getLogger(MeasurementEngineImpl::class.java)
+    private val reflector              = TwampReflector(adapter = adapter, listenPort = reflectorListenPort, bindIp = localIp, testPort = testPort)
     // Controller port is wired to the reflector's actual port after binding so that loopback
     // tests can use an ephemeral port (reflectorListenPort=0) without needing privileged ports.
     private val controller: TwampController
@@ -65,13 +69,20 @@ class MeasurementEngineImpl(
     val reflectorActualPort: Int get() = reflector.actualPort
 
     init {
-        reflector.start()
-        // Wait up to 3 s for the reflector to bind its port (needed when listenPort=0)
-        val deadline = System.currentTimeMillis() + 3_000L
-        while (reflector.actualPort == 0 && System.currentTimeMillis() < deadline) {
-            Thread.sleep(5)
+        if (startReflector) {
+            reflector.start()
+            // Wait up to 3 s for the reflector to bind its port (needed when listenPort=0)
+            val deadline = System.currentTimeMillis() + 3_000L
+            while (reflector.actualPort == 0 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(5)
+            }
+            controller = TwampController(adapter = adapter, port = reflector.actualPort, localIp = localIp)
+        } else {
+            // Client-only mode: no reflector needed.
+            // Wire controller directly to reflectorListenPort (default 862).
+            // The remote agent's daemon is the reflector.
+            controller = TwampController(adapter = adapter, port = reflectorListenPort, localIp = localIp)
         }
-        controller = TwampController(adapter = adapter, port = reflector.actualPort, localIp = localIp)
         controller.start()
     }
 
@@ -158,15 +169,26 @@ class MeasurementEngineImpl(
         val timeoutMs  = config.count * config.intervalMs + config.waitTimeMs + 5000L
         val result: SenderResult = withTimeoutOrNull(timeoutMs) {
             suspendCancellableCoroutine { cont ->
+                cont.invokeOnCancellation {
+                    // Coroutine cancelled by withTimeoutOrNull — controller will
+                    // purge the dead session on its next selector iteration.
+                }
                 controller.connect(
-                    reflectorIp  = target,
-                    config       = config,
-                    modeChain    = modeChain,
-                    sharedSecret = secret,
-                    onComplete   = { r -> cont.resume(r) }
+                    reflectorIp   = target,
+                    reflectorPort = targetPort,
+                    config        = config,
+                    modeChain     = modeChain,
+                    sharedSecret  = secret,
+                    onComplete    = { r -> cont.resume(r) }
                 )
             }
         } ?: SenderResult(emptyList(), config.count, 0, error = "session timed out")
+
+        if (result.error != null) {
+            log.warn("TWAMP to $target:$targetPort failed: ${result.error}")
+        } else {
+            log.info("TWAMP to $target:$targetPort completed: sent=${result.packetsSent} recv=${result.packetsRecv}")
+        }
 
         MeasurementAssembler.assemble(
             result        = result,

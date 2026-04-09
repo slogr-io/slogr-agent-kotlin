@@ -86,7 +86,8 @@ class CheckCommand(private val ctx: CliContext) : CliktCommand(name = "check") {
         }
 
         // ── 2. No TWAMP responder — fall back to ICMP/TCP probes ───────────────
-        log.debug("No TWAMP response from $targetIp:$port — using fallback probes")
+        log.info("TWAMP to $targetIp:$port returned 0 packets — falling back to ICMP/TCP")
+        echo("warn: TWAMP handshake to $targetIp:$port failed — using fallback probes", err = true)
 
         val ping      = ctx.icmpPingProbe.ping(targetIp, count = 5)
         val tcp       = ctx.tcpConnectProbe.probe(targetIp)

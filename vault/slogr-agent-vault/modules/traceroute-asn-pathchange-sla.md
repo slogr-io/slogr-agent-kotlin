@@ -131,14 +131,21 @@ Scores a `MeasurementResult` against its profile's thresholds.
 
 ## Scoring Logic
 
+RTT is evaluated against the ground-truth round-trip time `rttAvgMs`, computed as
+`(T4-T1) - (T3-T2)` — always clock-independent. Jitter uses the worse of forward/reverse.
+
 ```kotlin
 fun evaluate(result: MeasurementResult, profile: SlaProfile): SlaGrade {
-    if (result.fwdAvgRttMs > profile.rttRedMs) return RED
-    if (result.fwdJitterMs > profile.jitterRedMs) return RED
-    if (result.fwdLossPct > profile.lossRedPct) return RED
-    if (result.fwdAvgRttMs > profile.rttGreenMs) return YELLOW
-    if (result.fwdJitterMs > profile.jitterGreenMs) return YELLOW
-    if (result.fwdLossPct > profile.lossGreenPct) return YELLOW
+    val rtt    = result.rttAvgMs                              // ground truth, not one-way
+    val jitter = maxOf(result.fwdJitterMs, result.revJitterMs ?: 0f)
+    val loss   = result.fwdLossPct
+
+    if (rtt    > profile.rttRedMs)     return RED
+    if (jitter > profile.jitterRedMs)  return RED
+    if (loss   > profile.lossRedPct)   return RED
+    if (rtt    > profile.rttGreenMs)   return YELLOW
+    if (jitter > profile.jitterGreenMs) return YELLOW
+    if (loss   > profile.lossGreenPct) return YELLOW
     return GREEN
 }
 ```

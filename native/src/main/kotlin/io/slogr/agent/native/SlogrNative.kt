@@ -113,6 +113,8 @@ object SlogrNative {
     external fun bindSocket(fd: Int, ip: Int, port: Int): Int
     external fun bindSocket6(fd: Int, ip: ByteArray, port: Short): Int
     external fun connectSocket(fd: Int, ip: ByteArray, port: Short): Int
+    /** Enable SO_REUSEPORT on [fd]. Returns 0 on success, -1 on error. */
+    external fun setReusePort(fd: Int): Int
     external fun setSocketOption(fd: Int, ttl: Int): Int
     external fun setSocketOption6(fd: Int, ttl: Int): Int
     external fun setSocketTos(fd: Int, tos: Short): Int

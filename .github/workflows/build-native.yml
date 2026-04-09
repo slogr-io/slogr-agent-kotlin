@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main", "phase-2", "phase-3" ]
     paths:
-      - "agent-kotlin/native/**"
+      - "native/**"
   workflow_dispatch:
 
 jobs:
@@ -47,7 +47,7 @@ jobs:
         run: sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build native library
-        working-directory: agent-kotlin/native
+        working-directory: native
         env:
           JAVA_HOME: ${{ env.JAVA_HOME }}
         run: |
@@ -58,5 +58,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: libslogr-native-${{ matrix.target }}
-          path: agent-kotlin/native/build/libslogr-native*.so
+          path: native/build/libslogr-native*.so
           retention-days: 30

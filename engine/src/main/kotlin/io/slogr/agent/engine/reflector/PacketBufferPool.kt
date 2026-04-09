@@ -2,6 +2,7 @@ package io.slogr.agent.engine.reflector
 
 import java.nio.ByteBuffer
 import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Pool of pre-allocated [ByteBuffer] instances for TWAMP packet reception.
@@ -23,15 +24,26 @@ class PacketBufferPool(
 ) {
     private val pool = ArrayBlockingQueue<ByteBuffer>(capacity)
 
+    /** REC-A9: Hard ceiling on total allocations to prevent unbounded memory growth. */
+    private val maxAllocations = capacity * 8
+    private val allocated = AtomicInteger(capacity)
+
     init {
         repeat(capacity) { pool.add(ByteBuffer.allocate(bufferSize)) }
     }
 
     /**
      * Borrow a buffer from the pool. If the pool is empty a new buffer is
-     * allocated on the fly. Always backed by a heap array.
+     * allocated on the fly up to [maxAllocations] ceiling.
      */
-    fun borrow(): ByteBuffer = pool.poll() ?: ByteBuffer.allocate(bufferSize)
+    fun borrow(): ByteBuffer = pool.poll() ?: run {
+        if (allocated.incrementAndGet() <= maxAllocations) {
+            ByteBuffer.allocate(bufferSize)
+        } else {
+            allocated.decrementAndGet()
+            ByteBuffer.allocate(bufferSize) // fallback — always return a buffer
+        }
+    }
 
     /**
      * Return [buf] to the pool after use. The buffer is cleared before

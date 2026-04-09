@@ -7,9 +7,15 @@ NATIVE_DIR="${SLOGR_NATIVE_DIR:-/opt/slogr/lib}"
 DATA_DIR="${SLOGR_DATA_DIR:-/opt/slogr/data}"
 JAVA_OPTS="${JAVA_OPTS:--Xmx384m}"
 
+EXTRA_ARGS=""
+if [ -n "${SLOGR_SCHEDULE_PATH:-}" ]; then
+  EXTRA_ARGS="--config ${SLOGR_SCHEDULE_PATH}"
+  echo "Loading schedule from: ${SLOGR_SCHEDULE_PATH}"
+fi
+
 exec java \
   ${JAVA_OPTS} \
   -Dslogr.native.dir="${NATIVE_DIR}" \
   -Dslogr.data.dir="${DATA_DIR}" \
   -jar "${JAR}" \
-  "$@"
+  "$@" ${EXTRA_ARGS}

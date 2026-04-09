@@ -1,0 +1,769 @@
+================================================================================
+  SLOGR AGENT R2 — COMPLETE USER GUIDE
+  For internal team distribution
+================================================================================
+
+WHAT IS THIS?
+-------------
+Slogr Agent is a network measurement agent that runs on cloud VMs and measures
+network quality between endpoints using TWAMP (Two-Way Active Measurement
+Protocol, RFC 5357). It reports RTT, jitter, packet loss, and SLA grade for
+27+ application profiles (VoIP, gaming, video conferencing, etc.).
+
+R2 is the production-ready Kotlin/JVM rewrite. It replaces the legacy Python/C++
+agent and adds API key authentication, OTLP metrics export, state-aware startup,
+and credential management.
+
+WHERE TO GET IT
+---------------
+Repository:  https://github.com/nasimkz/slogr-agent-kotlin
+Branch:      master (R2 has been merged into master)
+CI Status:   Both master and R2 branches are CI-green
+
+Artifacts built from master:
+  - Shadow JAR:     app/build/libs/slogr-agent-all.jar
+  - Docker image:   built via:  docker build -f Dockerfile -t slogr-agent .
+  - Native library: native/build/libslogr-native.so  (Linux glibc)
+                    native/build/libslogr-native-musl.so  (Linux musl/Alpine)
+
+
+================================================================================
+  AGENT STATES
+================================================================================
+
+The agent operates in one of three modes determined by SLOGR_API_KEY:
+
+  ANONYMOUS   No API key set, or invalid format.
+              - stdout logging only
+              - No OTLP export, no RabbitMQ/Pub/Sub
+              - Useful for testing TWAMP reflector without a cloud account
+
+  REGISTERED  API key starts with sk_free_
+              - OTLP metrics export enabled
+              - stdout logging
+              - No RabbitMQ/Pub/Sub integration
+
+  CONNECTED   API key starts with sk_live_
+              - Full cloud integration: OTLP + RabbitMQ + Pub/Sub
+              - Receives measurement schedules from backend
+              - Reports results back to Slogr cloud
+
+
+================================================================================
+  INSTALLATION
+================================================================================
+
+---  OPTION 1: DOCKER (Recommended for production)  ---
+
+Requirements:
+  - Docker
+  - Linux host (for CAP_NET_RAW / TWAMP raw sockets)
+
+Build the image:
+  docker build -f Dockerfile -t slogr-agent:latest .
+
+Run (ANONYMOUS — reflector-only, no cloud):
+  docker run -d \
+    --name slogr-agent \
+    --cap-add NET_RAW \
+    --cap-add NET_BIND_SERVICE \
+    slogr-agent:latest daemon
+
+Run (REGISTERED — with sk_free_ key for OTLP):
+  docker run -d \
+    --name slogr-agent \
+    --cap-add NET_RAW \
+    --cap-add NET_BIND_SERVICE \
+    -e SLOGR_API_KEY=sk_free_XXXXXXXXXX \
+    -e SLOGR_OTLP_ENDPOINT=https://otel.slogr.io/v1/metrics \
+    -v /opt/slogr/data:/opt/slogr/data \
+    slogr-agent:latest daemon
+
+Run (CONNECTED — with sk_live_ key):
+  docker run -d \
+    --name slogr-agent \
+    --cap-add NET_RAW \
+    --cap-add NET_BIND_SERVICE \
+    -e SLOGR_API_KEY=sk_live_XXXXXXXXXX \
+    -e SLOGR_OTLP_ENDPOINT=https://otel.slogr.io/v1/metrics \
+    -v /opt/slogr/data:/opt/slogr/data \
+    slogr-agent:latest daemon
+
+View logs:
+  docker logs -f slogr-agent
+
+Stop:
+  docker stop slogr-agent
+
+
+---  OPTION 2: SYSTEMD (Linux VMs / bare metal)  ---
+
+Requirements:
+  - Java 21 (Amazon Corretto recommended)
+  - libslogr-native.so placed in /opt/slogr/lib/
+
+1. Create user and directories:
+     sudo useradd -r -s /sbin/nologin -d /opt/slogr slogr
+     sudo mkdir -p /opt/slogr/lib /opt/slogr/data /opt/slogr/logs /etc/slogr
+     sudo chown -R slogr:slogr /opt/slogr
+
+2. Copy files:
+     sudo cp slogr-agent-all.jar         /opt/slogr/
+     sudo cp libslogr-native.so          /opt/slogr/lib/
+     sudo cp deploy/wrapper.sh           /usr/local/bin/slogr-agent
+     sudo cp deploy/slogr-agent.service  /etc/systemd/system/
+     sudo chmod +x /usr/local/bin/slogr-agent
+     sudo touch /etc/slogr/env && sudo chmod 600 /etc/slogr/env
+
+3. Set API key (optional):
+     echo 'SLOGR_API_KEY=sk_live_XXXXXXXXXX' | sudo tee /etc/slogr/env
+     echo 'SLOGR_OTLP_ENDPOINT=https://otel.slogr.io/v1/metrics' | sudo tee -a /etc/slogr/env
+
+4. Enable and start:
+     sudo systemctl daemon-reload
+     sudo systemctl enable slogr-agent
+     sudo systemctl start slogr-agent
+
+5. Verify:
+     sudo systemctl status slogr-agent
+     sudo journalctl -u slogr-agent -f
+
+
+---  OPTION 3: RPM PACKAGE  ---
+
+Build:
+  rpmbuild -ba packaging/rpm/slogr-agent.spec
+
+Install:
+  sudo rpm -i slogr-agent-1.0.0-1.el7.x86_64.rpm
+
+Set API key after install:
+  echo 'SLOGR_API_KEY=sk_live_XXXXXXXXXX' | sudo tee /etc/slogr/env
+  sudo systemctl start slogr-agent
+
+
+---  OPTION 4: DEB PACKAGE  ---
+
+Build:
+  dpkg-deb --build packaging/deb slogr-agent_1.0.0_amd64.deb
+
+Install:
+  sudo dpkg -i slogr-agent_1.0.0_amd64.deb
+  sudo apt-get install -f   # resolve any missing deps
+
+Set API key after install:
+  echo 'SLOGR_API_KEY=sk_live_XXXXXXXXXX' | sudo tee /etc/slogr/env
+  sudo systemctl start slogr-agent
+
+
+---  OPTION 5: JAR DIRECTLY  ---
+
+Requirements:
+  - Java 21
+  - libslogr-native.so in a known directory (Linux only)
+
+Run:
+  export SLOGR_NATIVE_DIR=/path/to/lib
+  export SLOGR_DATA_DIR=/path/to/data
+  export SLOGR_API_KEY=sk_free_XXXXXXXXXX   # optional
+  java -Xmx384m \
+       -Dslogr.native.dir=$SLOGR_NATIVE_DIR \
+       -Dslogr.data.dir=$SLOGR_DATA_DIR \
+       -jar slogr-agent-all.jar daemon
+
+
+================================================================================
+  REQUIRED LINUX CAPABILITIES
+================================================================================
+
+The agent needs two Linux capabilities:
+
+  CAP_NET_RAW          Required for TWAMP raw UDP sockets and ICMP traceroute
+  CAP_NET_BIND_SERVICE Required to bind port 862 (< 1024) as non-root user
+
+In Docker, pass:     --cap-add NET_RAW --cap-add NET_BIND_SERVICE
+
+In systemd service:  AmbientCapabilities=CAP_NET_RAW CAP_NET_BIND_SERVICE
+                     CapabilityBoundingSet=CAP_NET_RAW CAP_NET_BIND_SERVICE
+
+Without CAP_NET_RAW the TWAMP probe and traceroute will fail.
+Without CAP_NET_BIND_SERVICE the reflector cannot bind port 862.
+
+
+================================================================================
+  ENVIRONMENT VARIABLES
+================================================================================
+
+Variable                  Default              Purpose
+------------------------  -------------------  --------------------------------
+SLOGR_API_KEY             (not set)            API key. Prefix determines state:
+                                               sk_free_* = REGISTERED
+                                               sk_live_* = CONNECTED
+SLOGR_API_URL             https://api.slogr.io Backend registration endpoint
+SLOGR_OTLP_ENDPOINT       (not set)            OpenTelemetry HTTP endpoint.
+                                               Required for metrics export.
+SLOGR_DATA_DIR            ~/.slogr             Credentials + schedule storage
+SLOGR_NATIVE_DIR          /opt/slogr/lib       Directory for libslogr-native.so
+JAVA_OPTS                 -Xmx384m             JVM options (heap size etc.)
+
+System properties (passed as -D flags):
+  slogr.data.dir           Same as SLOGR_DATA_DIR
+  slogr.native.dir         Same as SLOGR_NATIVE_DIR
+
+
+================================================================================
+  CLI COMMANDS
+================================================================================
+
+--------  slogr-agent version  --------
+
+Print version, git commit, and build time.
+
+  Usage:  slogr-agent version
+
+  Output: slogr-agent 1.0.0 (abc1234) built 2025-02-15T10:30:00Z
+
+
+--------  slogr-agent status  --------
+
+Show current agent connection status and configuration.
+
+  Usage:  slogr-agent status
+
+  Output fields:
+    Status:    Connected / Disconnected
+    Mode:      ANONYMOUS | REGISTERED | CONNECTED
+    Key:       Masked API key (first 8 + last 4 chars shown)
+    Agent ID:  UUID (if registered)
+    Display:   Display name from registration
+    Tenant ID: UUID (if connected)
+    RabbitMQ:  host:port (if connected)
+    Pub/Sub:   GCP subscription path (if connected)
+
+
+--------  slogr-agent check <target>  --------
+
+Run a one-shot measurement against a target and print results.
+
+  Usage:  slogr-agent check <host-or-ip> [options]
+
+  Options:
+    --port, -p <port>       TWAMP target port (default: 862)
+    --profile <name>        SLA profile to evaluate against (default: internet)
+    --format, -f <format>   Output format: text or json (default: text)
+    --traceroute            Include traceroute in measurement
+
+  Measurement flow:
+    1. Attempts TWAMP (RFC 5357) to target:port
+    2. If no TWAMP reflector: falls back to ICMP ping (5 probes)
+    3. Attempts TCP connect on port 443 (then 80)
+    4. Exports result to OTLP if SLOGR_OTLP_ENDPOINT is set
+
+  Exit codes:
+    0   Measurement succeeded (GREEN/YELLOW grade)
+    3   Target unreachable (TWAMP, ICMP, and TCP all failed)
+    1   Other error
+
+  JSON output fields:
+    measurement_method    "twamp" or "icmp"
+    target                IP address
+    profile               Profile name used
+    grade                 GREEN, YELLOW, or RED
+    twamp {}
+      rtt_min_ms          Float — ground-truth RTT: (T4-T1)-(T3-T2)
+      rtt_avg_ms          Float — ground-truth RTT (used for SLA grading)
+      rtt_max_ms          Float — ground-truth RTT
+      packets_sent        Integer
+      packets_recv        Integer
+      fwd_loss_pct        Float (%)
+      fwd_min_rtt_ms      Float — directional split (ratio of RTT)
+      fwd_avg_rtt_ms      Float
+      fwd_max_rtt_ms      Float
+      fwd_jitter_ms       Float
+      rev_min_rtt_ms      Float (0 if clock unsyncable)
+      rev_avg_rtt_ms      Float (0 if clock unsyncable)
+      rev_max_rtt_ms      Float (0 if clock unsyncable)
+      rev_jitter_ms       Float (optional)
+      session_id          UUID
+      path_id             UUID
+    ping {}               (present if TWAMP unavailable)
+      sent                Integer
+      received            Integer
+      loss_pct            Float
+      min_rtt_ms          Float (optional)
+      avg_rtt_ms          Float (optional)
+      max_rtt_ms          Float (optional)
+    tcp {}                (present if TCP fallback attempted)
+      port                Integer
+      connect_ms          Float
+    traceroute {}         (present if --traceroute used)
+      direction           "uplink"
+      hops []
+        ttl               Integer
+        ip                String
+        rtt_ms            Float
+        loss_pct          Float
+        asn               Integer (if ASN DB configured)
+        asn_name          String  (if ASN DB configured)
+
+  Examples:
+    slogr-agent check 8.8.8.8
+    slogr-agent check 10.0.0.5 --port 862 --profile voip
+    slogr-agent check 10.0.0.5 --format json
+    slogr-agent check 10.0.0.5 --traceroute
+
+
+--------  slogr-agent connect  --------
+
+Register this agent with the Slogr backend using a live API key.
+Only needed for CONNECTED mode (sk_live_* keys).
+For sk_free_* keys, just set SLOGR_API_KEY and run daemon directly.
+
+  Usage:  slogr-agent connect [--api-key <key>]
+
+  Options:
+    --api-key <key>   Live API key (sk_live_*). Prompts if not provided.
+
+  What it does:
+    1. Checks not already connected (error if already registered)
+    2. Validates key format (must start with sk_live_)
+    3. POSTs to SLOGR_API_URL/v1/agents with machine metadata:
+         hostname, MAC address, IP addresses, cloud provider/region,
+         OS info, Java version, CPU cores, memory
+    4. Receives: JWT, RabbitMQ credentials, Pub/Sub subscription
+    5. Encrypts and stores credentials to {SLOGR_DATA_DIR}/credential.enc
+
+  Exit codes:
+    0   Registered successfully
+    1   Network error or API returned 4xx/5xx
+    4   Invalid key format
+
+  Error messages:
+    "Already connected as <name>. Run 'slogr-agent disconnect' first."
+    "Key must start with 'sk_live_'. For sk_free_* keys, set SLOGR_API_KEY."
+
+  After connect, run:  slogr-agent daemon
+
+
+--------  slogr-agent disconnect  --------
+
+Remove stored credentials. Agent returns to ANONYMOUS or REGISTERED mode.
+
+  Usage:  slogr-agent disconnect
+
+  What it does:
+    - Deletes {SLOGR_DATA_DIR}/credential.enc
+    - Does NOT call a deregister API (agent stays in cloud as inactive)
+    - Running daemon continues in disconnected mode
+    - Agent can be re-registered with 'slogr-agent connect' later
+
+  Exit code: 0 (always succeeds, even if not connected)
+
+
+--------  slogr-agent daemon  --------
+
+Run the agent as a background daemon. This is the primary production command.
+
+  Usage:  slogr-agent daemon [--config <path>]
+
+  Options:
+    --config <path>   Path to schedule config JSON file.
+                      If not specified, loads persisted schedule from
+                      {SLOGR_DATA_DIR}/schedule.json
+
+  Startup behavior (state-aware):
+    CONNECTED + no stored credential  →  Auto-registers with api.slogr.io
+    CONNECTED + stored credential     →  Connects directly via stored JWT
+    REGISTERED                        →  OTLP export enabled, no queue
+    ANONYMOUS                         →  stdout only, nudges for API key
+
+  What runs in daemon mode:
+    1. TWAMP reflector binds 0.0.0.0:862 (accepts inbound measurements)
+    2. Loads schedule (--config file, or persisted, or empty)
+    3. If no sessions: runs in responder-only mode (still accepts connections)
+    4. Runs up to 20 concurrent measurement sessions on schedule cadence
+    5. Records each result to OTLP exporter
+    6. On SIGTERM: stops scheduler, flushes metrics, shuts down cleanly
+
+  Signals:
+    SIGTERM   Graceful shutdown (used by systemd stop / docker stop)
+
+
+--------  slogr-agent setup-asn  --------
+
+Configure MaxMind GeoLite2-ASN database for ASN enrichment in traceroutes.
+Without it, traceroute hops show IP addresses only (no AS numbers or names).
+
+  Usage:  slogr-agent setup-asn [--db-path <path>]
+
+  Options:
+    --db-path <path>   Path to GeoLite2-ASN.mmdb
+                       Default: {SLOGR_DATA_DIR}/GeoLite2-ASN.mmdb
+
+  To get the database (free):
+    1. Register at https://www.maxmind.com/en/geolite2/signup
+    2. Download GeoLite2-ASN.mmdb
+    3. Place at the path above
+    4. Run 'slogr-agent setup-asn' to verify
+
+
+--------  slogr-agent doctor  --------
+
+Run diagnostics to verify the agent environment is correctly configured.
+
+  Usage:  slogr-agent doctor
+
+  Checks performed:
+    1. JNI native library (libslogr-native.so) — can it be loaded?
+    2. CAP_NET_RAW capability — is bit 13 set in /proc/self/status CapEff?
+    3. TLS connectivity to slogr.io:443
+
+  Exit codes:
+    0   All checks passed
+    1   One or more checks failed
+
+
+================================================================================
+  SLA PROFILES
+================================================================================
+
+Use --profile <name> with the check command. Default is "internet".
+
+Profile          Packets  Interval  RTT Green  RTT Red  Loss Green  Loss Red
+---------------  -------  --------  ---------  -------  ----------  --------
+internet         10       50ms      150ms      300ms    1%          5%
+voip             50       20ms      150ms      300ms    0.5%        1%
+gaming           20       50ms      20ms       50ms     0.5%        1%
+multigame        33       30ms      30ms       60ms     0.5%        1%
+cloud-gaming     50       20ms      30ms       70ms     0.5%        1%
+videoconf        50       20ms      150ms      300ms    0.5%        1%
+webconf          20       50ms      150ms      300ms    0.5%        1%
+streaming        30       50ms      100ms      200ms    0.1%        0.5%
+pcoip            33       30ms      100ms      150ms    0.5%        1%
+remote-desktop   33       30ms      100ms      150ms    0.5%        1%
+cloud-saas       10       50ms      100ms      300ms    0.1%        0.5%
+vpn              20       50ms      100ms      200ms    0.5%        1%
+download         10       50ms      100ms      200ms    0.1%        0.5%
+upload           10       50ms      100ms      200ms    0.1%        0.5%
+largefile        20       50ms      150ms      500ms    0.1%        0.5%
+mail             20       50ms      100ms      300ms    0.1%        0.5%
+online-payment   20       50ms      100ms      300ms    0.1%        0.5%
+online-learning  10       100ms     150ms      350ms    0.1%        0.5%
+broadcasting     50       20ms      150ms      300ms    0.5%        1%
+music            20       50ms      50ms       300ms    0.1%        1%
+iot              30       50ms      200ms      300ms    0.1%        0.5%
+ssm              20       50ms      150ms      500ms    0.1%        0.5%
+player           20       50ms      100ms      200ms    0.1%        0.5%
+data-recovery    20       50ms      150ms      300ms    0.1%        0.5%
+
+Grade logic (evaluated against ground-truth RTT = (T4-T1)-(T3-T2), not one-way):
+  GREEN   rtt_avg_ms <= rttGreenMs  AND  jitter <= jitterGreenMs  AND  loss <= lossGreenPct
+  YELLOW  rtt_avg_ms <= rttRedMs    AND  jitter <= jitterRedMs    AND  loss <= lossRedPct  (and not GREEN)
+  RED     rtt_avg_ms > rttRedMs     OR   jitter > jitterRedMs     OR   loss > lossRedPct
+  Jitter = max(fwd_jitter, rev_jitter)
+
+
+================================================================================
+  OTLP METRICS REFERENCE
+================================================================================
+
+All metric names are locked — changing them breaks the Slogr Proxy ingestion.
+
+Metric name                           Type   Unit   Description
+------------------------------------  -----  -----  ----------------------------
+slogr.network.rtt.min                 gauge  ms     Ground-truth RTT min: (T4-T1)-(T3-T2)
+slogr.network.rtt.avg                 gauge  ms     Ground-truth RTT avg (used for SLA)
+slogr.network.rtt.max                 gauge  ms     Ground-truth RTT max
+slogr.network.rtt.forward.min         gauge  ms     Forward delay (ratio-scaled from RTT)
+slogr.network.rtt.forward.avg         gauge  ms     Forward delay average
+slogr.network.rtt.forward.max         gauge  ms     Forward delay maximum
+slogr.network.rtt.reverse.min         gauge  ms     Reverse delay (0 if unsyncable)
+slogr.network.rtt.reverse.avg         gauge  ms     Reverse delay average
+slogr.network.rtt.reverse.max         gauge  ms     Reverse delay maximum
+slogr.network.jitter.forward          gauge  ms     Forward jitter
+slogr.network.jitter.reverse          gauge  ms     Reverse jitter
+slogr.network.loss.forward            gauge  %      Forward packet loss
+slogr.network.loss.reverse            gauge  %      Reverse packet loss
+slogr.network.packets.sent            gauge  count  Packets sent
+slogr.network.packets.received        gauge  count  Packets received
+slogr.network.traceroute.hop_count    gauge  count  Number of traceroute hops
+slogr.network.traceroute.path_changed gauge  flag   1.0 = path changed, 0.0 = same
+slogr.network.sla.grade               gauge  enum   0=GREEN, 1=YELLOW, 2=RED
+slogr.agent.buffer.size               gauge  rows   WAL buffer size
+slogr.agent.failures.twamp            gauge  count  TWAMP failure count
+slogr.agent.failures.traceroute       gauge  count  Traceroute failure count
+slogr.agent.failures.publish          gauge  count  Publish failure count
+
+Common attributes on every metric:
+  agent_id            UUID of this agent
+  profile             SLA profile name (e.g. "voip", "gaming")
+  measurement_method  "twamp" or "icmp"
+
+OTLP is only enabled when:
+  - SLOGR_OTLP_ENDPOINT is set, AND
+  - Agent state is REGISTERED or CONNECTED (not ANONYMOUS)
+
+
+================================================================================
+  CREDENTIAL STORAGE
+================================================================================
+
+Credentials are stored encrypted at:  {SLOGR_DATA_DIR}/credential.enc
+
+Encryption:
+  - AES-256-GCM
+  - Key derived from machine fingerprint (SHA-256 of hostname + MAC)
+  - File format: [12-byte IV][AES-GCM ciphertext]
+  - File permissions: 0600 (owner read/write only)
+
+The credential file contains:
+  - agentId, tenantId, displayName
+  - JWT for API calls
+  - RabbitMQ host, port, JWT
+  - GCP Pub/Sub subscription path
+  - Connection timestamp and method
+
+For sk_free_* keys, a validation cache is stored at:
+  {SLOGR_DATA_DIR}/.slogr-key-cache.json
+  TTL: 24 hours. Expired entries trigger re-validation via API.
+
+
+================================================================================
+  SCHEDULE FILE FORMAT
+================================================================================
+
+The schedule file ({SLOGR_DATA_DIR}/schedule.json) defines outbound sessions.
+In CONNECTED mode this is pushed by the backend. In standalone mode you can
+write it manually or pass --config to the daemon command.
+
+{
+  "sessions": [
+    {
+      "path_id":            "550e8400-e29b-41d4-a716-446655440000",
+      "target_ip":          "10.0.0.5",
+      "target_port":        862,
+      "profile": {
+        "name":             "voip",
+        "n_packets":        50,
+        "interval_ms":      20,
+        "wait_time_ms":     500,
+        "dscp":             46,
+        "packet_size":      42,
+        "timing_mode":      "FIXED",
+        "rtt_green_ms":     150.0,
+        "rtt_red_ms":       300.0,
+        "jitter_green_ms":  15.0,
+        "jitter_red_ms":    30.0,
+        "loss_green_pct":   0.5,
+        "loss_red_pct":     1.0
+      },
+      "interval_seconds":   300,
+      "traceroute_enabled": true,
+      "skip_cycles":        0,
+      "tcp_probe_ports":    [443]
+    }
+  ],
+  "received_at": "2025-02-15T10:30:00Z",
+  "command_id":  "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+}
+
+Fields:
+  path_id             UUID identifying this measurement path
+  target_ip           Destination agent IP
+  target_port         TWAMP control port (almost always 862)
+  profile             Full SlaProfile object (see profiles section)
+  interval_seconds    How often to run this session (seconds)
+  traceroute_enabled  Whether to run traceroute after TWAMP
+  skip_cycles         Skip first N cycles after schedule load
+  tcp_probe_ports     Ports to probe if TWAMP + ICMP both fail
+
+Up to 20 sessions run concurrently (configurable via AgentConfig).
+
+
+================================================================================
+  TESTING THE AGENT
+================================================================================
+
+---  Test 1: Check your own agent is reflecting  ---
+
+On machine A, start the daemon:
+  slogr-agent daemon
+
+On machine B, run a check against A:
+  slogr-agent check <machine-A-IP>
+
+Expected output (text):
+  Target: <IP>
+  Method: TWAMP (RFC 5357)
+  Grade:  GREEN
+  RTT:    min=X.Xms  avg=X.Xms  max=X.Xms
+  Loss:   0.0%
+  Jitter: X.Xms
+
+Expected output (json):
+  slogr-agent check <IP> --format json
+
+
+---  Test 2: Verify JSON output fields  ---
+
+  slogr-agent check 8.8.8.8 --format json | python3 -c "
+  import json, sys
+  data = json.load(sys.stdin)
+  assert 'fwd_avg_rtt_ms' in str(data), 'missing fwd_avg_rtt_ms'
+  assert 'packets_sent'   in str(data), 'missing packets_sent'
+  assert 'grade'          in str(data), 'missing grade'
+  print('OK:', data.get('grade'))
+  "
+
+
+---  Test 3: Verify version  ---
+
+  slogr-agent version
+  # Expected: slogr-agent X.X.X (abc1234) built ...
+
+
+---  Test 4: Verify status  ---
+
+  slogr-agent status
+  # Shows current mode, key status, agent ID if registered
+
+
+---  Test 5: Run diagnostics  ---
+
+  slogr-agent doctor
+  # Checks JNI library, CAP_NET_RAW, TLS to slogr.io
+
+
+---  Test 6: Two-container Docker E2E  ---
+
+  # Start reflector
+  docker network create test-net
+  docker run -d --name agent-b --network test-net \
+    --cap-add NET_RAW --cap-add NET_BIND_SERVICE \
+    slogr-agent:latest daemon
+
+  # Wait for reflector to bind
+  until docker logs agent-b 2>&1 | grep -q "TWAMP reflector listening"; do
+    sleep 1; done
+
+  # Run check from agent A
+  B_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' agent-b)
+  docker run --rm --network test-net \
+    --cap-add NET_RAW --cap-add NET_BIND_SERVICE \
+    slogr-agent:latest check "$B_IP"
+
+  # Cleanup
+  docker stop agent-b && docker rm agent-b
+  docker network rm test-net
+
+
+---  Test 7: Profile-specific check  ---
+
+  slogr-agent check <IP> --profile voip
+  slogr-agent check <IP> --profile gaming
+  slogr-agent check <IP> --profile streaming
+
+
+---  Test 8: ICMP fallback (non-TWAMP target)  ---
+
+  # Run against a host with no TWAMP reflector — should fall back to ICMP/TCP
+  slogr-agent check 8.8.8.8 --profile internet
+  # Expected: measurement_method: "icmp" in JSON output
+
+
+================================================================================
+  DATA FLOW OVERVIEW
+================================================================================
+
+For inbound connections (reflector mode):
+  Remote agent connects to 0.0.0.0:862 (TCP)
+    → TwampReflector accepts and runs state machine
+    → Negotiates TWAMP session, opens UDP reflector port
+    → Reflects test packets back with timestamps
+
+For outbound measurements (controller mode):
+  TestScheduler fires on interval
+    → TwampController connects to target:862 (TCP)
+    → Exchanges TWAMP control messages
+    → Sends/receives UDP test packets
+    → MeasurementAssembler builds MeasurementResult
+    → SlaEvaluator assigns grade
+    → OtlpExporter records metrics
+    → onResult callback logs grade
+
+
+================================================================================
+  FILE LOCATIONS REFERENCE
+================================================================================
+
+Runtime files (all in SLOGR_DATA_DIR, default ~/.slogr or /opt/slogr/data):
+
+  credential.enc          Encrypted agent credential (binary)
+  .slogr-key-cache.json   Validation cache for sk_free_* keys (JSON, TTL 24h)
+  schedule.json           Active measurement schedule (JSON)
+  GeoLite2-ASN.mmdb       MaxMind ASN database (optional, download separately)
+
+System files (systemd / RPM / DEB installs):
+
+  /usr/local/bin/slogr-agent         Launcher script (wrapper.sh)
+  /opt/slogr/slogr-agent-all.jar     Application JAR
+  /opt/slogr/lib/libslogr-native.so  JNI native library
+  /etc/systemd/system/slogr-agent.service  Systemd service
+  /etc/slogr/env                     Environment file (600 perms, sourced by systemd)
+
+
+================================================================================
+  KNOWN REQUIREMENTS AND CONSTRAINTS
+================================================================================
+
+- Java 21 required (Amazon Corretto 21 recommended)
+- Linux required for production use (JNI + raw sockets)
+- JVM heap: 384 MB default, total process ceiling ~512 MB (suitable for t3.micro)
+- Port 862/TCP must be reachable between agents for TWAMP
+- CAP_NET_RAW required for TWAMP UDP and ICMP traceroute
+- CAP_NET_BIND_SERVICE required to bind port 862 as non-root
+- MaxMind GeoLite2-ASN.mmdb needed for ASN enrichment (optional)
+- OTLP endpoint must be HTTP (not gRPC) — agent uses OTLP/HTTP exporter
+
+Windows note: The agent can run on Windows in development mode using Java
+  DatagramSocket fallbacks (JavaUdpTransport), but JNI features (TWAMP raw
+  UDP, ICMP traceroute) require Linux. All production deployments are Linux.
+
+
+================================================================================
+  QUICK REFERENCE — MOST COMMON OPERATIONS
+================================================================================
+
+  # One-shot check
+  slogr-agent check 10.0.0.5
+
+  # One-shot check with profile and JSON output
+  slogr-agent check 10.0.0.5 --profile voip --format json
+
+  # Register with backend (sk_live_ key)
+  slogr-agent connect --api-key sk_live_XXXXXXXXXX
+
+  # Check status after registration
+  slogr-agent status
+
+  # Start daemon (registered)
+  export SLOGR_API_KEY=sk_free_XXXXXXXXXX
+  export SLOGR_OTLP_ENDPOINT=https://otel.slogr.io/v1/metrics
+  slogr-agent daemon
+
+  # Start daemon with custom schedule file
+  slogr-agent daemon --config /path/to/schedule.json
+
+  # Run diagnostics
+  slogr-agent doctor
+
+  # View version
+  slogr-agent version
+
+  # Remove credentials
+  slogr-agent disconnect
+
+
+================================================================================
+  END OF DOCUMENT
+================================================================================
