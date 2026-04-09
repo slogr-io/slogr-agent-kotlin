@@ -38,6 +38,11 @@ data class MeasurementResult(
 
     val profile: SlaProfile,
 
+    // ── Ground-truth RTT: (T4-T1) - (T3-T2), always clock-independent ─────
+    @SerialName("rtt_min_ms") val rttMinMs: Float = 0f,
+    @SerialName("rtt_avg_ms") val rttAvgMs: Float = 0f,
+    @SerialName("rtt_max_ms") val rttMaxMs: Float = 0f,
+
     @SerialName("fwd_min_rtt_ms") val fwdMinRttMs: Float,
     @SerialName("fwd_avg_rtt_ms") val fwdAvgRttMs: Float,
     @SerialName("fwd_max_rtt_ms") val fwdMaxRttMs: Float,
