@@ -11,7 +11,7 @@ class VersionTest {
     @Test
     fun `version command prints version string containing 1_0_0`() {
         val out = captureStdout { run(arrayOf("version")) }
-        assertTrue(out.contains("1.0.7"), "Expected '1.0.7' in output but got: $out")
+        assertTrue(out.contains("1.0.8"), "Expected '1.0.8' in output but got: $out")
     }
 
     @Test
