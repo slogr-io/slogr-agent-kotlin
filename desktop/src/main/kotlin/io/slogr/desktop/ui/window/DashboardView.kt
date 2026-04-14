@@ -7,9 +7,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.slogr.desktop.core.history.LocalHistoryStore
+import io.slogr.desktop.core.network.IspInfo
 import io.slogr.desktop.core.profiles.ProfileManager
 import io.slogr.desktop.core.profiles.TrafficGrade
 import io.slogr.desktop.ui.theme.*
@@ -24,6 +26,7 @@ fun DashboardView(
     hasServers: Boolean,
     historyStore: LocalHistoryStore?,
     profileManager: ProfileManager,
+    ispInfo: IspInfo?,
     onRunTestNow: () -> Unit,
     onGoToSettings: () -> Unit,
 ) {
@@ -44,6 +47,15 @@ fun DashboardView(
                 ) { Text("Go to Settings") }
             }
             return
+        }
+
+        // ISP display
+        if (ispInfo != null) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Connected via: ", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                Text(ispInfo.ispName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                Text(" (AS${ispInfo.asn})", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            }
         }
 
         // Traffic type cards

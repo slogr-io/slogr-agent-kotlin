@@ -23,6 +23,7 @@ import io.slogr.desktop.core.DataDirectory
 import io.slogr.desktop.core.autostart.AutoStartManager
 import io.slogr.desktop.core.history.HistoryPruner
 import io.slogr.desktop.core.history.LocalHistoryStore
+import io.slogr.desktop.core.network.IspDetector
 import io.slogr.desktop.core.notifications.DesktopNotifier
 import io.slogr.desktop.core.profiles.ProfileManager
 import io.slogr.desktop.core.scheduler.DesktopMeasurementScheduler
@@ -63,6 +64,7 @@ fun main() {
     val scheduler = DesktopMeasurementScheduler(engine, viewModel, profileManager, historyStore)
 
     val autoUpdater = io.slogr.desktop.core.update.AutoUpdater()
+    val ispDetector = IspDetector()
 
     settingsStore.load()
     stateManager.initialize()
@@ -86,6 +88,7 @@ fun main() {
         val activeServerList = listOfNotNull(activeServer)
 
         val updateInfo by autoUpdater.updateAvailable.collectAsState()
+        val ispInfo by ispDetector.ispInfo.collectAsState()
 
         // Compose tray popup
         var showTrayPopup by remember { mutableStateOf(false) }
@@ -129,6 +132,7 @@ fun main() {
             historyStore.initialize()
             historyPruner.start()
             autoUpdater.start()
+            ispDetector.start()
             viewModel.refreshHistory(historyStore)
         }
 
@@ -159,7 +163,7 @@ fun main() {
 
         DisposableEffect(Unit) {
             onDispose {
-                scheduler.shutdown(); historyPruner.stop(); autoUpdater.stop(); historyStore.close()
+                scheduler.shutdown(); historyPruner.stop(); autoUpdater.stop(); ispDetector.stop(); historyStore.close()
                 trayIconRef[0]?.let { try { SystemTray.getSystemTray().remove(it) } catch (_: Exception) {} }
             }
         }
@@ -262,7 +266,7 @@ fun main() {
                                 MainView.DASHBOARD -> DashboardView(
                                     trafficGrades = trafficGrades, isMeasuring = isMeasuring, lastTestTime = lastTestTime,
                                     hasServers = hasServers, historyStore = historyStore, profileManager = profileManager,
-                                    onRunTestNow = runTestNow, onGoToSettings = { activeView = MainView.SETTINGS })
+                                    ispInfo = ispInfo, onRunTestNow = runTestNow, onGoToSettings = { activeView = MainView.SETTINGS })
                                 MainView.SETTINGS -> SettingsView(
                                     settings = settings, settingsStore = settingsStore,
                                     profileManager = profileManager, viewModel = viewModel,
