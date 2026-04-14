@@ -1,0 +1,17 @@
+name: Feature Request
+description: Propose a new feature for slogr-agent-kotlin (L1)
+title: "feat(<scope>): "
+labels: ["type:feature", "layer:l1"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or motivation
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
