@@ -2,6 +2,7 @@ package io.slogr.agent.platform.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.PrintHelpMessage
 import com.github.ajalt.clikt.core.subcommands
 
 /**
@@ -25,7 +26,7 @@ class SlogrCli(ctx: CliContext) : CliktCommand(name = "slogr-agent") {
 
     override fun run() {
         if (currentContext.invokedSubcommand == null) {
-            echo(getFormattedHelp())
+            throw PrintHelpMessage(currentContext)
         }
     }
 }

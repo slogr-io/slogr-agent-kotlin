@@ -36,6 +36,9 @@ class JsonResultFormatter : ResultFormatter {
                     put("rev_max_rtt_ms", t.revMaxRttMs ?: 0f)
                     put("rev_jitter_ms", t.revJitterMs ?: 0f)
                 }
+                put("rtt_min_ms", t.rttMinMs)
+                put("rtt_avg_ms", t.rttAvgMs)
+                put("rtt_max_ms", t.rttMaxMs)
                 put("session_id", t.sessionId.toString())
                 put("path_id", t.pathId.toString())
             })

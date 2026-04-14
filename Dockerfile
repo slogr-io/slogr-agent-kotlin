@@ -39,6 +39,12 @@ FROM amazoncorretto:21-alpine
 # CAP_NET_RAW          — required for traceroute (ICMP raw sockets)
 # CAP_NET_BIND_SERVICE — required for binding port 862 as non-root
 # SLOGR_TEST_PORT      — fixed UDP port for TWAMP test sessions (default 863)
+#
+# To bind port 862 as non-root, use ONE of:
+#   docker run --sysctl net.ipv4.ip_unprivileged_port_start=862 ...  (preferred, Docker 20.10+)
+#   docker run --cap-add NET_BIND_SERVICE --cap-add NET_RAW ...       (fallback)
+# Do NOT use setcap on the java binary — it grants capabilities to all
+# Java processes in the container, not just the agent.
 
 RUN apk add --no-cache bash libcap && \
     addgroup -S slogr && \

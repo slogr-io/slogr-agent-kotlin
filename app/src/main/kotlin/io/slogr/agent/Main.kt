@@ -1,6 +1,7 @@
 package io.slogr.agent
 
 import com.github.ajalt.clikt.core.CliktError
+import com.github.ajalt.clikt.core.PrintHelpMessage
 import com.github.ajalt.clikt.core.ProgramResult
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.parse
@@ -110,6 +111,9 @@ fun run(args: Array<String>): Int {
 
     return try {
         SlogrCli(ctx).parse(args.toList())
+        0
+    } catch (e: PrintHelpMessage) {
+        println(e.context?.command?.getFormattedHelp())
         0
     } catch (e: ProgramResult) {
         e.statusCode

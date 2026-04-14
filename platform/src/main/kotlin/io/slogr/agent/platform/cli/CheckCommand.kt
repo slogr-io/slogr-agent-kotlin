@@ -10,6 +10,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import io.slogr.agent.contracts.Direction
 import io.slogr.agent.contracts.SlaGrade
+import io.slogr.agent.contracts.TracerouteMode
 import io.slogr.agent.contracts.TwampAuthMode
 import io.slogr.agent.engine.sla.ProfileRegistry
 import io.slogr.agent.engine.sla.SlaEvaluator
@@ -59,18 +60,42 @@ class CheckCommand(private val ctx: CliContext) : CliktCommand(name = "check") {
         help = "Include traceroute"
     ).flag(default = false)
 
+    private val tracerouteTimeout: Int by option(
+        "--traceroute-timeout",
+        help = "Max seconds for traceroute fallback chain (default: 60). " +
+               "First mode always completes. Actual time may exceed this by up to 30s."
+    ).int().default(60)
+
+    private val tracerouteMode: String? by option(
+        "--traceroute-mode",
+        help = "Force traceroute mode: icmp, tcp, or udp (default: auto fallback)"
+    )
+
     override fun run() = runBlocking<Unit> {
         val targetIp  = resolveTarget()
         val profile   = ProfileRegistry.get(profileName) ?: ProfileRegistry.get("internet")!!
         val formatter = if (format == "json") ctx.jsonFormatter else ctx.textFormatter
 
-        // ── 1. Try TWAMP ────────────────────────────────────────────────────────
+        // Validate --traceroute-mode
+        val parsedMode = tracerouteMode?.let { modeStr ->
+            when (modeStr.lowercase()) {
+                "icmp" -> TracerouteMode.ICMP
+                "tcp"  -> TracerouteMode.TCP
+                "udp"  -> TracerouteMode.UDP
+                else -> {
+                    echo("error: invalid --traceroute-mode '$modeStr'. Valid: icmp, tcp, udp", err = true)
+                    throw ProgramResult(2)
+                }
+            }
+        }
+
+        // ── 1. Try TWAMP (without traceroute — handled separately below) ────────
         val twampBundle = try {
             ctx.engine.measure(
                 target     = targetIp,
                 targetPort = port,
                 profile    = profile,
-                traceroute = withTraceroute,
+                traceroute = false,
                 authMode   = TwampAuthMode.UNAUTHENTICATED
             )
         } catch (e: Exception) {
@@ -79,8 +104,27 @@ class CheckCommand(private val ctx: CliContext) : CliktCommand(name = "check") {
         }
 
         if (twampBundle != null && twampBundle.twamp.packetsRecv > 0) {
-            echo(formatter.format(targetIp, twampBundle, profileName))
-            ctx.otlpExporter.record(twampBundle, profileName)
+            // Run traceroute separately with check-specific defaults
+            val trace = if (withTraceroute) {
+                try {
+                    ctx.tracerouteOrchestrator.run(
+                        target       = targetIp,
+                        sessionId    = twampBundle.twamp.sessionId,
+                        pathId       = twampBundle.twamp.pathId,
+                        direction    = Direction.UPLINK,
+                        probesPerHop = 1,
+                        timeoutMs    = 1000,
+                        mode         = parsedMode,
+                        budgetMs     = tracerouteTimeout * 1000L
+                    )
+                } catch (e: Exception) {
+                    log.debug("Traceroute failed: ${e.message}")
+                    null
+                }
+            } else null
+            val bundleWithTrace = twampBundle.copy(traceroute = trace)
+            echo(formatter.format(targetIp, bundleWithTrace, profileName))
+            ctx.otlpExporter.record(bundleWithTrace, profileName)
             ctx.otlpExporter.flush()
             return@runBlocking
         }
@@ -95,10 +139,14 @@ class CheckCommand(private val ctx: CliContext) : CliktCommand(name = "check") {
         val traceroute = if (needTrace) {
             try {
                 ctx.tracerouteOrchestrator.run(
-                    target    = targetIp,
-                    sessionId = UUID.randomUUID(),
-                    pathId    = UUID.randomUUID(),
-                    direction = Direction.UPLINK
+                    target       = targetIp,
+                    sessionId    = UUID.randomUUID(),
+                    pathId       = UUID.randomUUID(),
+                    direction    = Direction.UPLINK,
+                    probesPerHop = 1,
+                    timeoutMs    = 1000,
+                    mode         = parsedMode,
+                    budgetMs     = tracerouteTimeout * 1000L
                 )
             } catch (e: Exception) {
                 log.debug("Traceroute failed: ${e.message}")

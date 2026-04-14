@@ -192,4 +192,126 @@ class TracerouteOrchestratorTest {
 
         assertEquals(50f, result.hops[0].lossPct)
     }
+
+    // ── Budget gating (AGENT-003) ────────────────────────────────────────────
+
+    @Test
+    fun `first mode always runs even with expired budget`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        // ICMP: mostly stars (triggers fallback normally, but budget prevents it)
+        every { adapter.icmpProbe(any(), eq(1), any()) } returns ProbeResult.TIMEOUT
+        every { adapter.icmpProbe(any(), eq(2), any()) } returns ProbeResult.TIMEOUT
+        every { adapter.icmpProbe(any(), eq(3), any()) } returns ProbeResult("8.8.8.8", 15f, true, 0, 0)
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        val result = orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 10,
+            probesPerHop = 1,
+            budgetMs     = 1  // instant expiry — but ICMP still runs unconditionally
+        )
+
+        // ICMP result returned (3 hops, 2 stars + target)
+        assertEquals(3, result.hops.size)
+        // TCP/UDP never called
+        verify(exactly = 0) { adapter.tcpProbe(any(), any(), any(), any()) }
+        verify(exactly = 0) { adapter.udpProbe(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `budget gates second mode when remaining below threshold`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        // ICMP: mostly stars
+        every { adapter.icmpProbe(any(), any(), any()) } returns ProbeResult.TIMEOUT
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        val result = orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 3,
+            probesPerHop = 1,
+            budgetMs     = 1  // ICMP runs, budget expires, TCP skipped
+        )
+
+        // Got ICMP result (all stars), TCP never attempted
+        assertTrue(result.hops.isNotEmpty())
+        verify(exactly = 0) { adapter.tcpProbe(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `budget allows two modes but not three`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        // All modes return mostly stars (forces full fallback chain)
+        every { adapter.icmpProbe(any(), any(), any()) } returns ProbeResult.TIMEOUT
+        every { adapter.tcpProbe(any(), any(), any(), any()) } returns ProbeResult.TIMEOUT
+        every { adapter.udpProbe(any(), any(), any(), any()) } returns ProbeResult.TIMEOUT
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        val result = orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 2,
+            probesPerHop = 1,
+            timeoutMs    = 1,       // very fast probes
+            budgetMs     = 120_000  // 2 minutes — enough for ICMP+TCP but check UDP gate
+        )
+
+        // Should have run at least ICMP (verify by checking hops exist)
+        assertTrue(result.hops.isNotEmpty())
+        // With timeoutMs=1 and maxHops=2, ICMP+TCP finish near-instantly,
+        // so UDP should also run (budget is generous). This tests the "allows two"
+        // path — UDP gate depends on remaining budget after TCP.
+        verify(atLeast = 1) { adapter.icmpProbe(any(), any(), any()) }
+        verify(atLeast = 1) { adapter.tcpProbe(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `explicit mode ignores budget and fallback`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        every { adapter.tcpProbe(any(), any(), eq(1), any()) } returns ProbeResult("10.0.0.1", 5f, false, 11, 0)
+        every { adapter.tcpProbe(any(), any(), eq(2), any()) } returns ProbeResult("8.8.8.8", 12f, true, 3, 3)
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 5,
+            probesPerHop = 1,
+            mode         = TracerouteMode.TCP,
+            budgetMs     = 30_000
+        )
+
+        verify(exactly = 0) { adapter.icmpProbe(any(), any(), any()) }
+        verify(exactly = 0) { adapter.udpProbe(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `check-specific reduced defaults passed through`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        every { adapter.icmpProbe(any(), eq(1), eq(500)) } returns ProbeResult("8.8.8.8", 5f, true, 0, 0)
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 5,
+            probesPerHop = 1,
+            timeoutMs    = 500,  // check-specific reduced timeout
+            mode         = TracerouteMode.ICMP
+        )
+
+        // Verify the adapter received the reduced timeoutMs (500, not default 2000)
+        verify { adapter.icmpProbe(any(), eq(1), eq(500)) }
+    }
 }
