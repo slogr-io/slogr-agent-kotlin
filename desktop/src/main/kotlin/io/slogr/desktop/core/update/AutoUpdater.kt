@@ -33,15 +33,32 @@ class AutoUpdater {
 
     companion object {
         const val CURRENT_VERSION = "1.1.0"
-        const val UPDATE_URL = "https://slogr.io/desktop/update.json"
+        val UPDATE_URLS = listOf(
+            "https://api.slogr.io/v1/desktop/latest",
+            "https://slogr.io/desktop/update.json",
+        )
         private const val CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000
+        private const val DISMISS_DURATION_MS = 24L * 60 * 60 * 1000
     }
 
     @Serializable
     data class UpdateInfo(
         val version: String,
-        @SerialName("download_url") val downloadUrl: String,
-    )
+        @SerialName("download_url_windows") val downloadUrlWindows: String? = null,
+        @SerialName("download_url_macos") val downloadUrlMacos: String? = null,
+        @SerialName("download_url") val downloadUrl: String? = null,
+        @SerialName("release_notes") val releaseNotes: String? = null,
+        val required: Boolean = false,
+    ) {
+        /** Platform-appropriate download URL */
+        val platformDownloadUrl: String? get() {
+            val os = System.getProperty("os.name", "").lowercase()
+            return when {
+                os.contains("mac") -> downloadUrlMacos ?: downloadUrl
+                else -> downloadUrlWindows ?: downloadUrl
+            }
+        }
+    }
 
     private val _updateAvailable = MutableStateFlow<UpdateInfo?>(null)
     val updateAvailable: StateFlow<UpdateInfo?> = _updateAvailable.asStateFlow()
@@ -62,30 +79,42 @@ class AutoUpdater {
     /** Open the download URL in the system browser. */
     fun openDownloadPage() {
         val info = _updateAvailable.value ?: return
+        val url = info.platformDownloadUrl ?: return
         try {
-            Desktop.getDesktop().browse(URI(info.downloadUrl))
+            Desktop.getDesktop().browse(URI(url))
         } catch (e: Exception) {
             log.warn("Failed to open browser: {}", e.message)
         }
     }
 
-    fun dismiss() { _updateAvailable.value = null }
+    /** Dismiss the update banner for 24 hours. */
+    fun dismiss() {
+        _updateAvailable.value = null
+        dismissedUntil = System.currentTimeMillis() + DISMISS_DURATION_MS
+    }
+
+    private var dismissedUntil: Long = 0L
 
     private fun check() {
-        try {
-            val request = HttpRequest.newBuilder()
-                .uri(URI.create(UPDATE_URL))
-                .timeout(Duration.ofSeconds(10))
-                .GET().build()
-            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() != 200) return
-            val info = json.decodeFromString<UpdateInfo>(response.body())
-            if (isNewer(info.version, CURRENT_VERSION)) {
-                log.info("Update available: {} -> {}", CURRENT_VERSION, info.version)
-                _updateAvailable.value = info
+        // Skip check if dismissed (unless required updates override)
+        if (System.currentTimeMillis() < dismissedUntil && _updateAvailable.value?.required != true) return
+        for (url in UPDATE_URLS) {
+            try {
+                val request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(10))
+                    .GET().build()
+                val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+                if (response.statusCode() != 200) continue
+                val info = json.decodeFromString<UpdateInfo>(response.body())
+                if (isNewer(info.version, CURRENT_VERSION)) {
+                    log.info("Update available: {} -> {}", CURRENT_VERSION, info.version)
+                    _updateAvailable.value = info
+                }
+                return // success — don't try other URLs
+            } catch (_: Exception) {
+                continue
             }
-        } catch (_: Exception) {
-            // Silent fail — no update server, network down, bad JSON
         }
     }
 

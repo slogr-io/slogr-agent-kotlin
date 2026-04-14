@@ -220,26 +220,42 @@ fun main() {
                 window.minimumSize = java.awt.Dimension(500, 400)
                 SlogrTheme {
                     Column(Modifier.fillMaxSize()) {
-                        // Update banner — persistent, not dismissable
-                        if (updateInfo != null) {
-                            Surface(
-                                color = SlogrGreen,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
+                        // Update banner — dismissable with "Later"
+                        val currentUpdate = updateInfo
+                        if (currentUpdate != null && !currentUpdate.required) {
+                            Surface(color = SlogrGreen, modifier = Modifier.fillMaxWidth()) {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth().clickable { autoUpdater.openDownloadPage() }
-                                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                                    horizontalArrangement = Arrangement.Center,
+                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                                 ) {
-                                    Text(
-                                        "A new version of Slogr is available that improves performance. Click here to download.",
-                                        color = androidx.compose.ui.graphics.Color.White,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                    )
+                                    Text("Slogr v${currentUpdate.version} is available.",
+                                        color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium,
+                                        modifier = Modifier.weight(1f))
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(onClick = { autoUpdater.openDownloadPage() },
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White),
+                                        ) { Text("Update Now", fontSize = 12.sp) }
+                                        TextButton(onClick = { autoUpdater.dismiss() },
+                                            colors = ButtonDefaults.textButtonColors(contentColor = Color.White.copy(alpha = 0.8f)),
+                                        ) { Text("Later", fontSize = 12.sp) }
+                                    }
                                 }
                             }
+                        }
+                        // Required update — modal dialog
+                        if (currentUpdate != null && currentUpdate.required) {
+                            AlertDialog(
+                                onDismissRequest = {},
+                                title = { Text("Update Required") },
+                                text = { Text("Slogr v${currentUpdate.version} is required to continue.\n${currentUpdate.releaseNotes ?: ""}") },
+                                confirmButton = {
+                                    Button(onClick = { autoUpdater.openDownloadPage() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = SlogrGreen),
+                                    ) { Text("Update Now") }
+                                },
+                            )
                         }
                     Row(Modifier.fillMaxSize().weight(1f).background(SlogrBackground)) {
                         Column(Modifier.width(140.dp).fillMaxHeight().background(SlogrSidebarBg).padding(vertical = 12.dp)) {
