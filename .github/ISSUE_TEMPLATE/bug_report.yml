@@ -1,0 +1,28 @@
+name: Bug Report
+description: Report a bug in slogr-agent-kotlin (L1)
+title: "fix(<scope>): "
+labels: ["type:bug", "layer:l1"]
+body:
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - "p0: Critical"
+        - "p1: High"
+        - "p2: Medium"
+        - "p3: Low"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
