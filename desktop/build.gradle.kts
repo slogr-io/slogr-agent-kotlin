@@ -59,8 +59,18 @@ compose.desktop {
             vendor = "Slogr"
             // licenseFile.set(rootProject.file("LICENSE"))  // uncomment when LICENSE exists
 
-            // Include SQLite native library + MaxMind MMDB
-            includeAllModules = true
+            // Trimmed JRE — only modules actually needed
+            modules(
+                "java.base",
+                "java.desktop",        // AWT for tray icon
+                "java.logging",
+                "java.naming",         // DNS resolution
+                "java.net.http",       // HTTP client (IspDetector, AutoUpdater)
+                "java.sql",            // SQLite via JDBC
+                "java.security.jgss",  // TLS
+                "jdk.crypto.ec",       // TLS elliptic curve
+                "jdk.unsupported",     // Compose Desktop needs this
+            )
 
             // Linux (future)
             linux {
