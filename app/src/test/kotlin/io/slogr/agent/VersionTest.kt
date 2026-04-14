@@ -11,7 +11,7 @@ class VersionTest {
     @Test
     fun `version command prints version string containing 1_0_0`() {
         val out = captureStdout { run(arrayOf("version")) }
-        assertTrue(out.contains("1.0.3"), "Expected '1.0.3' in output but got: $out")
+        assertTrue(out.contains("1.0.7"), "Expected '1.0.7' in output but got: $out")
     }
 
     @Test
@@ -29,6 +29,20 @@ class VersionTest {
     @Test
     fun `version command returns exit code 0`() {
         val code = captureStdoutReturning { run(arrayOf("version")) }
+        assertEquals(0, code)
+    }
+
+    @Test
+    fun `help flag prints formatted help containing subcommand names`() {
+        val out = captureStdout { run(arrayOf("--help")) }
+        assertTrue(out.contains("check"), "Help output should list 'check' subcommand but got: $out")
+        assertTrue(out.contains("daemon"), "Help output should list 'daemon' subcommand but got: $out")
+        assertTrue(out.contains("version"), "Help output should list 'version' subcommand but got: $out")
+    }
+
+    @Test
+    fun `help flag returns exit code 0`() {
+        val code = captureStdoutReturning { run(arrayOf("--help")) }
         assertEquals(0, code)
     }
 

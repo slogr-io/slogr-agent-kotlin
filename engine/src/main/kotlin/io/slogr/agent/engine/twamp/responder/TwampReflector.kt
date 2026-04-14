@@ -119,6 +119,16 @@ class TwampReflector(
             server.close()
             threadPool.shutdown()
             log.info("TWAMP reflector stopped")
+        } catch (e: java.net.BindException) {
+            val msg = e.message ?: ""
+            if (msg.contains("Permission denied", ignoreCase = true)) {
+                log.error("Cannot bind port $listenPort: Permission denied.")
+                log.error("Fix: docker run --sysctl net.ipv4.ip_unprivileged_port_start=$listenPort ...")
+                log.error("  or: docker run --cap-add NET_BIND_SERVICE --cap-add NET_RAW ...")
+                log.error("Note: --sysctl requires Docker 20.10+ or may need --privileged on some runtimes.")
+            } else {
+                log.error("Cannot bind port $listenPort: $msg (port may already be in use by another process)")
+            }
         } catch (e: Throwable) {
             log.error("TWAMP reflector failed on port $listenPort: ${e.javaClass.name}: ${e.message}", e)
         }

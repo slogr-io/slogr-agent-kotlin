@@ -5,6 +5,25 @@ All notable changes to the Slogr Agent (Kotlin/JVM) are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2026-04-14
+
+### Added
+- Ground-truth RTT fields (`rtt_min_ms`, `rtt_avg_ms`, `rtt_max_ms`) in `check --format json` output
+- `--traceroute-mode icmp|tcp|udp` flag to force single traceroute mode (no fallback)
+- `--traceroute-timeout <seconds>` flag to cap traceroute fallback time (default: 60s)
+- Actionable error message when TWAMP reflector cannot bind port 862 (BindException)
+
+### Changed
+- `check --traceroute` uses reduced defaults: 1 probe/hop, 1s timeout (vs daemon's 2/2s)
+- Text output adds "RTT total" line showing ground-truth bidirectional RTT
+
+### Fixed
+- AGENT-001: Port 862 bind failure prints fix instructions instead of raw stack trace
+- AGENT-003: Traceroute worst-case drops from 360s to ~90s (first mode + budget cap)
+- AGENT-004: `check --format json` was missing ground-truth RTT despite computing them
+- `--help` printed null instead of formatted help text (Clikt `PrintHelpMessage.message` is null)
+- Unknown commands exited 0 instead of exit code 2 (root command silently swallowed unknown tokens)
+
 ## [1.0.5] - 2026-04-09
 
 ### Changed

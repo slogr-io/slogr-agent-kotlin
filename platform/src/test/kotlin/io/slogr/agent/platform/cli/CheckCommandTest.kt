@@ -47,6 +47,31 @@ class CheckCommandTest {
         assertTrue(trimmed.contains("\"measurement_method\""), trimmed)
     }
 
+    // ── AGENT-004: Ground-truth RTT in check output ─────────────────────────
+
+    @Test
+    fun `TWAMP JSON output contains ground-truth RTT fields`() {
+        val ctx = makeCtx(twampBundle = makeGreenBundleWithRtt())
+        val result = SlogrCli(ctx).test("check 127.0.0.1 --format json")
+        assertEquals(0, result.statusCode, result.output)
+        val trimmed = result.output.trim()
+        assertTrue(trimmed.contains("\"rtt_min_ms\""), "missing rtt_min_ms: $trimmed")
+        assertTrue(trimmed.contains("\"rtt_avg_ms\""), "missing rtt_avg_ms: $trimmed")
+        assertTrue(trimmed.contains("\"rtt_max_ms\""), "missing rtt_max_ms: $trimmed")
+    }
+
+    @Test
+    fun `TWAMP JSON ground-truth RTT values are non-zero for reachable target`() {
+        val ctx = makeCtx(twampBundle = makeGreenBundleWithRtt())
+        val result = SlogrCli(ctx).test("check 127.0.0.1 --format json")
+        assertEquals(0, result.statusCode, result.output)
+        val trimmed = result.output.trim()
+        // Verify the values are the ones we set (22.1, 25.4, 28.7), not 0.0
+        assertTrue(trimmed.contains("22.1"), "rtt_min_ms should be 22.1: $trimmed")
+        assertTrue(trimmed.contains("25.4"), "rtt_avg_ms should be 25.4: $trimmed")
+        assertTrue(trimmed.contains("28.7"), "rtt_max_ms should be 28.7: $trimmed")
+    }
+
     // ── TWAMP refused — fallback triggers ────────────────────────────────────
 
     @Test
@@ -136,7 +161,7 @@ class CheckCommandTest {
         coEvery { tcp.probe(any(), any(), any()) } returns tcpResult
 
         val traceroute = mockk<TracerouteOrchestrator>()
-        coEvery { traceroute.run(any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { traceroute.run(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             TracerouteResult(
                 sessionId = UUID.randomUUID(), pathId = UUID.randomUUID(),
                 direction = Direction.UPLINK, capturedAt = Clock.System.now(), hops = emptyList()
@@ -156,6 +181,22 @@ class CheckCommandTest {
             tcpConnectProbe      = tcp,
             tracerouteOrchestrator = traceroute
         )
+    }
+
+    private fun makeGreenBundleWithRtt(): MeasurementBundle {
+        val profile = internetProfile()
+        val result = MeasurementResult(
+            sessionId = UUID.randomUUID(), pathId = UUID.randomUUID(),
+            sourceAgentId = UUID.randomUUID(), destAgentId = UUID.randomUUID(),
+            srcCloud = "aws", srcRegion = "us-east-1", dstCloud = "gcp", dstRegion = "us-central1",
+            windowTs = Clock.System.now(), profile = profile,
+            rttMinMs = 22.1f, rttAvgMs = 25.4f, rttMaxMs = 28.7f,
+            fwdMinRttMs = 10f, fwdAvgRttMs = 12f, fwdMaxRttMs = 15f,
+            fwdJitterMs = 2f, fwdLossPct = 0f,
+            revMinRttMs = 11f, revAvgRttMs = 13f, revMaxRttMs = 14f, revJitterMs = 1f,
+            packetsSent = 10, packetsRecv = 10
+        )
+        return MeasurementBundle(twamp = result, grade = SlaGrade.GREEN)
     }
 
     private fun makeGreenBundle(): MeasurementBundle {

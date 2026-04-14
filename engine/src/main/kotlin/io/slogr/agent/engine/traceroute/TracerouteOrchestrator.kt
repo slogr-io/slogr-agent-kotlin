@@ -38,22 +38,39 @@ class TracerouteOrchestrator(
         maxHops: Int = 30,
         probesPerHop: Int = 2,
         timeoutMs: Int = 2000,
-        mode: TracerouteMode? = null
+        mode: TracerouteMode? = null,
+        budgetMs: Long = Long.MAX_VALUE
     ): TracerouteResult = semaphore.withPermit {
+        val startNs = System.nanoTime()
+
         val hops = if (mode != null) {
+            // Explicit mode — no fallback chain, budget irrelevant
             runMode(target, mode, maxHops, probesPerHop, timeoutMs)
         } else {
-            // ICMP → TCP/443 → UDP fallback chain
+            // ICMP → TCP/443 → UDP fallback chain with budget gating
+            // First mode (ICMP) always runs unconditionally
             val icmp = runMode(target, TracerouteMode.ICMP, maxHops, probesPerHop, timeoutMs)
             if (!isMostlyStars(icmp)) {
                 icmp
             } else {
-                val tcp = runMode(target, TracerouteMode.TCP, maxHops, probesPerHop, timeoutMs)
-                if (!isMostlyStars(tcp)) {
-                    tcp
+                // Budget check before TCP
+                val remainingBeforeTcp = budgetMs - (System.nanoTime() - startNs) / 1_000_000
+                if (remainingBeforeTcp < MIN_USEFUL_BUDGET_MS) {
+                    icmp  // best we have
                 } else {
-                    val udp = runMode(target, TracerouteMode.UDP, maxHops, probesPerHop, timeoutMs)
-                    bestOf(icmp, tcp, udp)
+                    val tcp = runMode(target, TracerouteMode.TCP, maxHops, probesPerHop, timeoutMs)
+                    if (!isMostlyStars(tcp)) {
+                        tcp
+                    } else {
+                        // Budget check before UDP
+                        val remainingBeforeUdp = budgetMs - (System.nanoTime() - startNs) / 1_000_000
+                        if (remainingBeforeUdp < MIN_USEFUL_BUDGET_MS) {
+                            bestOf(icmp, tcp)
+                        } else {
+                            val udp = runMode(target, TracerouteMode.UDP, maxHops, probesPerHop, timeoutMs)
+                            bestOf(icmp, tcp, udp)
+                        }
+                    }
                 }
             }
         }
@@ -115,6 +132,11 @@ class TracerouteOrchestrator(
 
     private fun bestOf(vararg modes: List<TracerouteHop>): List<TracerouteHop> =
         modes.maxByOrNull { hops -> hops.count { it.ip != null } } ?: emptyList()
+
+    companion object {
+        /** Don't start a new fallback mode unless at least this much budget remains. */
+        const val MIN_USEFUL_BUDGET_MS = 15_000L
+    }
 
     // ── Private IP detection ──────────────────────────────────────────────────
 

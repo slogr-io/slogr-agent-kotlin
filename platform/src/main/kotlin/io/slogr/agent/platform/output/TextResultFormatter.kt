@@ -37,6 +37,8 @@ class TextResultFormatter(
                     "jitter ${revJitter.f1()} ms")
         }
 
+        sb.appendLine("  RTT total: min/avg/max ${t.rttMinMs.f1()}/${t.rttAvgMs.f1()}/${t.rttMaxMs.f1()} ms")
+
         bundle.traceroute?.let { appendTraceroute(sb, it) }
 
         sb.appendLine()
