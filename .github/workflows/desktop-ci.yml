@@ -1,0 +1,78 @@
+name: Desktop Agent CI
+
+on:
+  push:
+    branches: [desktop-agent]
+  pull_request:
+    branches: [desktop-agent]
+  workflow_dispatch:
+
+jobs:
+  test-and-build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Run desktop tests
+        run: ./gradlew :desktop:test
+
+      - name: Run L1R2 regression tests
+        run: ./gradlew :app:test
+
+      - name: Build MSI
+        run: ./gradlew :desktop:packageMsi
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: slogr-desktop-windows-msi
+          path: desktop/build/compose/binaries/main/msi/*.msi
+
+  test-and-build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
+
+      - name: Run desktop tests
+        run: ./gradlew :desktop:test
+
+      - name: Build DMG
+        run: ./gradlew :desktop:packageDmg
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: slogr-desktop-macos-dmg
+          path: desktop/build/compose/binaries/main/dmg/*.dmg
