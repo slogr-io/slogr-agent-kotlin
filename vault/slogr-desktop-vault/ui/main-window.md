@@ -10,7 +10,7 @@ version: 3.0
 | Property | Value |
 |---|---|
 | Title | "Slogr" |
-| Icon | Slogr "S" favicon (slogr.ico) |
+| Icon | Slogr "g" logo with teal orbital dots (slogr.ico) |
 | Default size | 620 x 520 px |
 | Minimum size | 500 x 400 px |
 | Resizable | Yes |
@@ -24,13 +24,17 @@ Left sidebar (140px) + content area. Two views: Dashboard (default) and Settings
 
 ### Sidebar
 
-- Slogr text logo at top (slogr_FINAL_516x268.png)
+- Slogr "g" logo at top (slogr-logo.png — green 'g' with teal orbital dots)
 - "Dashboard" and "Settings" navigation items
 - Selected item: dark green text on light green background
 - "Quit" at bottom
 - Light grey background (#F5F5F5)
 
 ### Dashboard View
+
+**ISP Display Row** — "Connected via: ISP_NAME (ASXXXX)" above traffic cards. Detected via ipify + ipinfo.io API, cached 24h. Hidden if detection fails.
+
+**Update Banner** — Appears at top of window when a newer version is available. Shows "Slogr vX.Y.Z is available." with "Update Now" (opens browser) and "Later" (dismisses for 24h) buttons. Required updates show a non-dismissable AlertDialog.
 
 Shows 3 traffic type cards in a row. Each card:
 - Traffic type icon (emoji)

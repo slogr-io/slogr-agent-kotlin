@@ -31,6 +31,12 @@ Each server in the list shows a status dot:
 - **Red:** Last measurement failed
 - **Grey:** Never tested (just added or not active)
 
+## ASN / ISP Resolution
+
+ASN resolution for ISP display uses the ipinfo.io API (fallback path). Public IP is detected via ipify/ifconfig.me/checkip.amazonaws.com, then `GET https://ipinfo.io/{ip}/org` returns the ASN and ISP name. Results are cached for 24 hours.
+
+When `Ip2AsnResolver` is available in the engine module (expected in v1.0.8+), the desktop app will switch to the bundled ip2asn database for instant, offline ASN lookups — no API call needed.
+
 ## Future: Auto-Discovery
 
 When Slogr deploys public TWAMP reflectors, `GET /v1/reflectors` will auto-populate the server list. When Enterprise/SaaS connectivity is wired (v1.2.0), the bootstrap endpoint will return the reflector list.

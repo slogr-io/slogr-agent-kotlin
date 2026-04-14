@@ -170,3 +170,17 @@ Extends R1 ADRs 001-020 and R2 ADRs 021-040. L1.1 adds ADR-050 through ADR-059.
 **Context:** Users can add multiple TWAMP servers, but only one should be tested at a time to avoid confusing results and unnecessary traffic.
 **Decision:** Dropdown in Servers section to select which server is active. Only the active server is measured. Others remain in the list for easy switching. When first server is added, it becomes active automatically.
 **Consequence:** Clear single-server results. Server list serves as a favorites/recent list for future use.
+
+## ADR-070: ISP Detection via API Fallback
+
+**Status:** Locked
+**Context:** Users want to see their ISP name on the Dashboard (like Ookla). The engine module does not yet provide `Ip2AsnResolver` (expected in v1.0.8).
+**Decision:** Detect public IP via HTTP API (ipify/ifconfig.me/checkip.amazonaws.com). Look up ASN using ipinfo.io API (`GET /ip/org`). Display "Connected via: ISP_NAME (ASXXXX)" on Dashboard. When `Ip2AsnResolver` becomes available, switch to the bundled database for instant offline lookups.
+**Consequence:** Requires one HTTP call on startup, cached 24h. Fails silently — ISP row simply hidden if detection fails. No additional database to bundle.
+
+## ADR-071: Dismissable Update Banner with Required Mode
+
+**Status:** Locked
+**Context:** ADR-068 defined a persistent green banner for updates. Users found persistent banners annoying when they want to update later.
+**Decision:** Update banner now has "Update Now" and "Later" buttons. "Later" dismisses the banner for 24 hours. A new `required` field in the update response shows a non-dismissable AlertDialog instead of a banner. AutoUpdater tries `api.slogr.io/v1/desktop/latest` first, falls back to `slogr.io/desktop/update.json`. Platform-specific download URLs (`download_url_windows`, `download_url_macos`) with fallback to generic `download_url`.
+**Consequence:** Better UX for optional updates. Required updates enforce critical patches. Both endpoints can be deployed independently.
