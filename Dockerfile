@@ -30,14 +30,14 @@ COPY native/src/main/c/ native/src/main/c/
 COPY native/libs/ native/libs/
 
 # Build native library from source (musl, for Alpine runtime)
-# Falls back to pre-built lib from native/libs/ if compilation fails
+# Compiles for the target platform (amd64 or arm64) via buildx
 RUN apk add --no-cache gcc musl-dev linux-headers && \
     JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java)))) && \
     gcc -shared -fPIC -O2 \
       -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux \
-      -o native/libs/libslogr-native-linux-amd64-musl.so \
+      -o native/libs/libslogr-native-musl.so \
       native/src/main/c/twampUdp.c native/src/main/c/traceroute.c \
-    || echo "WARNING: Native lib compilation failed, using pre-built"
+    || echo "WARNING: Native lib compilation failed"
 
 # Build shadow JAR — tests are already run by CI before this stage
 RUN ./gradlew :app:shadowJar --no-daemon -x test
@@ -64,9 +64,9 @@ RUN apk add --no-cache bash libcap && \
 
 COPY --from=builder /build/app/build/libs/slogr-agent-all.jar /opt/slogr/slogr-agent-all.jar
 
-# musl-compiled native library for Alpine
+# musl-compiled native library for Alpine (amd64 or arm64 depending on build platform)
 # SlogrNative.isMusl() detects Alpine and looks for the -musl suffix
-COPY --from=builder /build/native/libs/libslogr-native-linux-amd64-musl.so /opt/slogr/lib/libslogr-native-musl.so
+COPY --from=builder /build/native/libs/libslogr-native-musl.so /opt/slogr/lib/libslogr-native-musl.so
 
 COPY deploy/wrapper.sh /usr/local/bin/slogr-agent
 RUN chmod +x /usr/local/bin/slogr-agent && \
