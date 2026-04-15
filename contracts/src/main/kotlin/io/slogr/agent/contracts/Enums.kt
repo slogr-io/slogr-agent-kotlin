@@ -26,6 +26,16 @@ import kotlinx.serialization.Serializable
     BOTH_FAILED
 }
 
+/** DSCP filtering/rewriting status detected during TWAMP session. */
+@Serializable enum class DscpStatus {
+    /** Profile DSCP used for all packets, no filtering or rewriting detected. */
+    APPLIED,
+    /** DSCP-marked packets dropped by network — fell back to best-effort (DSCP 0). */
+    FILTERED_FALLBACK,
+    /** Packets delivered but DSCP marking changed in transit (e.g. EF→BE). */
+    REWRITTEN
+}
+
 /** Clock synchronization quality reported by the virtual clock estimator (R2). */
 @Serializable enum class ClockSyncStatus {
     /** Both sender and reflector are NTP-synced — raw T2-T1 / T4-T3 used. */

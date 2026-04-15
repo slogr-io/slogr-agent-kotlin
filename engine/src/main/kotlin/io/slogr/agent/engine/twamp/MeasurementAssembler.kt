@@ -1,6 +1,7 @@
 package io.slogr.agent.engine.twamp
 
 import io.slogr.agent.contracts.ClockSyncStatus
+import io.slogr.agent.contracts.DscpStatus
 import io.slogr.agent.contracts.MeasurementResult
 import io.slogr.agent.contracts.PacketEntry
 import io.slogr.agent.contracts.SlaGrade
@@ -125,6 +126,23 @@ object MeasurementAssembler {
             )
         }
 
+        // ── DSCP filtering / rewriting detection ────────────────────────────
+        val dscpRequested = profile.dscp
+        val receivedDscpValues = packets
+            .filter { it.rxTos > 0 || packets.any { p -> p.rxTos > 0 } }
+            .map { (it.rxTos.toInt() ushr 2) and 0x3F }
+        val dscpReceived = receivedDscpValues
+            .groupingBy { it }.eachCount()
+            .maxByOrNull { it.value }?.key
+        val dscpRewriteDetected = dscpRequested > 0 &&
+            dscpReceived != null &&
+            dscpReceived != dscpRequested
+        val dscpStatus = when {
+            result.dscpFiltered -> DscpStatus.FILTERED_FALLBACK
+            dscpRewriteDetected -> DscpStatus.REWRITTEN
+            else                -> DscpStatus.APPLIED
+        }
+
         return MeasurementResult(
             sessionId                = sessionId,
             pathId                   = pathId,
@@ -153,7 +171,10 @@ object MeasurementAssembler {
             packetsRecv              = result.packetsRecv,
             packets                  = packetEntries,
             clockSyncStatus          = syncStatus,
-            estimatedClockOffsetMs   = if (syncStatus != ClockSyncStatus.UNSYNCABLE) bestOffset else null
+            estimatedClockOffsetMs   = if (syncStatus != ClockSyncStatus.UNSYNCABLE) bestOffset else null,
+            dscpStatus               = dscpStatus,
+            dscpRequested            = dscpRequested,
+            dscpReceived             = dscpReceived
         )
     }
 

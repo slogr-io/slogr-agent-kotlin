@@ -48,6 +48,11 @@ class TwampSessionSender(
 
     private val log = LoggerFactory.getLogger(TwampSessionSender::class.java)
 
+    companion object {
+        /** Number of DSCP-marked packets to send before checking for filtering. */
+        const val DSCP_PROBE_COUNT = 5
+    }
+
     // Set by TwampControllerSession after test session is accepted
     @Volatile private lateinit var sid: SessionId
     @Volatile private lateinit var testMode: TwampMode
@@ -58,6 +63,9 @@ class TwampSessionSender(
     // Sequence numbers
     @Volatile private var seqNo = 0
     private val recvCount = AtomicInteger(0)
+
+    // DSCP filtering detection
+    @Volatile private var dscpFiltered = false
 
     // Statistics accumulators (access only from receiver loop)
     private val metrics = mutableListOf<PacketRecord>()
@@ -124,6 +132,15 @@ class TwampSessionSender(
             return
         }
         seqNo = currentSeq + 1
+
+        // DSCP probe: after 5 marked packets with 0 responses, fall back to best-effort
+        if (currentSeq == DSCP_PROBE_COUNT && recvCount.get() == 0 && config.dscp > 0) {
+            adapter.setTos(fd, 0)
+            dscpFiltered = true
+            log.warn("DSCP {} dropped (0/{} responses) — falling back to best-effort",
+                config.dscp, DSCP_PROBE_COUNT)
+        }
+
         try {
             val data: ByteArray
             if (testMode.isTestEncrypted()) {
@@ -179,7 +196,8 @@ class TwampSessionSender(
                         reflectorTxNtp = pkt.timestamp,
                         rxNtp        = rxNtp,
                         txTtl        = result.ttl.toInt(),
-                        rxTtl        = result.ttl.toInt()
+                        rxTtl        = result.ttl.toInt(),
+                        rxTos        = result.tos
                     )
                 } else {
                     val pkt = ReflectorUPacket.readFrom(bb, config.paddingLength)
@@ -190,7 +208,8 @@ class TwampSessionSender(
                         reflectorTxNtp = pkt.timestamp,
                         rxNtp        = rxNtp,
                         txTtl        = result.ttl.toInt(),
-                        rxTtl        = result.ttl.toInt()
+                        rxTtl        = result.ttl.toInt(),
+                        rxTos        = result.tos
                     )
                 }
                 metrics.add(record)
@@ -208,7 +227,8 @@ class TwampSessionSender(
         reflectorTxNtp: Long,
         rxNtp: Long,
         txTtl: Int,
-        rxTtl: Int
+        rxTtl: Int,
+        rxTos: Short = 0
     ): PacketRecord {
         val fwdDelayMs = TwampTimeUtil.ntpDiffMs(reflectorRxNtp, senderTxNtp)
         val revDelayMs = TwampTimeUtil.ntpDiffMs(rxNtp, reflectorTxNtp)
@@ -221,7 +241,8 @@ class TwampSessionSender(
             revDelayMs       = revDelayMs.toFloat(),
             reflectorProcNs  = procTimeNs,
             txTtl            = txTtl,
-            rxTtl            = rxTtl
+            rxTtl            = rxTtl,
+            rxTos            = rxTos
         )
     }
 
@@ -239,9 +260,10 @@ class TwampSessionSender(
         val sent = seqNo
         val recv = recvCount.get()
         return SenderResult(
-            packets     = metrics.toList(),
-            packetsSent = sent,
-            packetsRecv = recv
+            packets      = metrics.toList(),
+            packetsSent  = sent,
+            packetsRecv  = recv,
+            dscpFiltered = dscpFiltered
         )
     }
 }
@@ -273,7 +295,8 @@ data class PacketRecord(
     val reflectorProcNs: Long,
     val txTtl: Int,
     val rxTtl: Int,
-    val outOfOrder: Boolean = false
+    val outOfOrder: Boolean = false,
+    val rxTos: Short = 0
 )
 
 /** Result produced when a sender session closes. */
@@ -281,5 +304,6 @@ data class SenderResult(
     val packets: List<PacketRecord>,
     val packetsSent: Int = packets.size,
     val packetsRecv: Int = packets.size,
-    val error: String? = null
+    val error: String? = null,
+    val dscpFiltered: Boolean = false
 )
