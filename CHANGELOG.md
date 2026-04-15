@@ -5,6 +5,15 @@ All notable changes to the Slogr Agent (Kotlin/JVM) are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2026-04-15
+
+### Fixed
+- JavaUdpTransport.setTos() reverted to no-op — calling setTrafficClass() caused ISPs/routers to drop DSCP-marked UDP packets on Windows/macOS
+- All SLA profiles: packet_size capped at 1350 (was 1500) — 1500-byte TWAMP payloads + headers exceeded MTU, causing UDP fragmentation and packet drops on consumer networks
+
+### Added
+- R-16 regression test: multi-profile connectivity check (internet, voip, gaming, download, iot) validates no fragmentation or DSCP filtering
+
 ## [1.0.8] - 2026-04-14
 
 ### Added
