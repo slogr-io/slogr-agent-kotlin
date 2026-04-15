@@ -41,6 +41,9 @@ class JsonResultFormatter : ResultFormatter {
                 put("rtt_max_ms", t.rttMaxMs)
                 put("session_id", t.sessionId.toString())
                 put("path_id", t.pathId.toString())
+                put("dscp_status", t.dscpStatus.name.lowercase())
+                put("dscp_requested", t.dscpRequested)
+                t.dscpReceived?.let { put("dscp_received", it) }
             })
             bundle.traceroute?.let { put("traceroute", tracerouteJson(it)) }
             bundle.pathChange?.let {

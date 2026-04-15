@@ -5,6 +5,30 @@ All notable changes to the Slogr Agent (Kotlin/JVM) are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2026-04-15
+
+### Fixed
+- JavaUdpTransport.setTos() reverted to no-op — calling setTrafficClass() caused ISPs/routers to drop DSCP-marked UDP packets on Windows/macOS
+- All SLA profiles: packet_size capped at 1350 (was 1500) — 1500-byte TWAMP payloads + headers exceeded MTU, causing UDP fragmentation and packet drops on consumer networks
+
+### Added
+- R-16 regression test: multi-profile connectivity check (internet, voip, gaming, download, iot) validates no fragmentation or DSCP filtering
+
+## [1.0.8] - 2026-04-14
+
+### Added
+- ASN enrichment for traceroute hops via bundled ip2asn-v4.tsv database (442K entries)
+- Bundled ASN database loads from cache or JAR resource (no network download on startup)
+
+### Fixed
+- Traceroute and ICMP probes now use JNI native transport on Linux (was incorrectly using Java subprocess fallback)
+- Traceroute no longer spawns a full `traceroute` subprocess per hop (root cause of multi-minute hangs)
+- ICMP ping probes no longer hang indefinitely when running as root with CAP_NET_RAW
+
+### Changed
+- Transport auto-detection: JniProbeAdapter on Linux (raw sockets, kernel timestamps), JavaUdpTransport fallback on Windows/macOS
+- Daemon gains kernel timestamps and raw socket probes (JNI transport was available but unused)
+
 ## [1.0.7] - 2026-04-14
 
 ### Added
@@ -23,6 +47,21 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - AGENT-004: `check --format json` was missing ground-truth RTT despite computing them
 - `--help` printed null instead of formatted help text (Clikt `PrintHelpMessage.message` is null)
 - Unknown commands exited 0 instead of exit code 2 (root command silently swallowed unknown tokens)
+
+## [1.0.6] - 2026-04-09
+
+### Added
+- Zero-config ASN/ISP resolution using ip2asn database (IPtoASN.com, public domain)
+- Ip2AsnResolver: sorted-array binary search over ~700K IPv4 ranges, sub-millisecond lookups
+- Bundled ip2asn-v4.tsv.gz (~3MB) in JAR — ASN works on first boot with no network access
+- AsnDatabaseUpdater: 5-tier download chain (slogr.io → iptoasn.com → disk cache → bundled → null)
+- First-run deployment analytics: agent pings data.slogr.io on install for fleet visibility
+- SwappableAsnResolver: thread-safe runtime hot-swap for 30-day daemon refresh cycle
+- Cloudflare Worker at data.slogr.io/asn-db serving cached database + logging analytics
+
+### Changed
+- ASN resolver priority: MaxMind (if configured) > ip2asn (automatic) > NullAsnResolver
+- setup-asn command now notes ip2asn is automatic; MaxMind is optional for higher accuracy
 
 ## [1.0.5] - 2026-04-09
 

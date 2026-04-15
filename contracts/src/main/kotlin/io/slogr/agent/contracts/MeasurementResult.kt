@@ -68,5 +68,10 @@ data class MeasurementResult(
     @SerialName("estimated_clock_offset_ms")
     val estimatedClockOffsetMs: Float? = null,
 
-    @SerialName("schema_version") val schemaVersion: Int = 1
+    @SerialName("schema_version") val schemaVersion: Int = 1,
+
+    // ── DSCP filtering detection ────────────────────────────────────────────
+    @SerialName("dscp_status") val dscpStatus: DscpStatus = DscpStatus.APPLIED,
+    @SerialName("dscp_requested") val dscpRequested: Int = 0,
+    @SerialName("dscp_received") val dscpReceived: Int? = null
 )

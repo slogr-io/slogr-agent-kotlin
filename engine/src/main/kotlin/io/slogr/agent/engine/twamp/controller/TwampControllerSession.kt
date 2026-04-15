@@ -326,10 +326,11 @@ class TwampControllerSession(
     private fun mergeSenderResults(): SenderResult =
         senderResults.fold(SenderResult(emptyList(), 0, 0)) { acc, r ->
             SenderResult(
-                packets     = acc.packets + r.packets,
-                packetsSent = acc.packetsSent + r.packetsSent,
-                packetsRecv = acc.packetsRecv + r.packetsRecv,
-                error       = acc.error ?: r.error
+                packets      = acc.packets + r.packets,
+                packetsSent  = acc.packetsSent + r.packetsSent,
+                packetsRecv  = acc.packetsRecv + r.packetsRecv,
+                error        = acc.error ?: r.error,
+                dscpFiltered = acc.dscpFiltered || r.dscpFiltered
             )
         }
 

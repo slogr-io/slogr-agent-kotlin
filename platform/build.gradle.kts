@@ -33,6 +33,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
     testRuntimeOnly(libs.junit.platform.launcher)
     "integrationTestImplementation"(libs.testcontainers.rabbitmq)
     "integrationTestImplementation"(libs.testcontainers.junit)

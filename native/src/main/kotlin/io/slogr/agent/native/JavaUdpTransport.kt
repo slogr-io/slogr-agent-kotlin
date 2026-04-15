@@ -65,11 +65,13 @@ class JavaUdpTransport(
     /** SO_TIMESTAMPING is not available via [DatagramSocket]; silently accepted. */
     override fun enableTimestamping(fd: Int): Boolean = sockets.containsKey(fd)
 
-    /** Set IP TOS byte (includes DSCP) via DatagramSocket.setTrafficClass(). */
-    override fun setTos(fd: Int, tos: Short, ipv6: Boolean): Boolean {
-        val s = sockets[fd] ?: return false
-        return try { s.trafficClass = tos.toInt() and 0xFF; true } catch (_: Exception) { false }
-    }
+    /** TOS/DSCP marking is not applied via JavaUdpTransport.
+     *  DatagramSocket.setTrafficClass() causes some ISPs and consumer routers to
+     *  drop UDP packets when the TOS byte is explicitly set (even to valid DSCP values).
+     *  DSCP marking works reliably only on the JNI transport (raw sockets on Linux).
+     *  On the Java fallback (Windows/macOS), leave the OS default — silently accept. */
+    override fun setTos(fd: Int, tos: Short, ipv6: Boolean): Boolean =
+        sockets.containsKey(fd)
 
     override fun setTimeout(fd: Int, timeoutMs: Int): Boolean {
         val s = sockets[fd] ?: return false

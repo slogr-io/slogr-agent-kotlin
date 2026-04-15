@@ -1,5 +1,6 @@
 package io.slogr.agent.platform.output
 
+import io.slogr.agent.contracts.DscpStatus
 import io.slogr.agent.contracts.MeasurementBundle
 import io.slogr.agent.contracts.SlaGrade
 import io.slogr.agent.contracts.TracerouteResult
@@ -38,6 +39,20 @@ class TextResultFormatter(
         }
 
         sb.appendLine("  RTT total: min/avg/max ${t.rttMinMs.f1()}/${t.rttAvgMs.f1()}/${t.rttMaxMs.f1()} ms")
+
+        // DSCP filtering/rewriting warning
+        when (t.dscpStatus) {
+            DscpStatus.FILTERED_FALLBACK -> {
+                sb.appendLine()
+                sb.appendLine("  ⚠ DSCP ${dscpName(t.dscpRequested)} (${t.dscpRequested}) packets dropped by network — fell back to best-effort")
+            }
+            DscpStatus.REWRITTEN -> {
+                val rxLabel = t.dscpReceived?.let { "$it" } ?: "?"
+                sb.appendLine()
+                sb.appendLine("  ⚠ DSCP rewritten: sent ${dscpName(t.dscpRequested)} (${t.dscpRequested}), received $rxLabel — QoS not preserved")
+            }
+            DscpStatus.APPLIED -> {} // no warning
+        }
 
         bundle.traceroute?.let { appendTraceroute(sb, it) }
 
@@ -110,6 +125,12 @@ class TextResultFormatter(
     }
 
     private fun gradeLabel(grade: SlaGrade): String = grade.name
+
+    private fun dscpName(dscp: Int): String = when (dscp) {
+        46 -> "EF"; 34 -> "AF41"; 36 -> "AF42"; 40 -> "AF43"
+        8 -> "CS1"; 10 -> "AF11"; 0 -> "BE"
+        else -> "DSCP$dscp"
+    }
 
     private fun Float.f1(): String = "%.1f".format(this)
 }
