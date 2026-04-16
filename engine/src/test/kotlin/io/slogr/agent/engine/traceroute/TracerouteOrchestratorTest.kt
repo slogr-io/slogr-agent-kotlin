@@ -314,4 +314,86 @@ class TracerouteOrchestratorTest {
         // Verify the adapter received the reduced timeoutMs (500, not default 2000)
         verify { adapter.icmpProbe(any(), eq(1), eq(500)) }
     }
+
+    // ── Mesh target: TCP uses target port (862), not hardcoded 443 ───────────
+
+    @Test
+    fun `mesh target uses tcpPort 862 for TCP probes`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        // ICMP: mostly stars → trigger TCP fallback
+        every { adapter.icmpProbe(any(), any(), any()) } returns ProbeResult.TIMEOUT
+        // TCP on port 862: resolves cleanly
+        every { adapter.tcpProbe(any(), eq(862), any(), any()) } returns ProbeResult("10.0.0.1", 5f, false, 11, 0)
+        every { adapter.tcpProbe(any(), eq(862), eq(2), any()) } returns ProbeResult("8.8.8.8", 12f, true, 0, 0)
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        val result = orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 5,
+            probesPerHop = 1,
+            tcpPort      = 862
+        )
+
+        // TCP/862 was used (not 443)
+        verify(atLeast = 1) { adapter.tcpProbe(any(), eq(862), any(), any()) }
+        verify(exactly = 0) { adapter.tcpProbe(any(), eq(443), any(), any()) }
+        assertEquals("10.0.0.1", result.hops[0].ip)
+    }
+
+    @Test
+    fun `external target uses default TCP port 443`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        // ICMP: mostly stars → trigger TCP fallback
+        every { adapter.icmpProbe(any(), any(), any()) } returns ProbeResult.TIMEOUT
+        // TCP on port 443: resolves
+        every { adapter.tcpProbe(any(), eq(443), any(), any()) } returns ProbeResult("10.0.0.1", 5f, false, 11, 0)
+        every { adapter.tcpProbe(any(), eq(443), eq(2), any()) } returns ProbeResult("8.8.8.8", 12f, true, 0, 0)
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 5,
+            probesPerHop = 1
+            // no tcpPort → defaults to 443
+        )
+
+        verify(atLeast = 1) { adapter.tcpProbe(any(), eq(443), any(), any()) }
+        verify(exactly = 0) { adapter.tcpProbe(any(), eq(862), any(), any()) }
+    }
+
+    @Test
+    fun `mesh target falls back from TCP 862 to TCP 443 to UDP`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        // All modes return mostly stars except UDP
+        every { adapter.icmpProbe(any(), any(), any()) } returns ProbeResult.TIMEOUT
+        every { adapter.tcpProbe(any(), eq(862), any(), any()) } returns ProbeResult.TIMEOUT
+        every { adapter.tcpProbe(any(), eq(443), any(), any()) } returns ProbeResult.TIMEOUT
+        every { adapter.udpProbe(any(), any(), eq(1), any()) } returns ProbeResult("10.1.0.1", 5f, false, 11, 0)
+        every { adapter.udpProbe(any(), any(), eq(2), any()) } returns ProbeResult("8.8.8.8", 12f, true, 3, 3)
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        val result = orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 5,
+            probesPerHop = 1,
+            tcpPort      = 862
+        )
+
+        // All four modes were tried: ICMP, TCP/862, TCP/443, UDP
+        verify(atLeast = 1) { adapter.icmpProbe(any(), any(), any()) }
+        verify(atLeast = 1) { adapter.tcpProbe(any(), eq(862), any(), any()) }
+        verify(atLeast = 1) { adapter.tcpProbe(any(), eq(443), any(), any()) }
+        verify(atLeast = 1) { adapter.udpProbe(any(), any(), any(), any()) }
+        // UDP result wins
+        assertEquals("10.1.0.1", result.hops[0].ip)
+    }
 }
