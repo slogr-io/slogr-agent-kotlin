@@ -77,7 +77,17 @@ RUN chmod +x /usr/local/bin/slogr-agent && \
 
 # Grant NET_BIND_SERVICE + NET_RAW directly to the java binary so it works
 # even when ambient capabilities are not propagated (COS on GCP).
-RUN setcap 'cap_net_bind_service=+ep cap_net_raw=+ep' $(readlink -f /usr/bin/java)
+# setcap strips LD_LIBRARY_PATH for security — musl needs an explicit library
+# search path (/etc/ld-musl-*.path) so the JVM can find libjli.so, libjimage.so,
+# and the JIT compiler (libjvm.so) at runtime.
+RUN JAVA_HOME=$(dirname $(dirname $(readlink -f /usr/bin/java))) && \
+    ARCH=$(uname -m) && \
+    echo "$JAVA_HOME/lib"        >  "/etc/ld-musl-${ARCH}.path" && \
+    echo "$JAVA_HOME/lib/server" >> "/etc/ld-musl-${ARCH}.path" && \
+    echo "$JAVA_HOME/lib/jli"    >> "/etc/ld-musl-${ARCH}.path" && \
+    echo "/usr/lib"              >> "/etc/ld-musl-${ARCH}.path" && \
+    echo "/lib"                  >> "/etc/ld-musl-${ARCH}.path" && \
+    setcap 'cap_net_bind_service=+ep cap_net_raw=+ep' $(readlink -f /usr/bin/java)
 
 USER slogr
 WORKDIR /opt/slogr
