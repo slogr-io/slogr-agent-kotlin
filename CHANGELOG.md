@@ -5,6 +5,12 @@ All notable changes to the Slogr Agent (Kotlin/JVM) are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-04-16
+
+### Fixed
+- TCP traceroute uses target port (862) for mesh agents instead of hardcoded 443. Fixes Azure traceroute blindness where SDN suppresses TTL-exceeded for closed ports. Fallback chain for mesh: ICMP → TCP/862 → TCP/443 → UDP. (#17)
+- Dockerfile adds `setcap cap_net_bind_service+ep cap_net_raw+ep` on java binary for non-root port 862 binding on Container-Optimized OS (GCP). (#6)
+
 ## [1.0.9] - 2026-04-15
 
 ### Fixed

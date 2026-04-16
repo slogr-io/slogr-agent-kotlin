@@ -4,7 +4,7 @@
 # Or:    SLOGR_API_KEY=sk_live_... curl -fsSL https://releases.slogr.io/install.sh | sh
 set -e
 
-SLOGR_VERSION="${SLOGR_VERSION:-1.0.5}"
+SLOGR_VERSION="${SLOGR_VERSION:-1.2.0}"
 RELEASES_BASE="https://github.com/slogr-io/slogr-agent-kotlin/releases/download/v${SLOGR_VERSION}"
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
