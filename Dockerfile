@@ -52,8 +52,11 @@ FROM amazoncorretto:21-alpine
 # To bind port 862 as non-root, use ONE of:
 #   docker run --sysctl net.ipv4.ip_unprivileged_port_start=862 ...  (preferred, Docker 20.10+)
 #   docker run --cap-add NET_BIND_SERVICE --cap-add NET_RAW ...       (fallback)
-# Do NOT use setcap on the java binary — it grants capabilities to all
-# Java processes in the container, not just the agent.
+#
+# setcap grants capabilities directly to the java binary so port 862 binding
+# works even when ambient capabilities are not propagated (e.g. Container-
+# Optimized OS on GCP). The --sysctl flag is the primary mechanism; setcap
+# is the fallback for environments like COS that don't propagate ambient caps.
 
 RUN apk add --no-cache bash libcap && \
     addgroup -S slogr && \
@@ -71,6 +74,10 @@ COPY --from=builder /build/native/libs/libslogr-native-musl.so /opt/slogr/lib/li
 COPY deploy/wrapper.sh /usr/local/bin/slogr-agent
 RUN chmod +x /usr/local/bin/slogr-agent && \
     chown slogr:slogr /opt/slogr/slogr-agent-all.jar /opt/slogr/lib/libslogr-native-musl.so
+
+# Grant NET_BIND_SERVICE + NET_RAW directly to the java binary so it works
+# even when ambient capabilities are not propagated (COS on GCP).
+RUN setcap 'cap_net_bind_service=+ep cap_net_raw=+ep' $(readlink -f /usr/bin/java)
 
 USER slogr
 WORKDIR /opt/slogr

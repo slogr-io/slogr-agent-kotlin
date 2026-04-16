@@ -15,7 +15,10 @@ import java.net.InetAddress
 import java.util.UUID
 
 /**
- * Runs multi-mode traceroute via [NativeProbeAdapter] with ICMP → TCP/443 → UDP fallback.
+ * Runs multi-mode traceroute via [NativeProbeAdapter] with fallback chain.
+ *
+ * For mesh targets (tcpPort != 443): ICMP → TCP/tcpPort → TCP/443 → UDP.
+ * For external targets (tcpPort == 443): ICMP → TCP/443 → UDP.
  *
  * - Max [maxConcurrent] concurrent traceroutes (Semaphore).
  * - Private/reserved IPs are excluded from ASN lookup.
@@ -39,17 +42,18 @@ class TracerouteOrchestrator(
         probesPerHop: Int = 2,
         timeoutMs: Int = 2000,
         mode: TracerouteMode? = null,
-        budgetMs: Long = Long.MAX_VALUE
+        budgetMs: Long = Long.MAX_VALUE,
+        tcpPort: Int = NativeTracerouteProbe.TCP_TRACEROUTE_PORT
     ): TracerouteResult = semaphore.withPermit {
         val startNs = System.nanoTime()
 
         val hops = if (mode != null) {
             // Explicit mode — no fallback chain, budget irrelevant
-            runMode(target, mode, maxHops, probesPerHop, timeoutMs)
+            runMode(target, mode, maxHops, probesPerHop, timeoutMs, tcpPort)
         } else {
-            // ICMP → TCP/443 → UDP fallback chain with budget gating
+            // Fallback chain with budget gating.
             // First mode (ICMP) always runs unconditionally
-            val icmp = runMode(target, TracerouteMode.ICMP, maxHops, probesPerHop, timeoutMs)
+            val icmp = runMode(target, TracerouteMode.ICMP, maxHops, probesPerHop, timeoutMs, tcpPort)
             if (!isMostlyStars(icmp)) {
                 icmp
             } else {
@@ -58,16 +62,35 @@ class TracerouteOrchestrator(
                 if (remainingBeforeTcp < MIN_USEFUL_BUDGET_MS) {
                     icmp  // best we have
                 } else {
-                    val tcp = runMode(target, TracerouteMode.TCP, maxHops, probesPerHop, timeoutMs)
+                    val tcp = runMode(target, TracerouteMode.TCP, maxHops, probesPerHop, timeoutMs, tcpPort)
                     if (!isMostlyStars(tcp)) {
                         tcp
+                    } else if (tcpPort != NativeTracerouteProbe.TCP_TRACEROUTE_PORT) {
+                        // Mesh target: TCP/tcpPort got 0 hops → fallback to TCP/443
+                        val remainingBeforeTcp443 = budgetMs - (System.nanoTime() - startNs) / 1_000_000
+                        if (remainingBeforeTcp443 < MIN_USEFUL_BUDGET_MS) {
+                            bestOf(icmp, tcp)
+                        } else {
+                            val tcp443 = runMode(target, TracerouteMode.TCP, maxHops, probesPerHop, timeoutMs, NativeTracerouteProbe.TCP_TRACEROUTE_PORT)
+                            if (!isMostlyStars(tcp443)) {
+                                tcp443
+                            } else {
+                                val remainingBeforeUdp = budgetMs - (System.nanoTime() - startNs) / 1_000_000
+                                if (remainingBeforeUdp < MIN_USEFUL_BUDGET_MS) {
+                                    bestOf(icmp, tcp, tcp443)
+                                } else {
+                                    val udp = runMode(target, TracerouteMode.UDP, maxHops, probesPerHop, timeoutMs, tcpPort)
+                                    bestOf(icmp, tcp, tcp443, udp)
+                                }
+                            }
+                        }
                     } else {
-                        // Budget check before UDP
+                        // External target: TCP/443 already tried → fallback to UDP
                         val remainingBeforeUdp = budgetMs - (System.nanoTime() - startNs) / 1_000_000
                         if (remainingBeforeUdp < MIN_USEFUL_BUDGET_MS) {
                             bestOf(icmp, tcp)
                         } else {
-                            val udp = runMode(target, TracerouteMode.UDP, maxHops, probesPerHop, timeoutMs)
+                            val udp = runMode(target, TracerouteMode.UDP, maxHops, probesPerHop, timeoutMs, tcpPort)
                             bestOf(icmp, tcp, udp)
                         }
                     }
@@ -93,11 +116,12 @@ class TracerouteOrchestrator(
         mode: TracerouteMode,
         maxHops: Int,
         probesPerHop: Int,
-        timeoutMs: Int
+        timeoutMs: Int,
+        tcpPort: Int = NativeTracerouteProbe.TCP_TRACEROUTE_PORT
     ): List<TracerouteHop> = withContext(Dispatchers.IO) {
         val hops = mutableListOf<TracerouteHop>()
         for (ttl in 1..maxHops) {
-            val result = probe.probe(target, ttl, mode, probesPerHop, timeoutMs)
+            val result = probe.probe(target, ttl, mode, probesPerHop, timeoutMs, tcpPort)
             hops.add(buildHop(ttl, result))
             if (result.reached) break
         }
