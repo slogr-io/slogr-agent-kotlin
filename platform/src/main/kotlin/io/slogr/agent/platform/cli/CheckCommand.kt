@@ -115,7 +115,8 @@ class CheckCommand(private val ctx: CliContext) : CliktCommand(name = "check") {
                         probesPerHop = 1,
                         timeoutMs    = 1000,
                         mode         = parsedMode,
-                        budgetMs     = tracerouteTimeout * 1000L
+                        budgetMs     = tracerouteTimeout * 1000L,
+                        tcpPort      = port
                     )
                 } catch (e: Exception) {
                     log.debug("Traceroute failed: ${e.message}")
@@ -146,7 +147,8 @@ class CheckCommand(private val ctx: CliContext) : CliktCommand(name = "check") {
                     probesPerHop = 1,
                     timeoutMs    = 1000,
                     mode         = parsedMode,
-                    budgetMs     = tracerouteTimeout * 1000L
+                    budgetMs     = tracerouteTimeout * 1000L,
+                    tcpPort      = port
                 )
             } catch (e: Exception) {
                 log.debug("Traceroute failed: ${e.message}")

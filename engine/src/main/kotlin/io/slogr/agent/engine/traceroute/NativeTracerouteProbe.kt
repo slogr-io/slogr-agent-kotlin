@@ -26,12 +26,13 @@ internal class NativeTracerouteProbe(private val adapter: NativeProbeAdapter) {
         ttl: Int,
         mode: TracerouteMode,
         probesPerHop: Int,
-        timeoutMs: Int
+        timeoutMs: Int,
+        tcpPort: Int = TCP_TRACEROUTE_PORT
     ): HopResult {
         val probes = (1..probesPerHop).map {
             when (mode) {
                 TracerouteMode.ICMP -> adapter.icmpProbe(target, ttl, timeoutMs)
-                TracerouteMode.TCP  -> adapter.tcpProbe(target, TCP_TRACEROUTE_PORT, ttl, timeoutMs)
+                TracerouteMode.TCP  -> adapter.tcpProbe(target, tcpPort, ttl, timeoutMs)
                 TracerouteMode.UDP  -> adapter.udpProbe(target, UDP_BASE_PORT + ttl, ttl, timeoutMs)
             }
         }

@@ -109,7 +109,8 @@ class MeasurementEngineImpl(
             target    = target,
             sessionId = twampResult.sessionId,
             pathId    = pathId,
-            direction = Direction.UPLINK
+            direction = Direction.UPLINK,
+            tcpPort   = targetPort
         )
         val detection  = pathChangeDetector.detect(rawTrace)
 
