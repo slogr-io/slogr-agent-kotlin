@@ -1,0 +1,10 @@
+name: Generate FEATURES.md
+on:
+  push:
+    branches: [master]
+jobs:
+  generate:
+    uses: nasimkz/slogr-cicd/.github/workflows/generate-features.yml@main
+    with:
+      repo-name: "slogr-agent-kotlin"
+      layer: "L1 Agent"
