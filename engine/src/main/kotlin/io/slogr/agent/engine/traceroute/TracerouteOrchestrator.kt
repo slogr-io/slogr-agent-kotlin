@@ -139,7 +139,11 @@ class TracerouteOrchestrator(
     private suspend fun enrichWithAsn(hops: List<TracerouteHop>): List<TracerouteHop> =
         hops.map { hop ->
             val ip = hop.ip ?: return@map hop
-            if (isPrivateIp(ip)) return@map hop
+            // Private IPs (RFC 1918, CGNAT, loopback, link-local, multicast) have no ASN
+            // by definition. Label them "PRIVATE" so downstream can distinguish an
+            // intentionally-unresolved private hop from a failed public-IP lookup
+            // or a timeout star hop (which keeps asn_name=null).
+            if (isPrivateIp(ip)) return@map hop.copy(asnName = "PRIVATE")
             val asn = try {
                 asnResolver.resolve(InetAddress.getByName(ip))
             } catch (_: Exception) {
