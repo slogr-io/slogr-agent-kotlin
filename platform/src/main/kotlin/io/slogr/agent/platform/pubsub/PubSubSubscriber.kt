@@ -38,15 +38,25 @@ class PubSubSubscriber(
     private var job: Job? = null
 
     fun start(scope: CoroutineScope) {
-        val saKeyBase64 = credential.gcpServiceAccountKey
-        if (saKeyBase64 == null) {
-            log.warn("GCP service account key not available — Pub/Sub subscriber disabled")
+        // Resolve credentials: prefer SA key from registration, else fall back to
+        // Application Default Credentials (works on GCP VMs via metadata server).
+        val credentials: GoogleCredentials = try {
+            val saKeyBase64 = credential.gcpServiceAccountKey
+            if (saKeyBase64 != null) {
+                log.info("Pub/Sub subscriber using SA key from registration")
+                buildCredentialsFromKey(saKeyBase64)
+            } else {
+                log.info("Pub/Sub subscriber using Application Default Credentials")
+                GoogleCredentials.getApplicationDefault()
+                    .createScoped(listOf("https://www.googleapis.com/auth/pubsub"))
+            }
+        } catch (e: Exception) {
+            log.warn("Pub/Sub credentials unavailable — subscriber disabled: ${e.message}")
             return
         }
 
         job = scope.launch {
-            val credentials = buildCredentials(saKeyBase64)
-            val settings    = SubscriberStubSettings.newBuilder()
+            val settings = SubscriberStubSettings.newBuilder()
                 .setCredentialsProvider(FixedCredentialsProvider.create(credentials))
                 .build()
 
@@ -102,7 +112,7 @@ class PubSubSubscriber(
             }
         }
 
-    private fun buildCredentials(saKeyBase64: String): GoogleCredentials {
+    private fun buildCredentialsFromKey(saKeyBase64: String): GoogleCredentials {
         val keyJson = java.util.Base64.getDecoder().decode(saKeyBase64)
         return ServiceAccountCredentials.fromStream(ByteArrayInputStream(keyJson))
             .createScoped(listOf("https://www.googleapis.com/auth/pubsub"))
