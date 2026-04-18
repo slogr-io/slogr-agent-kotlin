@@ -4,9 +4,11 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.slogr.agent.contracts.AsnInfo
 import io.slogr.agent.contracts.Direction
 import io.slogr.agent.contracts.TracerouteMode
 import io.slogr.agent.contracts.interfaces.AsnResolver
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import io.slogr.agent.native.NativeProbeAdapter
 import io.slogr.agent.native.ProbeResult
 import kotlinx.coroutines.test.runTest
@@ -366,6 +368,100 @@ class TracerouteOrchestratorTest {
         verify(atLeast = 1) { adapter.tcpProbe(any(), eq(443), any(), any()) }
         verify(exactly = 0) { adapter.tcpProbe(any(), eq(862), any(), any()) }
     }
+
+    // ── Private IP ASN labeling (#24) ────────────────────────────────────────
+
+    @Test
+    fun `enrichWithAsn marks RFC1918 hop as PRIVATE`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        every { adapter.icmpProbe(any(), eq(1), any()) } returns ProbeResult("192.168.1.1", 1.2f, false, 11, 0)
+        every { adapter.icmpProbe(any(), eq(2), any()) } returns ProbeResult("8.8.8.8", 15f, true, 0, 0)
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        val result = orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 5,
+            probesPerHop = 1,
+            mode         = TracerouteMode.ICMP
+        )
+
+        // Private hop: IP preserved, ASN stays null (correct — no ASN exists), name "PRIVATE"
+        assertEquals("192.168.1.1", result.hops[0].ip)
+        assertNull(result.hops[0].asn)
+        assertEquals("PRIVATE", result.hops[0].asnName)
+    }
+
+    @Test
+    fun `enrichWithAsn marks CGNAT hop as PRIVATE`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        every { adapter.icmpProbe(any(), eq(1), any()) } returns ProbeResult("100.64.5.10", 3.1f, false, 11, 0)
+        every { adapter.icmpProbe(any(), eq(2), any()) } returns ProbeResult("8.8.8.8", 15f, true, 0, 0)
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        val result = orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 5,
+            probesPerHop = 1,
+            mode         = TracerouteMode.ICMP
+        )
+
+        assertEquals("PRIVATE", result.hops[0].asnName)
+    }
+
+    @Test
+    fun `enrichWithAsn leaves star hop without PRIVATE label`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        every { adapter.icmpProbe(any(), eq(1), any()) } returns ProbeResult.TIMEOUT
+        every { adapter.icmpProbe(any(), eq(2), any()) } returns ProbeResult("8.8.8.8", 15f, true, 0, 0)
+
+        val orchestrator = TracerouteOrchestrator(adapter, nullAsn)
+        val result = orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 5,
+            probesPerHop = 1,
+            mode         = TracerouteMode.ICMP
+        )
+
+        // Star hop stays distinct: null IP, null asn_name
+        assertNull(result.hops[0].ip)
+        assertNull(result.hops[0].asnName)
+    }
+
+    @Test
+    fun `enrichWithAsn populates public IP with real ASN name, not PRIVATE`() = runTest {
+        val adapter = mockk<NativeProbeAdapter>()
+        every { adapter.icmpProbe(any(), eq(1), any()) } returns ProbeResult("8.8.8.8", 5f, true, 0, 0)
+
+        val googleAsn = mockk<AsnResolver> {
+            coEvery { resolve(any()) } returns AsnInfo(asn = 15169, name = "GOOGLE")
+        }
+
+        val orchestrator = TracerouteOrchestrator(adapter, googleAsn)
+        val result = orchestrator.run(
+            target       = InetAddress.getByName("8.8.8.8"),
+            sessionId    = UUID.randomUUID(),
+            pathId       = UUID.randomUUID(),
+            direction    = Direction.UPLINK,
+            maxHops      = 5,
+            probesPerHop = 1,
+            mode         = TracerouteMode.ICMP
+        )
+
+        assertEquals(15169, result.hops[0].asn)
+        assertEquals("GOOGLE", result.hops[0].asnName)
+        assertNotEquals("PRIVATE", result.hops[0].asnName)
+    }
+
+    // ── Mesh target: TCP uses target port (862), not hardcoded 443 ───────────
 
     @Test
     fun `mesh target falls back from TCP 862 to TCP 443 to UDP`() = runTest {
