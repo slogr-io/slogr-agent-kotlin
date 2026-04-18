@@ -5,6 +5,45 @@ All notable changes to the Slogr Agent (Kotlin/JVM) are documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.0 (2026-04-18)
+
+
+### Features
+
+* **asn:** zero-config ip2asn ISP detection for v1.0.6 ([13cca5a](https://github.com/slogr-io/slogr-agent-kotlin/commit/13cca5afdb65fe6a86cedecd076e43bea1b00bee))
+
+
+### Bug Fixes
+
+* **ci:** build native library before tests; add R2 branch trigger ([2bb9b42](https://github.com/slogr-io/slogr-agent-kotlin/commit/2bb9b425c344531c10f5982914690874b9abd385))
+* **ci:** build native library before tests; add R2 branch trigger ([2c53dda](https://github.com/slogr-io/slogr-agent-kotlin/commit/2c53dda4f464e7e776bdf33c7e2783ba59ed916b))
+* **ci:** download artifact to workspace root to restore original path ([2545d03](https://github.com/slogr-io/slogr-agent-kotlin/commit/2545d0364276d994072739a93fea83016c5e3eed))
+* **ci:** remove musl-tools from test job — it breaks glibc JNI tests ([79efd4d](https://github.com/slogr-io/slogr-agent-kotlin/commit/79efd4d84d89973db12a8ea23e0adafc4d73f199))
+* **ci:** stage JAR into deploy/ before docker build — app/build/ is dockerignored ([02e4778](https://github.com/slogr-io/slogr-agent-kotlin/commit/02e4778f0371510229b7a9c7c425ccdf4d0a068d))
+* **cli:** add -f short alias for --format in check command ([2e8d772](https://github.com/slogr-io/slogr-agent-kotlin/commit/2e8d772e3144b4d08d25f24f988cc1542eab5c05))
+* daemon binds 0.0.0.0:862 and respects --config schedule file ([af88672](https://github.com/slogr-io/slogr-agent-kotlin/commit/af886725ec5e18b0a88021e76550c9f239842fbb))
+* **daemon:** re-loop on InterruptedException to keep main thread alive ([a225e6b](https://github.com/slogr-io/slogr-agent-kotlin/commit/a225e6b504b1cf19de66692167639b8cb808a7d3))
+* **docker:** install bash in runtime stage — wrapper.sh requires bash not sh ([7b2584a](https://github.com/slogr-io/slogr-agent-kotlin/commit/7b2584af5d375918026014076feb65e232cece3a))
+* **docker:** install bash in runtime stage — wrapper.sh requires bash not sh ([196d705](https://github.com/slogr-io/slogr-agent-kotlin/commit/196d705ad28dba6c8d6b69cf4f674bd9ebcbb622))
+* **docker:** move native libs to native/libs/ to avoid .dockerignore exclusion ([ca933b0](https://github.com/slogr-io/slogr-agent-kotlin/commit/ca933b08fd435b703411bdde5221bbe8007f8e9d))
+* **docker:** move native libs to native/libs/ to avoid .dockerignore exclusion ([11f2c1b](https://github.com/slogr-io/slogr-agent-kotlin/commit/11f2c1b10fcb10fb4b78d9d660590180c70f03fc))
+* **docker:** un-exclude native/build/libs/ from Docker build context ([732d4db](https://github.com/slogr-io/slogr-agent-kotlin/commit/732d4dbd576656990659e8567f166c9675d3f964))
+* **docker:** un-exclude native/build/libs/ from Docker build context ([8a08ab2](https://github.com/slogr-io/slogr-agent-kotlin/commit/8a08ab257b1f4222952c527bba4c41198c5b74e1))
+* **e2e:** bind port 862 as non-root via setcap; harden reflector error logging ([9172f54](https://github.com/slogr-io/slogr-agent-kotlin/commit/9172f544bb3ae84226edcc71cba037c0ccb16ef6))
+* **e2e:** revert setcap (breaks musl libjli), run daemon as root instead ([1acf760](https://github.com/slogr-io/slogr-agent-kotlin/commit/1acf760f6774ba4ab2cb1074c76ce8fd5d65b8e0))
+* log reflector bind failures via SLF4J and fix KeyValidationCache serialization ([0403e95](https://github.com/slogr-io/slogr-agent-kotlin/commit/0403e95842243f54a38fca23650ef6bddaacf2d7))
+* log reflector bind failures via SLF4J and fix KeyValidationCache serialization ([b471fc8](https://github.com/slogr-io/slogr-agent-kotlin/commit/b471fc8d5f4371556f04641cbe025e165046bd1a))
+* **logging:** route logs to stderr so stdout carries only JSON output ([b6d29aa](https://github.com/slogr-io/slogr-agent-kotlin/commit/b6d29aa48af1e2c2209f765d170e229044290c9e))
+* **R2:** add kotlinx.serialization plugin + dep to platform module ([78445f3](https://github.com/slogr-io/slogr-agent-kotlin/commit/78445f3cc0fe307d10a541748724293d53ff16f2))
+* **R2:** remove duplicate fun start() in MeasurementEngine interface ([8ff89a9](https://github.com/slogr-io/slogr-agent-kotlin/commit/8ff89a9adad74a4fda238e6e495a9e0911d8628f))
+* start TWAMP reflector eagerly at daemon startup (responder-only mode) ([7d27116](https://github.com/slogr-io/slogr-agent-kotlin/commit/7d271169f2425a68cafed93afbfb9ea8a08168ca))
+* **test:** use AtomicInteger in TestSchedulerTest to eliminate data race ([9a272a2](https://github.com/slogr-io/slogr-agent-kotlin/commit/9a272a24e7a5d8346cbe6b31694c4ddf2a2af568))
+
+
+### Reverts
+
+* remove KeyValidationCache.kt from master (belongs only in R2) ([fd22290](https://github.com/slogr-io/slogr-agent-kotlin/commit/fd222902acde4e2b5d9f90d16c60808a1cf849a3))
+
 ## [1.0.6] - 2026-04-09
 
 ### Added
