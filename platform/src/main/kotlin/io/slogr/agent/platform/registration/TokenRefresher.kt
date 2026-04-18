@@ -25,8 +25,10 @@ import java.time.Duration
  */
 class TokenRefresher(
     private val credentialStore: CredentialStore,
+    private val apiKey: String,
     private val onRefreshed: suspend (newJwt: String) -> Unit = {},
-    private val intervalMs: Long  = 60 * 60 * 1_000L,   // 1 hour
+    /** RabbitMQ JWTs issued by BFF expire in 15 min — refresh every 10 min. */
+    private val intervalMs: Long  = 10 * 60 * 1_000L,
     private val apiBaseUrl: String = System.getenv("SLOGR_API_URL") ?: "https://api.slogr.io"
 ) {
     private val log    = LoggerFactory.getLogger(TokenRefresher::class.java)
@@ -54,8 +56,9 @@ class TokenRefresher(
     suspend fun refresh(): String? {
         val cred = credentialStore.load() ?: return null
         val request = HttpRequest.newBuilder()
-            .uri(URI.create("$apiBaseUrl/api/v1/agents/rabbitmq-token"))
-            .header("Authorization", "Bearer ${cred.jwt}")
+            .uri(URI.create("$apiBaseUrl/v1/agents/rabbitmq-token"))
+            .header("Authorization", "Bearer $apiKey")
+            .header("X-Agent-JWT", cred.jwt)
             .timeout(Duration.ofSeconds(15))
             .GET()
             .build()
@@ -65,7 +68,7 @@ class TokenRefresher(
             return null
         }
         val newJwt = runCatching {
-            json.parseToJsonElement(response.body()).jsonObject["token"]!!.jsonPrimitive.content
+            json.parseToJsonElement(response.body()).jsonObject["rabbitmq_jwt"]!!.jsonPrimitive.content
         }.getOrNull() ?: return null
 
         // Persist the updated credential with the new JWT

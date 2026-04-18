@@ -7,10 +7,16 @@ import com.github.ajalt.clikt.parameters.options.option
 import io.slogr.agent.contracts.Schedule
 import io.slogr.agent.engine.asn.Ip2AsnResolver
 import io.slogr.agent.platform.buffer.WriteAheadLog
+import io.slogr.agent.platform.commands.SetScheduleHandler
 import io.slogr.agent.platform.config.AgentState
+import io.slogr.agent.platform.health.HealthReporter
+import io.slogr.agent.platform.pubsub.CommandDispatcher
+import io.slogr.agent.platform.pubsub.PubSubSubscriber
 import io.slogr.agent.platform.rabbitmq.RabbitMqConnection
 import io.slogr.agent.platform.rabbitmq.RabbitMqPublisher
 import io.slogr.agent.platform.registration.ApiKeyRegistrar
+import io.slogr.agent.platform.registration.TokenRefresher
+import io.slogr.agent.platform.scheduler.BuiltinProfiles
 import io.slogr.agent.platform.scheduler.TestScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +36,15 @@ import java.io.File
  * - REGISTERED:       OTLP export enabled; no RabbitMQ/Pub/Sub
  * - CONNECTED + no cred: auto-registers with api.slogr.io (mass deployment path)
  * - CONNECTED + cred:  connects directly using stored credential
+ *
+ * CONNECTED mode wires four long-lived services on the publishScope:
+ *   1. [RabbitMqConnection.reconnectLoop] — reconnect with JWT refresh callback
+ *   2. [TokenRefresher]                   — refresh RabbitMQ JWT every 10 minutes
+ *   3. [HealthReporter]                   — publish HealthSnapshot every 60 seconds
+ *   4. [PubSubSubscriber]                 — poll Pub/Sub for set_schedule / run_test / etc.
+ *
+ * Composition-root presence of each service is asserted by DaemonCommandWiringTest to
+ * prevent regressions like slogr-io/slogr-agent-kotlin#27/#28/#29.
  */
 class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon") {
     override fun help(context: Context) = "Run the agent as a background daemon"
@@ -82,19 +97,41 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
         // ── RabbitMQ wiring — CONNECTED mode only ────────────────────────────
         var publisher: RabbitMqPublisher? = null
         var rabbitConn: RabbitMqConnection? = null
+        var tokenRefresher: TokenRefresher? = null
+        var healthReporter: HealthReporter? = null
+        var pubsubSubscriber: PubSubSubscriber? = null
         val publishScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
         if (state == AgentState.CONNECTED) {
             val cred = ctx.credentialStore.load()
-            if (cred != null) {
+            if (cred != null && apiKey != null) {
                 val wal = WriteAheadLog(ctx.config.dataDir)
                 rabbitConn = RabbitMqConnection(cred)
+
+                // TokenRefresher is created BEFORE reconnectLoop so its refresh()
+                // can feed the loop on every reconnect attempt.
+                tokenRefresher = TokenRefresher(
+                    credentialStore = ctx.credentialStore,
+                    apiKey          = apiKey,
+                    onRefreshed     = { newJwt -> rabbitConn?.updateJwt(newJwt) }
+                )
+                tokenRefresher.start(publishScope)
+
                 runCatching { rabbitConn.connect() }.onFailure { e ->
                     log.warn("RabbitMQ initial connect failed: ${e.message} — will retry via reconnect loop")
                 }
-                rabbitConn.reconnectLoop(publishScope) { null }
+                rabbitConn.reconnectLoop(publishScope) { tokenRefresher!!.refresh() }
                 publisher = RabbitMqPublisher(cred, wal, rabbitConn)
                 log.info("RabbitMQ publisher wired for agent ${cred.agentId}")
+
+                // HealthReporter: publishes HealthSnapshot every 60s on publishScope.
+                healthReporter = HealthReporter(
+                    credential = cred,
+                    publisher  = publisher,
+                    wal        = wal
+                )
+                healthReporter.start(publishScope)
+                log.info("HealthReporter started (60s interval)")
             }
         }
 
@@ -106,11 +143,11 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
             }
         }
 
-        // ── Issue 1 fix: force reflector to bind 0.0.0.0:862 immediately ────
+        // ── Force reflector to bind 0.0.0.0:862 immediately ───────────────────
         ctx.engine.start()
 
-        // ── Issue 2 fix: use --config file when provided ──────────────────────
-        val schedule = if (configPath.isNotEmpty()) {
+        // ── Load initial schedule (from --config file, else persisted) ────────
+        val initialSchedule = if (configPath.isNotEmpty()) {
             val file = File(configPath)
             if (file.exists()) {
                 try {
@@ -129,13 +166,11 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
             ctx.scheduleStore.load()
         }
 
-        if (schedule == null) {
-            log.info("No persisted schedule found — running in responder-only mode")
+        if (initialSchedule == null) {
+            log.info("No persisted schedule found — running in responder-only mode until a set_schedule command arrives")
         } else {
-            log.info("Loaded schedule with ${schedule.sessions.size} session(s)")
+            log.info("Loaded schedule with ${initialSchedule.sessions.size} session(s)")
         }
-
-        // engine.start() already called above (line 74) — duplicate removed (ISSUE-19)
 
         val scheduler = TestScheduler(
             engine   = ctx.engine,
@@ -154,11 +189,40 @@ class DaemonCommand(private val ctx: CliContext) : CliktCommand(name = "daemon")
                 }
             }
         )
-        scheduler.start(schedule)
+        scheduler.start(initialSchedule)
+
+        // ── Pub/Sub command channel — CONNECTED mode only, wired AFTER scheduler ──
+        if (state == AgentState.CONNECTED) {
+            val cred = ctx.credentialStore.load()
+            if (cred != null) {
+                val setScheduleHandler = SetScheduleHandler(
+                    agentId         = cred.agentId,
+                    tenantId        = cred.tenantId,
+                    scheduler       = scheduler,
+                    scheduleStore   = ctx.scheduleStore,
+                    profileRegistry = { name -> BuiltinProfiles.byName(name) }
+                )
+                val dispatcher = CommandDispatcher(
+                    agentId  = cred.agentId,
+                    tenantId = cred.tenantId,
+                    handlers = mapOf("set_schedule" to setScheduleHandler)
+                )
+                pubsubSubscriber = PubSubSubscriber(
+                    credential = cred,
+                    projectId  = System.getenv("GCP_PROJECT") ?: "slogr-app",
+                    dispatcher = dispatcher
+                )
+                pubsubSubscriber.start(publishScope)
+                log.info("Pub/Sub subscriber started for agent ${cred.agentId}")
+            }
+        }
 
         val shutdownHook = Thread {
             log.info("Shutting down daemon...")
             ctx.asnDatabaseUpdater?.stopPeriodicRefresh()
+            pubsubSubscriber?.stop()
+            healthReporter?.stop()
+            tokenRefresher?.stop()
             scheduler.stop()
             runBlocking { publisher?.flush() }
             rabbitConn?.close()
